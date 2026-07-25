@@ -167,6 +167,42 @@ class NotificationService
     }
 
     /**
+     * When application is returned for correction by the reviewer.
+     *
+     * @param array<string,mixed> $app
+     */
+    public function applicationReturned(array $app, ?array $user = null, string $remarks = ''): void
+    {
+        [$name, $email, $mobile] = $this->recipientFromApp($app, $user);
+        $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
+        $url   = base_url('applicant/application/view/' . (int) ($app['id'] ?? 0));
+
+        $subject = 'Application returned for correction — ' . $appNo;
+        $body    = view('emails/notify_application_returned', [
+            'name'          => $name,
+            'applicationNo' => $appNo,
+            'remarks'       => $remarks,
+            'viewUrl'       => $url,
+            'site'          => $this->site,
+        ]);
+
+        $sms = "MHC SAD Portal: Application {$appNo} returned for correction. Login to update and resubmit."
+            . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 60) : '');
+
+        $this->dispatch(
+            'application_returned',
+            $email,
+            $name,
+            $mobile,
+            $subject,
+            $body,
+            $sms,
+            (int) ($user['id'] ?? $app['user_id'] ?? 0),
+            (int) ($app['id'] ?? 0)
+        );
+    }
+
+    /**
      * Notify on approved/rejected based on status string.
      *
      * @param array<string,mixed> $app
@@ -177,6 +213,8 @@ class NotificationService
             $this->applicationApproved($app, $user, $remarks);
         } elseif ($status === ApplicationModel::STATUS_REJECTED) {
             $this->applicationRejected($app, $user, $remarks);
+        } elseif ($status === ApplicationModel::STATUS_RETURNED) {
+            $this->applicationReturned($app, $user, $remarks);
         }
     }
 

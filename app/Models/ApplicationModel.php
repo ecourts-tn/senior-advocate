@@ -47,23 +47,111 @@ class ApplicationModel extends Model
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
 
-    public const STATUS_DRAFT        = 'draft';
-    public const STATUS_SUBMITTED    = 'submitted';
-    public const STATUS_UNDER_REVIEW = 'under_review';
-    public const STATUS_APPROVED     = 'approved';
-    public const STATUS_REJECTED     = 'rejected';
-    public const STATUS_RETURNED     = 'returned';
+    public const STATUS_DRAFT            = 'draft';
+    public const STATUS_SUBMITTED        = 'submitted';
+    public const STATUS_UNDER_REVIEW     = 'under_review';
+    public const STATUS_PENDING_APPROVAL = 'pending_approval';
+    public const STATUS_APPROVED         = 'approved';
+    public const STATUS_REJECTED         = 'rejected';
+    public const STATUS_RETURNED         = 'returned';
 
     public const STATUSES = [
-        self::STATUS_DRAFT        => 'Draft',
-        self::STATUS_SUBMITTED    => 'Submitted',
-        self::STATUS_UNDER_REVIEW => 'Under Review',
-        self::STATUS_APPROVED     => 'Approved',
-        self::STATUS_REJECTED     => 'Rejected',
-        self::STATUS_RETURNED     => 'Returned for Correction',
+        self::STATUS_DRAFT            => 'Draft',
+        self::STATUS_SUBMITTED        => 'Submitted',
+        self::STATUS_UNDER_REVIEW     => 'Under Review',
+        self::STATUS_PENDING_APPROVAL => 'Pending Approval',
+        self::STATUS_APPROVED         => 'Approved',
+        self::STATUS_REJECTED         => 'Rejected',
+        self::STATUS_RETURNED         => 'Returned for Correction',
+    ];
+
+    /**
+     * Workflow actions available to staff (reviewer / approver / admin).
+     *
+     * Flow:
+     *  Applicant submits → submitted
+     *  Reviewer → under_review | returned | pending_approval
+     *  Approver → approved | rejected
+     */
+    public const ACTIONS = [
+        'start_review' => [
+            'label'           => 'Start review',
+            'to'              => self::STATUS_UNDER_REVIEW,
+            'roles'           => ['reviewer', 'admin'],
+            'from'            => [self::STATUS_SUBMITTED],
+            'remarks_required'=> false,
+        ],
+        'return' => [
+            'label'           => 'Return for correction',
+            'to'              => self::STATUS_RETURNED,
+            'roles'           => ['reviewer', 'admin'],
+            'from'            => [self::STATUS_SUBMITTED, self::STATUS_UNDER_REVIEW],
+            'remarks_required'=> true,
+        ],
+        'forward' => [
+            'label'           => 'Forward for approval',
+            'to'              => self::STATUS_PENDING_APPROVAL,
+            'roles'           => ['reviewer', 'admin'],
+            'from'            => [self::STATUS_SUBMITTED, self::STATUS_UNDER_REVIEW],
+            'remarks_required'=> false,
+        ],
+        'approve' => [
+            'label'           => 'Approve',
+            'to'              => self::STATUS_APPROVED,
+            'roles'           => ['approver', 'admin'],
+            'from'            => [self::STATUS_PENDING_APPROVAL],
+            'remarks_required'=> false,
+        ],
+        'reject' => [
+            'label'           => 'Reject',
+            'to'              => self::STATUS_REJECTED,
+            'roles'           => ['approver', 'admin'],
+            'from'            => [self::STATUS_PENDING_APPROVAL],
+            'remarks_required'=> true,
+        ],
     ];
 
     public const TOTAL_STEPS = 7;
+
+    /**
+     * Statuses that mean the application is still in the pipeline (not final).
+     *
+     * @return list<string>
+     */
+    public static function inProcessStatuses(): array
+    {
+        return [
+            self::STATUS_SUBMITTED,
+            self::STATUS_UNDER_REVIEW,
+            self::STATUS_PENDING_APPROVAL,
+        ];
+    }
+
+    /**
+     * Actions the given role may perform on this application in its current status.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function availableActions(string $currentStatus, string $role): array
+    {
+        $out = [];
+        foreach (self::ACTIONS as $key => $meta) {
+            if (! in_array($role, $meta['roles'], true)) {
+                continue;
+            }
+            if (! in_array($currentStatus, $meta['from'], true)) {
+                continue;
+            }
+            $out[$key] = $meta;
+        }
+
+        return $out;
+    }
+
+    public static function resolveAction(string $action): ?array
+    {
+        return self::ACTIONS[$action] ?? null;
+    }
 
     public function findDraftForUser(int $userId): ?array
     {

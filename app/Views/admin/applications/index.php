@@ -62,7 +62,13 @@ echo view('partials/table_toolbar', [
                         <td><?= sad_status_badge($a['status']) ?></td>
                         <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
                         <td class="text-end">
-                            <a href="<?= base_url('admin/applications/' . $a['id']) ?>" class="btn btn-sm btn-outline-primary">Review</a>
+                            <a href="<?= base_url('admin/applications/' . $a['id']) ?>" class="btn btn-sm btn-outline-primary">
+                                <?php if (($a['status'] ?? '') === 'pending_approval'): ?>
+                                    Decide
+                                <?php else: ?>
+                                    Open
+                                <?php endif; ?>
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; endif; ?>

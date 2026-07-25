@@ -43,8 +43,8 @@ $routes->group('applicant', ['filter' => 'auth:applicant'], static function ($ro
 // Secure file access (any authenticated user with rights checked in controller)
 $routes->get('files/application/(:num)/(:segment)', 'FileController::application/$1/$2', ['filter' => 'auth']);
 
-// Admin / Reviewer
-$routes->group('admin', ['filter' => 'auth:admin,reviewer'], static function ($routes) {
+// Admin / Reviewer / Approver staff area
+$routes->group('admin', ['filter' => 'auth:admin,reviewer,approver'], static function ($routes) {
     $routes->get('/', 'Admin\DashboardController::index');
     $routes->get('applications', 'Admin\ApplicationController::index');
     $routes->get('applications/(:num)', 'Admin\ApplicationController::show/$1');

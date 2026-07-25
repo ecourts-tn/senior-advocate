@@ -1,6 +1,19 @@
 # Disable directory browsing
 Options -Indexes
 
+# PHP upload limits (Apache mod_php). Step 7 allows multiple PDFs up to 5 MB each.
+# For PHP-FPM use public/.user.ini or the web SAPI php.ini instead.
+<IfModule mod_php.c>
+	php_value upload_max_filesize 12M
+	php_value post_max_size 64M
+	php_value max_file_uploads 20
+</IfModule>
+<IfModule mod_php8.c>
+	php_value upload_max_filesize 12M
+	php_value post_max_size 64M
+	php_value max_file_uploads 20
+</IfModule>
+
 # ----------------------------------------------------------------------
 # Rewrite engine
 # ----------------------------------------------------------------------

@@ -15,9 +15,22 @@
     </div>
 </div>
 
-<?php if (! empty($app['review_remarks'])): ?>
+<?php if ($app['status'] === 'returned'): ?>
     <div class="alert alert-warning">
-        <strong>Registry remarks:</strong> <?= esc($app['review_remarks']) ?>
+        <strong>Returned for correction.</strong>
+        Please update the application as directed and resubmit from Step 7.
+        <?php if (! empty($app['review_remarks'])): ?>
+            <hr class="my-2">
+            <strong>Reviewer remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
+        <?php endif; ?>
+    </div>
+<?php elseif (! empty($app['review_remarks']) && in_array($app['status'], ['approved', 'rejected'], true)): ?>
+    <div class="alert alert-<?= $app['status'] === 'approved' ? 'success' : 'danger' ?>">
+        <strong>Decision remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
+    </div>
+<?php elseif (! empty($app['review_remarks'])): ?>
+    <div class="alert alert-light border">
+        <strong>Registry remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
     </div>
 <?php endif; ?>
 

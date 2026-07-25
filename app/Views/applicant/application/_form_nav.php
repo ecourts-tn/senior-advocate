@@ -15,9 +15,16 @@
                 Save &amp; Next <i class="bi bi-arrow-right"></i>
             </button>
         <?php else: ?>
+            <?php
+            $isResubmit = ($app['status'] ?? '') === 'returned';
+            $submitLabel = $isResubmit ? 'Resubmit Application' : 'Submit Application';
+            $submitConfirm = $isResubmit
+                ? 'Resubmit this corrected application to the Registry?'
+                : 'Submit this application? Errors cannot be rectified later.';
+            ?>
             <button type="submit" name="action" value="submit" class="btn btn-gold"
-                    onclick="return confirm('Submit this application? Errors cannot be rectified later.');">
-                <i class="bi bi-send-check"></i> Submit Application
+                    onclick="return confirm(<?= json_encode($submitConfirm) ?>);">
+                <i class="bi bi-send-check"></i> <?= esc($submitLabel) ?>
             </button>
         <?php endif; ?>
     </div>

@@ -50,13 +50,14 @@ class AuthController extends BaseController
             'user_id'    => $user['id'],
             'name'       => $user['name'],
             'email'      => $user['email'],
+            'mobile'     => $user['mobile'] ?? '',
             'role'       => $user['role'],
             'isLoggedIn' => true,
         ]);
 
         model(AuditLogModel::class)->log('login', (int) $user['id']);
 
-        if (in_array($user['role'], ['admin', 'reviewer'], true)) {
+        if (in_array($user['role'], ['admin', 'reviewer', 'approver'], true)) {
             return redirect()->to('/admin')->with('success', 'Welcome, ' . $user['name']);
         }
 

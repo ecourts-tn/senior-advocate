@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Dev server with PHP upload limits suitable for Step 7 multi-file PDFs.
+# Usage: ./bin/serve   or   bash bin/serve
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+HOST="${HOST:-localhost}"
+PORT="${PORT:-8080}"
+PHP_BIN="${PHP_BIN:-php}"
+
+export PHP_INI_SCAN_DIR="${PHP_INI_SCAN_DIR:-}:${ROOT}/php.d"
+
+echo "Starting SAD portal on http://${HOST}:${PORT}"
+echo "PHP upload limits: upload_max_filesize / post_max_size from php.d/uploads.ini"
+exec "$PHP_BIN" \
+  -d upload_max_filesize=12M \
+  -d post_max_size=64M \
+  -d max_file_uploads=20 \
+  -S "${HOST}:${PORT}" \
+  -t "$ROOT/public" \
+  "$ROOT/system/rewrite.php"

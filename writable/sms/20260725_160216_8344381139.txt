@@ -1,0 +1,5 @@
+To: 8344381139
+Date: 2026-07-25T16:02:16+00:00
+Method: log
+
+MHC SAD Portal: Application SAD/2026/0001 submitted successfully. Keep your Application No. for reference.

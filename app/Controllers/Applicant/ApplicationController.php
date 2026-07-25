@@ -39,22 +39,22 @@ class ApplicationController extends BaseController
 
         // Only one active non-final application at a time
         $open = $this->apps->where('user_id', $userId)
-            ->whereIn('status', [
-                ApplicationModel::STATUS_SUBMITTED,
-                ApplicationModel::STATUS_UNDER_REVIEW,
-            ])->first();
+            ->whereIn('status', ApplicationModel::inProcessStatuses())
+            ->first();
 
         if ($open) {
             return redirect()->to('/applicant/dashboard')
                 ->with('error', 'You already have an application under process (' . $open['application_no'] . ').');
         }
 
+        $contact = $this->registrationContact($userId);
+
         $id = $this->apps->insert([
             'user_id'      => $userId,
             'status'       => ApplicationModel::STATUS_DRAFT,
             'current_step' => 1,
-            'email'        => session()->get('email'),
-            'mobile'       => '',
+            'email'        => $contact['email'],
+            'mobile'       => $contact['mobile'],
             'full_name'    => session()->get('name'),
         ]);
 
@@ -223,14 +223,21 @@ class ApplicationController extends BaseController
             'declaration_date'     => date('Y-m-d'),
         ]);
 
+        $submitNote = $from === ApplicationModel::STATUS_RETURNED
+            ? 'Application resubmitted after correction'
+            : 'Application submitted';
+
         model(ApplicationStatusHistoryModel::class)->record(
             $id,
             $from,
             ApplicationModel::STATUS_SUBMITTED,
             $userId,
-            'Application submitted'
+            $submitNote
         );
-        model(AuditLogModel::class)->log('application_submitted', $userId, $id, ['application_no' => $appNo]);
+        model(AuditLogModel::class)->log('application_submitted', $userId, $id, [
+            'application_no' => $appNo,
+            'resubmit'       => $from === ApplicationModel::STATUS_RETURNED,
+        ]);
 
         // Generate PDF snapshot
         $fresh = $this->apps->withDecoded($this->apps->find($id));
@@ -251,8 +258,11 @@ class ApplicationController extends BaseController
         $user = model(UserModel::class)->find($userId);
         (new NotificationService())->applicationSubmitted($fresh, $user ?: null);
 
-        return redirect()->to('/applicant/application/view/' . $id)
-            ->with('success', 'Application submitted successfully. Application No: ' . $appNo);
+        $msg = $from === ApplicationModel::STATUS_RETURNED
+            ? 'Application resubmitted successfully. Application No: ' . $appNo
+            : 'Application submitted successfully. Application No: ' . $appNo;
+
+        return redirect()->to('/applicant/application/view/' . $id)->with('success', $msg);
     }
 
     protected function validateForSubmit(array $app): array
@@ -302,14 +312,57 @@ class ApplicationController extends BaseController
 
         if (! $draft) {
             // Create a fresh draft if none exists
+            $contact = $this->registrationContact($userId);
             $id = $this->apps->insert([
                 'user_id'      => $userId,
                 'status'       => ApplicationModel::STATUS_DRAFT,
                 'current_step' => 1,
-                'email'        => session()->get('email'),
+                'email'        => $contact['email'],
+                'mobile'       => $contact['mobile'],
                 'full_name'    => session()->get('name'),
             ]);
             $draft = $this->apps->find($id);
+        } else {
+            // Backfill registration contact if missing on older drafts
+            $draft = $this->ensureRegistrationContact($draft);
+        }
+
+        return $draft;
+    }
+
+    /**
+     * Email and mobile captured at advocate registration (source of truth).
+     *
+     * @return array{email: string, mobile: string}
+     */
+    protected function registrationContact(int $userId): array
+    {
+        $user = model(UserModel::class)->find($userId);
+
+        return [
+            'email'  => (string) ($user['email'] ?? session()->get('email') ?? ''),
+            'mobile' => (string) ($user['mobile'] ?? session()->get('mobile') ?? ''),
+        ];
+    }
+
+    /**
+     * Ensure draft carries registration email/mobile (read-only on the form).
+     */
+    protected function ensureRegistrationContact(array $draft): array
+    {
+        $contact = $this->registrationContact((int) $draft['user_id']);
+        $patch   = [];
+
+        if (empty($draft['email']) && $contact['email'] !== '') {
+            $patch['email'] = $contact['email'];
+        }
+        if (empty($draft['mobile']) && $contact['mobile'] !== '') {
+            $patch['mobile'] = $contact['mobile'];
+        }
+
+        if ($patch !== []) {
+            $this->apps->update($draft['id'], $patch);
+            $draft = array_merge($draft, $patch);
         }
 
         return $draft;
@@ -327,6 +380,9 @@ class ApplicationController extends BaseController
 
         switch ($step) {
             case 1:
+                // Email & mobile are fixed from registration; ignore client tampering.
+                $contact = $this->registrationContact((int) session()->get('user_id'));
+
                 return [
                     'title'             => $post['title'] ?? null,
                     'full_name'         => trim($post['full_name'] ?? ''),
@@ -334,8 +390,8 @@ class ApplicationController extends BaseController
                     'address_office'    => trim($post['address_office'] ?? ''),
                     'address_residence' => trim($post['address_residence'] ?? ''),
                     'phone_landline'    => trim($post['phone_landline'] ?? ''),
-                    'mobile'            => trim($post['mobile'] ?? ''),
-                    'email'             => trim($post['email'] ?? ''),
+                    'mobile'            => $contact['mobile'] !== '' ? $contact['mobile'] : (string) ($app['mobile'] ?? ''),
+                    'email'             => $contact['email'] !== '' ? $contact['email'] : (string) ($app['email'] ?? ''),
                     'qualifications'    => trim($post['qualifications'] ?? ''),
                 ];
             case 2:

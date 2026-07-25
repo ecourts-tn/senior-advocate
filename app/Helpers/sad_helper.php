@@ -4,12 +4,13 @@ if (! function_exists('sad_status_badge')) {
     function sad_status_badge(?string $status): string
     {
         $map = [
-            'draft'        => 'secondary',
-            'submitted'    => 'primary',
-            'under_review' => 'info',
-            'approved'     => 'success',
-            'rejected'     => 'danger',
-            'returned'     => 'warning',
+            'draft'            => 'secondary',
+            'submitted'        => 'primary',
+            'under_review'     => 'info',
+            'pending_approval' => 'dark',
+            'approved'         => 'success',
+            'rejected'         => 'danger',
+            'returned'         => 'warning',
         ];
         $label = \App\Models\ApplicationModel::STATUSES[$status] ?? ucfirst((string) $status);
         $class = $map[$status] ?? 'secondary';
@@ -69,8 +70,25 @@ if (! function_exists('current_user')) {
 }
 
 if (! function_exists('is_admin_role')) {
+    /**
+     * Staff roles that use the admin UI (not applicants).
+     */
     function is_admin_role(): bool
     {
+        return in_array(session()->get('role'), ['admin', 'reviewer', 'approver'], true);
+    }
+}
+
+if (! function_exists('can_review_applications')) {
+    function can_review_applications(): bool
+    {
         return in_array(session()->get('role'), ['admin', 'reviewer'], true);
+    }
+}
+
+if (! function_exists('can_approve_applications')) {
+    function can_approve_applications(): bool
+    {
+        return in_array(session()->get('role'), ['admin', 'approver'], true);
     }
 }

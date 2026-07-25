@@ -51,13 +51,15 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Mobile</label>
-                <input type="text" name="mobile" class="form-control" required maxlength="15"
-                       value="<?= esc(old('mobile', $app['mobile'] ?? '')) ?>">
+                <input type="text" name="mobile" class="form-control" required maxlength="15" readonly
+                       value="<?= esc(old('mobile', $app['mobile'] ?? session('mobile') ?? '')) ?>">
+                <div class="form-text">From registration (not editable).</div>
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Email</label>
-                <input type="email" name="email" class="form-control" required
-                       value="<?= esc(old('email', $app['email'] ?? '')) ?>">
+                <input type="email" name="email" class="form-control" required readonly
+                       value="<?= esc(old('email', $app['email'] ?? session('email') ?? '')) ?>">
+                <div class="form-text">From registration (not editable).</div>
             </div>
             <div class="col-12">
                 <label class="form-label required">Educational / Professional Qualifications</label>

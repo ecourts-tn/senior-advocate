@@ -13,9 +13,11 @@ class Security extends BaseConfig
      *
      * Protection Method for Cross Site Request Forgery protection.
      *
+     * Session storage is more reliable for multi-step multipart forms than cookies.
+     *
      * @var string 'cookie' or 'session'
      */
-    public string $csrfProtection = 'cookie';
+    public string $csrfProtection = 'session';
 
     /**
      * --------------------------------------------------------------------------
@@ -70,8 +72,10 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * Regenerate CSRF Token on every submission.
+     * Disabled for multi-step wizard forms so tokens stay valid across steps
+     * and after Save Draft / Submit on the same page.
      */
-    public bool $regenerate = true;
+    public bool $regenerate = false;
 
     /**
      * --------------------------------------------------------------------------
@@ -82,5 +86,5 @@ class Security extends BaseConfig
      *
      * @see https://codeigniter4.github.io/userguide/libraries/security.html#redirection-on-failure
      */
-    public bool $redirect = (ENVIRONMENT === 'production');
+    public bool $redirect = true;
 }

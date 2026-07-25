@@ -3,8 +3,8 @@
 
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
     <div>
-        <h1 class="page-title">Admin Dashboard</h1>
-        <p class="page-subtitle">Senior Advocate Designation — review overview</p>
+        <h1 class="page-title">Staff Dashboard</h1>
+        <p class="page-subtitle">Senior Advocate Designation — review &amp; approval overview</p>
     </div>
     <a href="<?= base_url('admin/applications') ?>" class="btn btn-mhc">
         <i class="bi bi-folder2-open me-1"></i> All Applications
@@ -16,11 +16,11 @@
     $cards = [
         ['Submitted', $stats['submitted'], 'bi-send'],
         ['Under Review', $stats['under_review'], 'bi-hourglass-split'],
+        ['Pending Approval', $stats['pending_approval'] ?? 0, 'bi-clipboard-check'],
         ['Approved', $stats['approved'], 'bi-check-circle'],
         ['Rejected', $stats['rejected'], 'bi-x-circle'],
         ['Returned', $stats['returned'], 'bi-arrow-return-left'],
         ['Total (non-draft)', $stats['total'], 'bi-collection'],
-        ['Drafts', $stats['drafts'], 'bi-pencil'],
         ['Applicants', $stats['applicants'], 'bi-people'],
     ];
     foreach ($cards as [$label, $val, $icon]):

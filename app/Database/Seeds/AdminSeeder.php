@@ -12,8 +12,8 @@ class AdminSeeder extends Seeder
 
         $users = [
             [
-                'name'          => 'Portal Administrator',
-                'email'         => 'admin@mhc.tn.gov.in',
+                'name'          => 'Administrator',
+                'email'         => 'admin.mhc@tn.gov.in',
                 'mobile'        => '9000000001',
                 'password_hash' => password_hash('Admin@123', PASSWORD_DEFAULT),
                 'role'          => 'admin',
@@ -23,10 +23,20 @@ class AdminSeeder extends Seeder
             ],
             [
                 'name'          => 'Review Officer',
-                'email'         => 'reviewer@mhc.tn.gov.in',
+                'email'         => 'reviewer.mhc@tn.gov.in',
                 'mobile'        => '9000000002',
                 'password_hash' => password_hash('Review@123', PASSWORD_DEFAULT),
                 'role'          => 'reviewer',
+                'is_active'     => true,
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ],
+            [
+                'name'          => 'Approving Authority',
+                'email'         => 'approver.mhc@tn.gov.in',
+                'mobile'        => '9000000003',
+                'password_hash' => password_hash('Approve@123', PASSWORD_DEFAULT),
+                'role'          => 'approver',
                 'is_active'     => true,
                 'created_at'    => $now,
                 'updated_at'    => $now,

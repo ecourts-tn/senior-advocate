@@ -81,18 +81,21 @@ class ApplicationController extends BaseController
         }
 
         $user = model(UserModel::class)->find($app['user_id']);
+        $role = (string) session()->get('role');
 
         return view('admin/applications/show', [
-            'title'   => 'Application ' . ($app['application_no'] ?? '#' . $id),
-            'app'     => model(ApplicationModel::class)->withDecoded($app),
-            'user'    => $user,
-            'history' => model(ApplicationStatusHistoryModel::class)->forApplication($id),
-            'l1'      => model(FormatL1Model::class)->forApplication($id),
-            'l2'      => model(FormatL2Model::class)->forApplication($id),
-            'l3pb'    => model(FormatL3ProBonoModel::class)->forApplication($id),
-            'l3am'    => model(FormatL3AmicusModel::class)->forApplication($id),
-            'l4'      => model(FormatL4Model::class)->forApplication($id),
-            'statuses'=> ApplicationModel::STATUSES,
+            'title'    => 'Application ' . ($app['application_no'] ?? '#' . $id),
+            'app'      => model(ApplicationModel::class)->withDecoded($app),
+            'user'     => $user,
+            'history'  => model(ApplicationStatusHistoryModel::class)->forApplication($id),
+            'l1'       => model(FormatL1Model::class)->forApplication($id),
+            'l2'       => model(FormatL2Model::class)->forApplication($id),
+            'l3pb'     => model(FormatL3ProBonoModel::class)->forApplication($id),
+            'l3am'     => model(FormatL3AmicusModel::class)->forApplication($id),
+            'l4'       => model(FormatL4Model::class)->forApplication($id),
+            'statuses' => ApplicationModel::STATUSES,
+            'actions'  => ApplicationModel::availableActions((string) $app['status'], $role),
+            'role'     => $role,
         ]);
     }
 
@@ -103,16 +106,38 @@ class ApplicationController extends BaseController
             return redirect()->to('/admin/applications')->with('error', 'Application not found.');
         }
 
-        $toStatus = (string) $this->request->getPost('status');
-        $remarks  = trim((string) $this->request->getPost('remarks'));
-        $allowed  = array_keys(ApplicationModel::STATUSES);
+        $action  = (string) $this->request->getPost('action');
+        $remarks = trim((string) $this->request->getPost('remarks'));
+        $role    = (string) session()->get('role');
+        $meta    = ApplicationModel::resolveAction($action);
 
-        if (! in_array($toStatus, $allowed, true) || $toStatus === ApplicationModel::STATUS_DRAFT) {
-            return redirect()->back()->with('error', 'Invalid status.');
+        if ($meta === null) {
+            return redirect()->back()->with('error', 'Invalid workflow action.');
         }
 
-        $userId = (int) session()->get('user_id');
-        $from   = $app['status'];
+        $allowed = ApplicationModel::availableActions((string) $app['status'], $role);
+        if (! isset($allowed[$action])) {
+            $statusLabel = ApplicationModel::STATUSES[$app['status']] ?? $app['status'];
+            $message     = 'You are not authorised to perform "' . $meta['label']
+                . '" on an application in status "' . $statusLabel . '".';
+
+            return redirect()->back()->with('error', $message);
+        }
+
+        if (! empty($meta['remarks_required']) && $remarks === '') {
+            return redirect()->back()->withInput()->with(
+                'error',
+                'Remarks are required for: ' . $meta['label'] . '.'
+            );
+        }
+
+        $toStatus = $meta['to'];
+        $userId   = (int) session()->get('user_id');
+        $from     = $app['status'];
+
+        if ($from === $toStatus) {
+            return redirect()->back()->with('error', 'Application is already in that status.');
+        }
 
         model(ApplicationModel::class)->update($id, [
             'status'         => $toStatus,
@@ -121,23 +146,28 @@ class ApplicationController extends BaseController
             'review_remarks' => $remarks,
         ]);
 
-        model(ApplicationStatusHistoryModel::class)->record($id, $from, $toStatus, $userId, $remarks);
+        $historyNote = $meta['label'] . ($remarks !== '' ? ': ' . $remarks : '');
+        model(ApplicationStatusHistoryModel::class)->record($id, $from, $toStatus, $userId, $historyNote);
         model(AuditLogModel::class)->log('status_changed', $userId, $id, [
-            'from' => $from,
-            'to'   => $toStatus,
+            'action' => $action,
+            'from'   => $from,
+            'to'     => $toStatus,
         ]);
 
-        // Email + SMS on approve / reject
-        if (in_array($toStatus, [ApplicationModel::STATUS_APPROVED, ApplicationModel::STATUS_REJECTED], true)
-            && $from !== $toStatus
-        ) {
-            $fresh = model(ApplicationModel::class)->find($id) ?: $app;
-            $owner = model(UserModel::class)->find((int) $fresh['user_id']);
-            (new NotificationService())->applicationStatus($fresh, $toStatus, $owner ?: null, $remarks);
+        $fresh = model(ApplicationModel::class)->find($id) ?: $app;
+        $owner = model(UserModel::class)->find((int) $fresh['user_id']);
+        $notify = new NotificationService();
+
+        if ($toStatus === ApplicationModel::STATUS_RETURNED) {
+            $notify->applicationReturned($fresh, $owner ?: null, $remarks);
+        } elseif (in_array($toStatus, [ApplicationModel::STATUS_APPROVED, ApplicationModel::STATUS_REJECTED], true)) {
+            $notify->applicationStatus($fresh, $toStatus, $owner ?: null, $remarks);
         }
 
+        $toLabel = ApplicationModel::STATUSES[$toStatus] ?? $toStatus;
+
         return redirect()->to('/admin/applications/' . $id)
-            ->with('success', 'Status updated to ' . (ApplicationModel::STATUSES[$toStatus] ?? $toStatus));
+            ->with('success', $meta['label'] . ' — status is now "' . $toLabel . '".');
     }
 
     public function downloadPdf(int $id)

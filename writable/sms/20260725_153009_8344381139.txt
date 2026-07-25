@@ -1,0 +1,5 @@
+To: 8344381139
+Date: 2026-07-25T15:30:09+00:00
+Method: log
+
+MHC SAD Portal: Registration successful for Deenadayalan Manickam. Login at http://localhost:8080/login to start your application.
