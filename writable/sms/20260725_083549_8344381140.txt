@@ -1,0 +1,5 @@
+To: 8344381140
+Date: 2026-07-25T08:35:49+00:00
+Method: log
+
+MHC SAD Portal: Application SAD/2026/0001 has been APPROVED. Remarks: Your application is approved

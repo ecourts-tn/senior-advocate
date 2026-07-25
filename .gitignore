@@ -1,0 +1,36 @@
+# Environment
+.env
+
+# Composer
+/vendor/
+
+# Writable directory
+writable/cache/*
+writable/logs/*
+writable/session/*
+writable/uploads/*
+writable/debugbar/*
+
+# Keep directory structure
+!writable/cache/index.html
+!writable/logs/index.html
+!writable/session/index.html
+!writable/uploads/index.html
+!writable/debugbar/index.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# PHPUnit
+.phpunit.result.cache
+
+# Node (if applicable)
+node_modules/
+npm-debug.log*
+yarn-error.log*
