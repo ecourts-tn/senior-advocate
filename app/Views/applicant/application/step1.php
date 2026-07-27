@@ -26,22 +26,57 @@
                        value="<?= esc(old('full_name', $app['full_name'] ?? '')) ?>">
                 <div class="form-text">Must tally with enrolment certificate. No abbreviations.</div>
             </div>
+            <?php
+            $dobValue = old('date_of_birth', $app['date_of_birth'] ?? '');
+            if (is_string($dobValue) && $dobValue !== '') {
+                $dobValue = substr($dobValue, 0, 10);
+            }
+            $ageYears  = $app['age_years'] ?? null;
+            $ageMonths = $app['age_months'] ?? null;
+            // Always recompute from DOB so fields show the correct values immediately.
+            if ($dobValue !== '') {
+                try {
+                    $birth = new \DateTime($dobValue);
+                    $ref   = new \DateTime('2026-01-01');
+                    if ($birth <= $ref) {
+                        $diff      = $birth->diff($ref);
+                        $ageYears  = (int) $diff->y;
+                        $ageMonths = (int) $diff->m;
+                    }
+                } catch (\Exception $e) {
+                    // keep existing values
+                }
+            }
+            ?>
             <div class="col-md-4">
-                <label class="form-label required">Date of Birth</label>
-                <input type="date" name="date_of_birth" class="form-control" required
-                       value="<?= esc(old('date_of_birth', $app['date_of_birth'] ?? '')) ?>">
+                <label class="form-label required" for="date_of_birth">Date of Birth</label>
+                <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required
+                       value="<?= esc($dobValue) ?>"
+                       max="2026-01-01"
+                       data-age-as-on="2026-01-01"
+                       data-age-years-target="age_years_display"
+                       data-age-months-target="age_months_display">
             </div>
             <div class="col-md-4">
-                <label class="form-label">Age (as on 01.01.2026)</label>
-                <input type="text" class="form-control" readonly
-                       value="<?= esc($app['age_years'] ?? '—') ?> years (auto-calculated on save)">
+                <label class="form-label" for="age_years_display">Age — Years (as on 01.01.2026)</label>
+                <input type="text" id="age_years_display" class="form-control bg-light"
+                       value="<?= $ageYears !== null && $ageYears !== '' ? esc((string) (int) $ageYears) : '' ?>"
+                       placeholder="Auto-calculated" readonly tabindex="-1" autocomplete="off">
+                <div class="form-text">Auto-calculated from date of birth (read-only).</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="age_months_display">Age — Months (as on 01.01.2026)</label>
+                <input type="text" id="age_months_display" class="form-control bg-light"
+                       value="<?= $ageMonths !== null && $ageMonths !== '' ? esc((string) (int) $ageMonths) : '' ?>"
+                       placeholder="Auto-calculated" readonly tabindex="-1" autocomplete="off">
+                <div class="form-text">Auto-calculated remainder months (read-only).</div>
             </div>
             <div class="col-md-6">
-                <label class="form-label required">Address — Office</label>
+                <label class="form-label required">Office Address</label>
                 <textarea name="address_office" class="form-control" rows="3" required><?= esc(old('address_office', $app['address_office'] ?? '')) ?></textarea>
             </div>
             <div class="col-md-6">
-                <label class="form-label required">Address — Residence</label>
+                <label class="form-label required">Residential Address</label>
                 <textarea name="address_residence" class="form-control" rows="3" required><?= esc(old('address_residence', $app['address_residence'] ?? '')) ?></textarea>
             </div>
             <div class="col-md-4">

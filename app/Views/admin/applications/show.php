@@ -20,7 +20,9 @@
                 <div class="row g-3">
                     <div class="col-md-8">
                         <strong>Name:</strong> <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?><br>
-                        <strong>DOB / Age:</strong> <?= esc($app['date_of_birth'] ?? '—') ?> / <?= esc($app['age_years'] ?? '—') ?> yrs<br>
+                        <strong>DOB / Age:</strong> <?= esc($app['date_of_birth'] ?? '—') ?> /
+                        <?= esc($app['age_years'] ?? '—') ?> yrs
+                        <?= esc($app['age_months'] ?? '—') ?> mo<br>
                         <strong>Email / Mobile:</strong> <?= esc($app['email'] ?? '') ?> / <?= esc($app['mobile'] ?? '') ?><br>
                         <strong>Enrolment:</strong> <?= esc($app['enrolment_number'] ?? '—') ?> (<?= esc($app['enrolment_date'] ?? '') ?>)<br>
                         <strong>Bar Council:</strong> <?= esc($app['bar_council'] ?? '—') ?><br>
@@ -56,8 +58,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6"><strong>Office:</strong><br><?= nl2br(esc($app['address_office'] ?? '')) ?></div>
-                    <div class="col-md-6"><strong>Residence:</strong><br><?= nl2br(esc($app['address_residence'] ?? '')) ?></div>
+                    <div class="col-md-6"><strong>Office Address:</strong><br><?= nl2br(esc($app['address_office'] ?? '')) ?></div>
+                    <div class="col-md-6"><strong>Residential Address:</strong><br><?= nl2br(esc($app['address_residence'] ?? '')) ?></div>
                     <div class="col-12"><strong>Qualifications:</strong><br><?= nl2br(esc($app['qualifications'] ?? '')) ?></div>
                     <div class="col-md-6"><strong>Reported judgments:</strong> SC <?= (int) $app['reported_sc'] ?>, HC <?= (int) $app['reported_hc'] ?>, Dist <?= (int) $app['reported_district'] ?></div>
                     <div class="col-md-6"><strong>Unreported:</strong> SC <?= (int) $app['unreported_sc'] ?>, HC <?= (int) $app['unreported_hc'] ?>, Dist <?= (int) $app['unreported_district'] ?></div>

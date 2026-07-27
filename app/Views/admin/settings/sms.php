@@ -84,33 +84,6 @@
                 <?= form_close() ?>
             </div>
         </div>
-        <div class="card card-mhc mb-3">
-            <div class="card-header">Sample values (local / demo)</div>
-            <div class="card-body small">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                    <tr><th scope="row">Enabled</th><td><?= esc($samples['enabled'] ?? '1') ?></td></tr>
-                    <tr><th scope="row">Provider</th><td><code>log</code> → <code>writable/sms/</code></td></tr>
-                    <tr><th scope="row">API URL</th><td><code><?= esc($samples['api_url'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">API key</th><td><code><?= esc($samples['api_key'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">Sender ID</th><td><code><?= esc($samples['sender_id'] ?? 'MHCSAD') ?></code></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card card-mhc mb-3">
-            <div class="card-header">Sample values (production HTTP)</div>
-            <div class="card-body small">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                    <tr><th scope="row">Provider</th><td><code>http</code></td></tr>
-                    <tr><th scope="row">API URL</th><td><code><?= esc($samplesProd['api_url'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">Sender ID</th><td><code><?= esc($samplesProd['sender_id'] ?? 'MHCSAD') ?></code></td></tr>
-                    <tr><th scope="row">Payload</th><td><code>to, message, sender, api_key</code> (JSON POST)</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
         <div class="warning-box mb-0">
             <strong class="d-block mb-1">Notes</strong>
             With provider “Log only”, messages are written under

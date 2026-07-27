@@ -15,13 +15,9 @@ class SettingsController extends BaseController
         $settings = model(SystemSettingModel::class);
         $settings->ensureDefaults();
 
-        $samples = SystemSettingModel::samples();
-
         return view('admin/settings/email', [
             'title'    => 'Email configuration',
             'settings' => $settings->getGroup('email'),
-            'samples'  => $samples['email'],
-            'samplesProd' => $samples['email_production'],
         ]);
     }
 
@@ -76,13 +72,9 @@ class SettingsController extends BaseController
         $settings = model(SystemSettingModel::class);
         $settings->ensureDefaults();
 
-        $samples = SystemSettingModel::samples();
-
         return view('admin/settings/sms', [
             'title'    => 'SMS configuration',
             'settings' => $settings->getGroup('sms'),
-            'samples'  => $samples['sms'],
-            'samplesProd' => $samples['sms_production'],
         ]);
     }
 

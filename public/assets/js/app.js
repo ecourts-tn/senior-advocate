@@ -151,6 +151,85 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // Age (years + months) as on a reference date — personal details step
+  function normalizeDateStr(value) {
+    if (!value) return '';
+    // Accept YYYY-MM-DD or YYYY-MM-DD HH:MM:SS / ISO
+    var m = String(value).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return '';
+    return m[1] + '-' + m[2] + '-' + m[3];
+  }
+
+  function calcAgeParts(dobStr, asOnStr) {
+    dobStr = normalizeDateStr(dobStr);
+    asOnStr = normalizeDateStr(asOnStr) || '2026-01-01';
+    if (!dobStr) return null;
+
+    var dobParts = dobStr.split('-').map(Number);
+    var asParts = asOnStr.split('-').map(Number);
+    if (dobParts.length !== 3 || asParts.length !== 3) return null;
+
+    var y1 = dobParts[0],
+      m1 = dobParts[1],
+      d1 = dobParts[2];
+    var y2 = asParts[0],
+      m2 = asParts[1],
+      d2 = asParts[2];
+    if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+
+    // Reject future DOB relative to as-on date
+    if (y1 > y2 || (y1 === y2 && m1 > m2) || (y1 === y2 && m1 === m2 && d1 > d2)) {
+      return null;
+    }
+
+    var years = y2 - y1;
+    var months = m2 - m1;
+    var days = d2 - d1;
+    if (days < 0) {
+      months -= 1;
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    if (years < 0) return null;
+    return { years: years, months: months };
+  }
+
+  function updateAgeDisplays(input) {
+    if (!input) return;
+    var asOn = input.getAttribute('data-age-as-on') || '2026-01-01';
+    var yearsId = input.getAttribute('data-age-years-target');
+    var monthsId = input.getAttribute('data-age-months-target');
+    var yearsEl = yearsId ? document.getElementById(yearsId) : null;
+    var monthsEl = monthsId ? document.getElementById(monthsId) : null;
+    if (!yearsEl && !monthsEl) return;
+
+    var parts = calcAgeParts(input.value, asOn);
+    if (yearsEl) {
+      yearsEl.value = parts ? String(parts.years) : '';
+      yearsEl.readOnly = true;
+    }
+    if (monthsEl) {
+      monthsEl.value = parts ? String(parts.months) : '';
+      monthsEl.readOnly = true;
+    }
+  }
+
+  function bindAgeAutoCalc() {
+    document.querySelectorAll('input[data-age-as-on]').forEach(function (input) {
+      ['change', 'input', 'blur'].forEach(function (evt) {
+        input.addEventListener(evt, function () {
+          updateAgeDisplays(input);
+        });
+      });
+      // Initial fill when DOB is already present
+      updateAgeDisplays(input);
+    });
+  }
+
+  bindAgeAutoCalc();
+
   // CAPTCHA refresh
   document.querySelectorAll('.captcha-refresh').forEach(function (btn) {
     btn.addEventListener('click', function () {

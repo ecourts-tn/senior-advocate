@@ -15,7 +15,7 @@ class ApplicationModel extends Model
 
     protected $allowedFields = [
         'user_id', 'application_no', 'status', 'current_step',
-        'title', 'full_name', 'date_of_birth', 'age_years',
+        'title', 'full_name', 'date_of_birth', 'age_years', 'age_months',
         'address_office', 'address_residence',
         'phone_landline', 'mobile', 'email', 'qualifications',
         'enrolment_date', 'enrolment_number', 'bar_council',
@@ -206,7 +206,22 @@ class ApplicationModel extends Model
         return $data;
     }
 
+    /**
+     * Age in whole years as on a reference date (legacy helper).
+     */
     public function calculateAgeAsOn(?string $dob, string $asOn = '2026-01-01'): ?int
+    {
+        $parts = $this->calculateAgePartsAsOn($dob, $asOn);
+
+        return $parts['years'] ?? null;
+    }
+
+    /**
+     * Age as years and months on a reference date.
+     *
+     * @return array{years: int, months: int}|null
+     */
+    public function calculateAgePartsAsOn(?string $dob, string $asOn = '2026-01-01'): ?array
     {
         if (empty($dob)) {
             return null;
@@ -215,8 +230,15 @@ class ApplicationModel extends Model
         try {
             $birth = new \DateTime($dob);
             $ref   = new \DateTime($asOn);
+            if ($birth > $ref) {
+                return null;
+            }
+            $diff = $birth->diff($ref);
 
-            return (int) $birth->diff($ref)->y;
+            return [
+                'years'  => (int) $diff->y,
+                'months' => (int) $diff->m,
+            ];
         } catch (\Exception $e) {
             return null;
         }

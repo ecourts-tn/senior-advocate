@@ -11,7 +11,7 @@ use CodeIgniter\Config\BaseConfig;
 class Site extends BaseConfig
 {
     /** Displayed on all pages (GIGW: Last Updated Date). */
-    public string $lastUpdated = '25 July 2026';
+    public string $lastUpdated = '27 July 2026';
 
     public string $organisation = 'High Court of Madras';
 

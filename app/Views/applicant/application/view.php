@@ -40,13 +40,16 @@
         <div class="row g-3">
             <div class="col-md-6"><strong>Name:</strong> <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?></div>
             <div class="col-md-3"><strong>DOB:</strong> <?= esc($app['date_of_birth'] ?? '—') ?></div>
-            <div class="col-md-3"><strong>Age (01.01.2026):</strong> <?= esc($app['age_years'] ?? '—') ?></div>
+            <div class="col-md-3"><strong>Age (01.01.2026):</strong>
+                <?= esc($app['age_years'] ?? '—') ?> yrs
+                <?= esc($app['age_months'] ?? '—') ?> mo
+            </div>
             <div class="col-md-6"><strong>Mobile:</strong> <?= esc($app['mobile'] ?? '—') ?></div>
             <div class="col-md-6"><strong>Email:</strong> <?= esc($app['email'] ?? '—') ?></div>
             <div class="col-md-6"><strong>Enrolment No.:</strong> <?= esc($app['enrolment_number'] ?? '—') ?></div>
             <div class="col-md-6"><strong>Bar Council:</strong> <?= esc($app['bar_council'] ?? '—') ?></div>
-            <div class="col-md-6"><strong>Office:</strong><br><?= nl2br(esc($app['address_office'] ?? '—')) ?></div>
-            <div class="col-md-6"><strong>Residence:</strong><br><?= nl2br(esc($app['address_residence'] ?? '—')) ?></div>
+            <div class="col-md-6"><strong>Office Address:</strong><br><?= nl2br(esc($app['address_office'] ?? '—')) ?></div>
+            <div class="col-md-6"><strong>Residential Address:</strong><br><?= nl2br(esc($app['address_residence'] ?? '—')) ?></div>
             <div class="col-12"><strong>Qualifications:</strong><br><?= nl2br(esc($app['qualifications'] ?? '—')) ?></div>
             <div class="col-md-4"><strong>Practice:</strong> <?= (int) ($app['practice_years'] ?? 0) ?> yrs <?= (int) ($app['practice_months'] ?? 0) ?> mo</div>
             <div class="col-md-4"><strong>Income (₹ Lakh):</strong> <?= esc($app['net_income_lakhs'] ?? '—') ?></div>

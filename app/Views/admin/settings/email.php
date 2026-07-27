@@ -105,37 +105,6 @@
                 <?= form_close() ?>
             </div>
         </div>
-        <div class="card card-mhc mb-3">
-            <div class="card-header">Sample values (local / demo)</div>
-            <div class="card-body small">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                    <tr><th scope="row">Enabled</th><td><?= esc($samples['enabled'] ?? '1') ?></td></tr>
-                    <tr><th scope="row">From email</th><td><code><?= esc($samples['from_email'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">From name</th><td><?= esc($samples['from_name'] ?? '') ?></td></tr>
-                    <tr><th scope="row">Mode</th><td><code>file</code> → <code>writable/mail/</code></td></tr>
-                    <tr><th scope="row">SMTP host</th><td><code><?= esc($samples['smtp_host'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">SMTP user</th><td><code><?= esc($samples['smtp_user'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">SMTP pass</th><td><code><?= esc($samples['smtp_pass'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">Port / crypto</th><td><code><?= esc($samples['smtp_port'] ?? '587') ?></code> / <code><?= esc($samples['smtp_crypto'] ?? 'tls') ?></code></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card card-mhc mb-3">
-            <div class="card-header">Sample values (production SMTP)</div>
-            <div class="card-body small">
-                <table class="table table-sm mb-0">
-                    <tbody>
-                    <tr><th scope="row">Mode</th><td><code>smtp</code></td></tr>
-                    <tr><th scope="row">From email</th><td><code><?= esc($samplesProd['from_email'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">SMTP host</th><td><code><?= esc($samplesProd['smtp_host'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">SMTP user</th><td><code><?= esc($samplesProd['smtp_user'] ?? '') ?></code></td></tr>
-                    <tr><th scope="row">Port / crypto</th><td><code>587</code> / <code>tls</code></td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
         <div class="warning-box mb-0">
             <strong class="d-block mb-1">Notes</strong>
             Settings are stored in the database and used by registration, application,

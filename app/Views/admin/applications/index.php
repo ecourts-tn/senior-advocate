@@ -9,7 +9,7 @@
 <?php
 ob_start();
 ?>
-<div class="col-md-3">
+<div class="col-md-3 col-lg-2">
     <label class="form-label" for="statusFilter">Status</label>
     <select name="status" id="statusFilter" class="form-select">
         <option value="">All (except drafts)</option>
@@ -17,6 +17,36 @@ ob_start();
             <option value="<?= esc($k) ?>" <?= $status === $k ? 'selected' : '' ?>><?= esc($lab) ?></option>
         <?php endforeach; ?>
     </select>
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="ageMin">Age min</label>
+    <input type="number" name="age_min" id="ageMin" class="form-control" min="0" max="120"
+           value="<?= esc($ageMin !== null ? (string) $ageMin : '') ?>"
+           placeholder="Yrs" title="Minimum age (years as on 01.01.2026)">
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="ageMax">Age max</label>
+    <input type="number" name="age_max" id="ageMax" class="form-control" min="0" max="120"
+           value="<?= esc($ageMax !== null ? (string) $ageMax : '') ?>"
+           placeholder="Yrs" title="Maximum age (years as on 01.01.2026)">
+</div>
+<div class="col-6 col-md-2 col-lg-2">
+    <label class="form-label" for="experienceMin">Experience (min yrs)</label>
+    <input type="number" name="experience_min" id="experienceMin" class="form-control" min="0" max="70"
+           value="<?= esc($experienceMin !== null ? (string) $experienceMin : '') ?>"
+           placeholder="Practice yrs" title="Minimum years of practice at the Bar">
+</div>
+<div class="col-md-3 col-lg-2">
+    <label class="form-label" for="natureOfPractice">Nature of practice</label>
+    <input type="text" name="nature_of_practice" id="natureOfPractice" class="form-control"
+           value="<?= esc($natureOfPractice ?? '') ?>"
+           placeholder="e.g. Civil, Criminal" autocomplete="off">
+</div>
+<div class="col-md-3 col-lg-2">
+    <label class="form-label" for="fieldOfLaw">Field of law</label>
+    <input type="text" name="field_of_law" id="fieldOfLaw" class="form-control"
+           value="<?= esc($fieldOfLaw ?? '') ?>"
+           placeholder="e.g. Constitutional" autocomplete="off">
 </div>
 <?php
 $extraFilters = ob_get_clean();
@@ -41,7 +71,9 @@ echo view('partials/table_toolbar', [
                     <th>Application No.</th>
                     <th>Applicant</th>
                     <th>Enrolment</th>
-                    <th>Mobile</th>
+                    <th>Age</th>
+                    <th>Experience</th>
+                    <th>Nature / Field</th>
                     <th>Status</th>
                     <th>Submitted</th>
                     <th></th>
@@ -49,7 +81,7 @@ echo view('partials/table_toolbar', [
                 </thead>
                 <tbody>
                 <?php if (empty($applications)): ?>
-                    <tr><td colspan="7" class="p-3 text-muted">No records found.</td></tr>
+                    <tr><td colspan="9" class="p-3 text-muted">No records found.</td></tr>
                 <?php else: foreach ($applications as $a): ?>
                     <tr>
                         <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
@@ -58,7 +90,36 @@ echo view('partials/table_toolbar', [
                             <div class="small text-muted"><?= esc($a['email'] ?? $a['account_email'] ?? '') ?></div>
                         </td>
                         <td><?= esc($a['enrolment_number'] ?? '—') ?></td>
-                        <td><?= esc($a['mobile'] ?? '—') ?></td>
+                        <td class="small">
+                            <?php if (isset($a['age_years']) && $a['age_years'] !== null && $a['age_years'] !== ''): ?>
+                                <?= (int) $a['age_years'] ?>y
+                                <?= (int) ($a['age_months'] ?? 0) ?>m
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
+                        <td class="small">
+                            <?= (int) ($a['practice_years'] ?? 0) ?>y
+                            <?= (int) ($a['practice_months'] ?? 0) ?>m
+                        </td>
+                        <td class="small">
+                            <?php
+                            $nature = trim((string) ($a['nature_of_practice'] ?? ''));
+                            $field  = trim((string) ($a['field_of_law'] ?? ''));
+                            if ($nature === '' && $field === '') {
+                                echo '—';
+                            } else {
+                                if ($nature !== '') {
+                                    echo '<div class="text-truncate" style="max-width:12rem" title="' . esc($nature) . '">'
+                                        . esc($nature) . '</div>';
+                                }
+                                if ($field !== '') {
+                                    echo '<div class="text-muted text-truncate" style="max-width:12rem" title="' . esc($field) . '">'
+                                        . esc($field) . '</div>';
+                                }
+                            }
+                            ?>
+                        </td>
                         <td><?= sad_status_badge($a['status']) ?></td>
                         <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
                         <td class="text-end">

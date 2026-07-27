@@ -483,8 +483,9 @@ textarea.form-control {
 
 .hero-banner .subtitle {
   color: #d7e0ef;
-  font-size: 1rem;
-  max-width: 36rem;
+  font-size: 1.02rem;
+  max-width: 38rem;
+  line-height: 1.65;
 }
 
 .hero-banner .hero-meta {
@@ -575,6 +576,117 @@ textarea.form-control {
   color: var(--brass);
   font-weight: 700;
   font-size: 0.85rem;
+}
+
+.home-checklist-lg li {
+  padding: 0.5rem 0 0.5rem 1.55rem;
+  color: var(--charcoal);
+  font-size: 0.95rem;
+}
+
+.home-checklist-lg li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* Application journey on hero */
+.hero-process-card {
+  height: 100%;
+}
+
+.hero-process-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.hero-process-steps li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  color: #e7e2d4;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hero-process-steps .step-num {
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 154, 71, 0.22);
+  border: 1px solid rgba(201, 154, 71, 0.55);
+  color: var(--brass-light);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.hero-process-steps strong {
+  display: block;
+  color: #fff;
+  font-size: 0.92rem;
+  margin-bottom: 0.15rem;
+}
+
+.hero-process-steps span {
+  color: #c9d3e4;
+  font-size: 0.82rem;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
+}
+
+.format-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--brass);
+  background: rgba(169, 121, 44, 0.12);
+  border: 1px solid rgba(169, 121, 44, 0.28);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.format-card .card-header {
+  font-size: 0.92rem;
+}
+
+.home-notice-card .card-header {
+  background: linear-gradient(180deg, #fff8eb 0%, #faf3e0 100%);
+}
+
+.home-help-card {
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.home-help-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.home-help-card a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.home-help-card a:hover,
+.home-help-card a:focus {
+  color: var(--brass);
 }
 
 .spec-table th[scope="row"] {
@@ -899,20 +1011,6 @@ textarea.form-control {
   font-size: 0.85rem;
   color: var(--muted);
   margin: 0.3rem 0 0;
-}
-
-.auth-demo {
-  background: var(--paper);
-  border: 1px dashed var(--line);
-  border-radius: 4px;
-  padding: 0.75rem 0.9rem;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.auth-demo strong {
-  color: var(--ink);
-  font-weight: 600;
 }
 
 /* ---------- Alerts ---------- */

@@ -65,6 +65,12 @@ class CreateApplicationsTable extends Migration
                 'constraint' => 3,
                 'null'       => true,
             ],
+            'age_months' => [
+                'type'       => 'SMALLINT',
+                'constraint' => 2,
+                'null'       => true,
+                'comment'    => 'Age months component as on 01.01.2026',
+            ],
 
             // Sl.3 Address
             'address_office' => [

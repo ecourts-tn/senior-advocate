@@ -69,9 +69,21 @@ class ApplicationController extends BaseController
         $step = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
         $app  = $this->requireEditableDraft();
 
+        $app = $this->apps->withDecoded($app);
+
+        // Normalise DOB and always recompute age years/months for display (readonly fields).
+        if ($step === 1 && ! empty($app['date_of_birth'])) {
+            $app['date_of_birth'] = substr((string) $app['date_of_birth'], 0, 10);
+            $ageParts             = $this->apps->calculateAgePartsAsOn($app['date_of_birth'], '2026-01-01');
+            if ($ageParts !== null) {
+                $app['age_years']  = $ageParts['years'];
+                $app['age_months'] = $ageParts['months'];
+            }
+        }
+
         $data = [
             'title' => 'Application – Step ' . $step,
-            'app'   => $this->apps->withDecoded($app),
+            'app'   => $app,
             'step'  => $step,
             'steps' => sad_step_labels(),
         ];
@@ -97,7 +109,14 @@ class ApplicationController extends BaseController
         $data = $this->mapStepData($step, $post, $app);
 
         if ($step === 1 && ! empty($data['date_of_birth'])) {
-            $data['age_years'] = $this->apps->calculateAgeAsOn($data['date_of_birth'], '2026-01-01');
+            $ageParts = $this->apps->calculateAgePartsAsOn($data['date_of_birth'], '2026-01-01');
+            if ($ageParts !== null) {
+                $data['age_years']  = $ageParts['years'];
+                $data['age_months'] = $ageParts['months'];
+            } else {
+                $data['age_years']  = null;
+                $data['age_months'] = null;
+            }
         }
 
         $data = $this->apps->encodeListFields($data);
@@ -271,8 +290,8 @@ class ApplicationController extends BaseController
         $required = [
             'full_name'         => 'Name of the applicant',
             'date_of_birth'     => 'Date of birth',
-            'address_office'    => 'Office address',
-            'address_residence' => 'Residence address',
+            'address_office'    => 'Office Address',
+            'address_residence' => 'Residential Address',
             'mobile'            => 'Mobile number',
             'email'             => 'Email',
             'qualifications'    => 'Educational / professional qualifications',

@@ -54,14 +54,16 @@
     </tr>
     <tr>
         <td class="label">2. Date of Birth / Age (as on 01.01.2026)</td>
-        <td><?= esc($app['date_of_birth'] ?? '') ?> / <?= esc($app['age_years'] ?? '—') ?> years</td>
+        <td><?= esc($app['date_of_birth'] ?? '') ?> /
+            <?= esc($app['age_years'] ?? '—') ?> years
+            <?= esc($app['age_months'] ?? '—') ?> months</td>
     </tr>
     <tr>
-        <td class="label">3. Address — Office</td>
+        <td class="label">3. Office Address</td>
         <td><?= nl2br(esc($app['address_office'] ?? '')) ?></td>
     </tr>
     <tr>
-        <td class="label">3. Address — Residence</td>
+        <td class="label">3. Residential Address</td>
         <td><?= nl2br(esc($app['address_residence'] ?? '')) ?></td>
     </tr>
     <tr>

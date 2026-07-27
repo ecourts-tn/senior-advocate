@@ -28,6 +28,13 @@ class ApplicationController extends BaseController
         $q       = $filters['q'];
         $perPage = $filters['perPage'];
 
+        // Extra filter keys for reviewer / approver / admin lists
+        $ageMin           = $this->nullableIntGet('age_min');
+        $ageMax           = $this->nullableIntGet('age_max');
+        $experienceMin    = $this->nullableIntGet('experience_min');
+        $natureOfPractice = trim((string) ($this->request->getGet('nature_of_practice') ?? ''));
+        $fieldOfLaw       = trim((string) ($this->request->getGet('field_of_law') ?? ''));
+
         $model = model(ApplicationModel::class);
         $model->select('applications.*, users.name as applicant_account_name, users.email as account_email')
             ->join('users', 'users.id = applications.user_id', 'left');
@@ -50,27 +57,76 @@ class ApplicationController extends BaseController
                 ->groupEnd();
         }
 
+        if ($ageMin !== null) {
+            $model->where('applications.age_years >=', $ageMin);
+        }
+        if ($ageMax !== null) {
+            $model->where('applications.age_years <=', $ageMax);
+        }
+        // Experience at the Bar (practice years)
+        if ($experienceMin !== null) {
+            $model->where('applications.practice_years >=', $experienceMin);
+        }
+        if ($natureOfPractice !== '') {
+            $model->like('applications.nature_of_practice', $natureOfPractice, 'both', null, true);
+        }
+        if ($fieldOfLaw !== '') {
+            $model->like('applications.field_of_law', $fieldOfLaw, 'both', null, true);
+        }
+
         $model->orderBy('applications.submitted_at', 'DESC')
             ->orderBy('applications.id', 'DESC');
 
         $applications = $model->paginate($perPage, 'default', $filters['page']);
         $pager        = $model->pager;
         $pager->setPath('admin/applications');
-        $pager->only(['q', 'per_page', 'status']);
+        $pager->only([
+            'q', 'per_page', 'status',
+            'age_min', 'age_max', 'experience_min',
+            'nature_of_practice', 'field_of_law',
+        ]);
+
+        $hasActiveFilters = $status !== ''
+            || $ageMin !== null
+            || $ageMax !== null
+            || $experienceMin !== null
+            || $natureOfPractice !== ''
+            || $fieldOfLaw !== '';
 
         return view('admin/applications/index', [
-            'title'            => 'Applications',
-            'applications'     => $applications,
-            'status'           => $status,
-            'q'                => $q,
-            'perPage'          => $perPage,
-            'page'             => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
-            'total'            => (int) $pager->getTotal('default'),
-            'allowedPerPage'   => $filters['allowedPerPage'],
-            'pager'            => $pager,
-            'statuses'         => ApplicationModel::STATUSES,
-            'hasActiveFilters' => $status !== '',
+            'title'             => 'Applications',
+            'applications'      => $applications,
+            'status'            => $status,
+            'q'                 => $q,
+            'perPage'           => $perPage,
+            'page'              => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
+            'total'             => (int) $pager->getTotal('default'),
+            'allowedPerPage'    => $filters['allowedPerPage'],
+            'pager'             => $pager,
+            'statuses'          => ApplicationModel::STATUSES,
+            'hasActiveFilters'  => $hasActiveFilters,
+            'ageMin'            => $ageMin,
+            'ageMax'            => $ageMax,
+            'experienceMin'     => $experienceMin,
+            'natureOfPractice'  => $natureOfPractice,
+            'fieldOfLaw'        => $fieldOfLaw,
         ]);
+    }
+
+    /**
+     * Integer GET param, or null when blank / invalid.
+     */
+    private function nullableIntGet(string $key): ?int
+    {
+        $raw = $this->request->getGet($key);
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (! is_numeric($raw)) {
+            return null;
+        }
+
+        return (int) $raw;
     }
 
     public function show(int $id)

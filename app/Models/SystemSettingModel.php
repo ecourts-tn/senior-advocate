@@ -56,55 +56,6 @@ class SystemSettingModel extends Model
     }
 
     /**
-     * Documented sample values for admin UI (not always applied).
-     *
-     * @return array{email: array<string,string>, sms: array<string,string>, email_production: array<string,string>, sms_production: array<string,string>}
-     */
-    public static function samples(): array
-    {
-        return [
-            // Local / demo (no external gateway required)
-            'email' => [
-                'enabled'     => '1',
-                'from_email'  => 'noreply@hcmadras.tn.gov.in',
-                'from_name'   => 'High Court of Madras — SAD Portal',
-                'protocol'    => 'file',
-                'smtp_host'   => 'smtp.gmail.com',
-                'smtp_user'   => 'sad.portal@example.com',
-                'smtp_pass'   => 'your-app-password-here',
-                'smtp_port'   => '587',
-                'smtp_crypto' => 'tls',
-            ],
-            'sms' => [
-                'enabled'   => '1',
-                'provider'  => 'log',
-                'api_url'   => 'https://api.textlocal.in/send/',
-                'api_key'   => 'your-textlocal-api-key',
-                'sender_id' => 'MHCSAD',
-            ],
-            // Production-oriented SMTP / HTTP examples
-            'email_production' => [
-                'enabled'     => '1',
-                'from_email'  => 'noreply@hcmadras.tn.gov.in',
-                'from_name'   => 'High Court of Madras — SAD Portal',
-                'protocol'    => 'smtp',
-                'smtp_host'   => 'smtp.office365.com',
-                'smtp_user'   => 'sad-noreply@tn.gov.in',
-                'smtp_pass'   => '********',
-                'smtp_port'   => '587',
-                'smtp_crypto' => 'tls',
-            ],
-            'sms_production' => [
-                'enabled'   => '1',
-                'provider'  => 'http',
-                'api_url'   => 'https://api.textlocal.in/send/',
-                'api_key'   => '********',
-                'sender_id' => 'MHCSAD',
-            ],
-        ];
-    }
-
-    /**
      * Ensure default rows exist for all known keys.
      */
     public function ensureDefaults(): void

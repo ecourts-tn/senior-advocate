@@ -40,12 +40,6 @@
                 New advocate?
                 <a href="<?= base_url('register') ?>" class="fw-semibold">Register here</a>
             </p>
-
-            <div class="auth-demo mt-3">
-                <strong class="d-block mb-1"><i class="bi bi-info-circle me-1"></i>Demo accounts</strong>
-                Admin: <code>admin@mhc.tn.gov.in</code> / <code>Admin@123</code><br>
-                Advocate: <code>advocate@example.com</code> / <code>Advocate@123</code>
-            </div>
         </div>
     </div>
     <p class="text-center small text-muted mt-3 mb-0">

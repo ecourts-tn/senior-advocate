@@ -21,7 +21,7 @@ $extraFilters  = $extraFilters ?? '';
     <div class="card-body">
         <form method="get" action="<?= esc($action) ?>" class="row g-2 align-items-end" role="search">
             <?php if ($showSearch): ?>
-                <div class="col-md-4 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <label class="form-label" for="listSearch">Search</label>
                     <input type="search" name="q" id="listSearch" class="form-control"
                            value="<?= esc($q ?? '') ?>"
