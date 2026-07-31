@@ -124,7 +124,7 @@ echo view('partials/table_toolbar', [
                         <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
                         <td class="text-end">
                             <a href="<?= base_url('admin/applications/' . $a['id']) ?>" class="btn btn-sm btn-outline-primary">
-                                <?php if (($a['status'] ?? '') === 'pending_approval'): ?>
+                                <?php if (in_array($a['status'] ?? '', ['submitted', 'under_review', 'pending_approval'], true)): ?>
                                     Decide
                                 <?php else: ?>
                                     Open

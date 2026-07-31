@@ -11,8 +11,7 @@
     <div class="card-body">
         <?= form_open('applicant/application/step/3') ?>
 
-        <div class="section-title">9. Number of Reported Judgments (Format L-1)</div>
-        <p class="small text-muted">Excluding orders that do not lay down any principle of law. Counts of judgments actually argued.</p>
+        <div class="section-title">9. Number of Reported Judgments (excluding orders that do not lay down any principle of law): Format L-1</div>
         <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <label class="form-label">Supreme Court</label>
@@ -73,7 +72,7 @@
             </table>
         </div>
 
-        <div class="section-title">10. Number of Unreported Judgments (Format L-2)</div>
+        <div class="section-title">10. Number of Unreported Judgments (excluding orders that do not lay down any principle of law): Format L-2</div>
         <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <label class="form-label">Supreme Court</label>

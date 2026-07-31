@@ -104,17 +104,17 @@ class NotificationService
         [$name, $email, $mobile] = $this->recipientFromApp($app, $user);
         $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
 
-        $subject = 'Application approved — ' . $appNo;
+        $subject = 'Application accepted — ' . $appNo;
         $body    = view('emails/notify_application_decision', [
             'name'          => $name,
             'applicationNo' => $appNo,
             'decision'      => 'approved',
-            'decisionLabel' => 'Approved',
+            'decisionLabel' => 'Accepted',
             'remarks'       => $remarks,
             'site'          => $this->site,
         ]);
 
-        $sms = "MHC SAD Portal: Application {$appNo} has been APPROVED."
+        $sms = "MHC SAD Portal: Application {$appNo} has been ACCEPTED."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 80) : '');
 
         $this->dispatch(

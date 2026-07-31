@@ -74,7 +74,7 @@ $site = $site ?? config(\Config\Site::class);
 <!-- Primary navigation -->
 <nav class="navbar navbar-expand-lg navbar-mhc no-print" aria-label="Primary">
     <div class="container">
-        <a class="navbar-brand" href="<?= base_url('/') ?>">
+        <a class="navbar-brand" href="<?= base_url($u ? (is_admin_role() ? 'admin' : 'applicant/dashboard') : 'login') ?>">
             <i class="bi bi-building-fill-check" aria-hidden="true"></i>
             <span>SAD Portal</span>
         </a>
@@ -84,15 +84,6 @@ $site = $site ?? config(\Config\Site::class);
         </button>
         <div class="collapse navbar-collapse" id="navMain">
             <ul class="navbar-nav me-auto align-items-lg-center">
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= base_url('/') ?>"><i class="bi bi-house-door me-1" aria-hidden="true"></i>Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= base_url('instructions') ?>"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>Instructions</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= base_url('policy/help') ?>"><i class="bi bi-question-circle me-1" aria-hidden="true"></i>Help</a>
-                </li>
                 <?php if ($u): ?>
                     <?php if (is_admin_role()): ?>
                         <li class="nav-item">
@@ -183,10 +174,9 @@ $site = $site ?? config(\Config\Site::class);
             <div class="col-6 col-md-2">
                 <div class="footer-heading">Quick links</div>
                 <ul class="footer-links">
-                    <li><a href="<?= base_url('/') ?>">Home</a></li>
-                    <li><a href="<?= base_url('instructions') ?>">Instructions</a></li>
                     <li><a href="<?= base_url('login') ?>">Login</a></li>
                     <li><a href="<?= base_url('register') ?>">Register</a></li>
+                    <li><a href="<?= base_url('instructions') ?>">Instructions</a></li>
                     <li><a href="<?= base_url('policy/help') ?>">Help &amp; Contact</a></li>
                 </ul>
             </div>

@@ -60,54 +60,43 @@ class ApplicationModel extends Model
         self::STATUS_SUBMITTED        => 'Submitted',
         self::STATUS_UNDER_REVIEW     => 'Under Review',
         self::STATUS_PENDING_APPROVAL => 'Pending Approval',
-        self::STATUS_APPROVED         => 'Approved',
+        self::STATUS_APPROVED         => 'Accepted',
         self::STATUS_REJECTED         => 'Rejected',
         self::STATUS_RETURNED         => 'Returned for Correction',
     ];
 
     /**
-     * Workflow actions available to staff (reviewer / approver / admin).
+     * Workflow actions available to staff.
      *
-     * Flow:
+     * TEMPORARY simplified flow (reviewer / multi-step approver path disabled):
      *  Applicant submits → submitted
-     *  Reviewer → under_review | returned | pending_approval
-     *  Approver → approved | rejected
+     *  Admin → approved | rejected (remarks required)
+     *
+     * Intermediate statuses (under_review, pending_approval) remain decidable so
+     * any applications already in the old pipeline are not stuck.
      */
     public const ACTIONS = [
-        'start_review' => [
-            'label'           => 'Start review',
-            'to'              => self::STATUS_UNDER_REVIEW,
-            'roles'           => ['reviewer', 'admin'],
-            'from'            => [self::STATUS_SUBMITTED],
-            'remarks_required'=> false,
-        ],
-        'return' => [
-            'label'           => 'Return for correction',
-            'to'              => self::STATUS_RETURNED,
-            'roles'           => ['reviewer', 'admin'],
-            'from'            => [self::STATUS_SUBMITTED, self::STATUS_UNDER_REVIEW],
-            'remarks_required'=> true,
-        ],
-        'forward' => [
-            'label'           => 'Forward for approval',
-            'to'              => self::STATUS_PENDING_APPROVAL,
-            'roles'           => ['reviewer', 'admin'],
-            'from'            => [self::STATUS_SUBMITTED, self::STATUS_UNDER_REVIEW],
-            'remarks_required'=> false,
-        ],
         'approve' => [
-            'label'           => 'Approve',
-            'to'              => self::STATUS_APPROVED,
-            'roles'           => ['approver', 'admin'],
-            'from'            => [self::STATUS_PENDING_APPROVAL],
-            'remarks_required'=> false,
+            'label'            => 'Accept',
+            'to'               => self::STATUS_APPROVED,
+            'roles'            => ['admin'],
+            'from'             => [
+                self::STATUS_SUBMITTED,
+                self::STATUS_UNDER_REVIEW,
+                self::STATUS_PENDING_APPROVAL,
+            ],
+            'remarks_required' => true,
         ],
         'reject' => [
-            'label'           => 'Reject',
-            'to'              => self::STATUS_REJECTED,
-            'roles'           => ['approver', 'admin'],
-            'from'            => [self::STATUS_PENDING_APPROVAL],
-            'remarks_required'=> true,
+            'label'            => 'Reject',
+            'to'               => self::STATUS_REJECTED,
+            'roles'            => ['admin'],
+            'from'             => [
+                self::STATUS_SUBMITTED,
+                self::STATUS_UNDER_REVIEW,
+                self::STATUS_PENDING_APPROVAL,
+            ],
+            'remarks_required' => true,
         ],
     ];
 
@@ -175,6 +164,7 @@ class ApplicationModel extends Model
 
     /**
      * Decode JSON list fields for views/forms.
+     * Normalises legacy {from,to} keys to {from_date,to_date} (ISO Y-m-d).
      */
     public function withDecoded(array $app): array
     {
@@ -185,6 +175,10 @@ class ApplicationModel extends Model
             } elseif (empty($app[$field])) {
                 $app[$field] = [];
             }
+
+            if (is_array($app[$field])) {
+                $app[$field] = array_map([$this, 'normalizePracticePeriodRow'], $app[$field]);
+            }
         }
 
         return $app;
@@ -194,16 +188,54 @@ class ApplicationModel extends Model
     {
         foreach (['courts_practiced', 'tribunals_practiced'] as $field) {
             if (isset($data[$field]) && is_array($data[$field])) {
-                $data[$field] = json_encode(array_values(array_filter($data[$field], static function ($row) {
+                $rows = array_map([$this, 'normalizePracticePeriodRow'], $data[$field]);
+                $data[$field] = json_encode(array_values(array_filter($rows, static function ($row) {
                     if (! is_array($row)) {
                         return false;
                     }
+
                     return array_filter($row, static fn ($v) => $v !== null && $v !== '');
                 })));
             }
         }
 
         return $data;
+    }
+
+    /**
+     * Ensure practice period rows use from_date / to_date (Y-m-d or null).
+     *
+     * @param mixed $row
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizePracticePeriodRow($row): array
+    {
+        if (! is_array($row)) {
+            return [];
+        }
+
+        $iso = static function ($value): ?string {
+            $value = trim((string) ($value ?? ''));
+            if ($value === '') {
+                return null;
+            }
+            if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                return null;
+            }
+            $dt = \DateTime::createFromFormat('Y-m-d', $value);
+
+            return ($dt && $dt->format('Y-m-d') === $value) ? $value : null;
+        };
+
+        $from = $iso($row['from_date'] ?? $row['from'] ?? null);
+        $to   = $iso($row['to_date'] ?? $row['to'] ?? null);
+
+        unset($row['from'], $row['to']);
+        $row['from_date'] = $from;
+        $row['to_date']   = $to;
+
+        return $row;
     }
 
     /**

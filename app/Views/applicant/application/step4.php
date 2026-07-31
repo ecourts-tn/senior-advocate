@@ -11,7 +11,7 @@
     <div class="card-body">
         <?= form_open('applicant/application/step/4') ?>
 
-        <div class="section-title">11. Pro Bono / Amicus Curiae work</div>
+        <div class="section-title">11. Pro Bono / Amicus Curiae work Format L-3(i), FonnatL-3(ii)</div>
         <div class="row g-3 mb-4">
             <div class="col-md-6">
                 <label class="form-label">Total Pro Bono cases</label>
@@ -183,7 +183,7 @@
             </div>
         </div>
 
-        <div class="section-title">12. First-generation lawyer</div>
+        <div class="section-title">12. Whether the applicant is First-generation lawyer</div>
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <select name="is_first_generation" class="form-select">
@@ -194,7 +194,7 @@
             </div>
         </div>
 
-        <div class="section-title">13. Academic Articles / Books / Teaching / Guest Lectures (Format L-4)</div>
+        <div class="section-title">13. Aqademic Articles/Books published, experience of Teaching Assignments in the field of law. Guest Lectures delivered, in law schools or professional institutions connected with law: Format L-4</div>
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-3">
                 <label class="form-label">No. of Academic Articles</label>

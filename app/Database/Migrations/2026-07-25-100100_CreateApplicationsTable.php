@@ -28,7 +28,7 @@ class CreateApplicationsTable extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 30,
                 'null'       => true,
-                'comment'    => 'e.g. SAD/2026/0001',
+                'comment'    => 'e.g. MHC/DSA/2026/0001',
             ],
             'status' => [
                 'type'       => 'VARCHAR',
@@ -223,13 +223,15 @@ class CreateApplicationsTable extends Migration
                 'default'    => 0,
             ],
 
-            // Sl.14 Courts practiced (JSON array of {court, from, to})
+            // Sl.14 Courts practiced — JSON array of
+            // { court: string, from_date: Y-m-d|null, to_date: Y-m-d|null }
             'courts_practiced' => [
                 'type' => 'TEXT',
                 'null' => true,
             ],
 
-            // Sl.15 Tribunals (JSON)
+            // Sl.15 Tribunals — JSON array of
+            // { tribunal: string, from_date: Y-m-d|null, to_date: Y-m-d|null }
             'tribunals_practiced' => [
                 'type' => 'TEXT',
                 'null' => true,

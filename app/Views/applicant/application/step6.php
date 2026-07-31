@@ -18,7 +18,7 @@
         };
         ?>
 
-        <div class="section-title">18. Earlier application to Madras High Court</div>
+        <div class="section-title">18. Whether the applicant has; applied earlier to the Madras High Court for designation; If so, date of the application & current status thereof:</div>
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <select name="applied_mhc_earlier" class="form-select" data-toggle-detail="#mhcDetail">
@@ -41,7 +41,7 @@
             </div>
         </div>
 
-        <div class="section-title">19. Earlier application to Supreme Court or any other High Court</div>
+        <div class="section-title">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the applidation and details thereof</div>
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <select name="applied_other_court" class="form-select" data-toggle-detail="#otherCourtDetail">
@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="section-title">20. Whether any FIR has ever been lodged against the applicant</div>
+        <div class="section-title">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof:</div>
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <select name="fir_lodged" class="form-select" data-toggle-detail="#firDetail">
@@ -71,7 +71,7 @@
             </div>
         </div>
 
-        <div class="section-title">21. Whether the applicant is a party to any criminal case</div>
+        <div class="section-title">21. Whether the applicant is a party to any criminal case; if so, details thereof:</div>
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <select name="criminal_case_party" class="form-select" data-toggle-detail="#crimDetail">
@@ -86,7 +86,7 @@
             </div>
         </div>
 
-        <div class="section-title">22. Proceedings before Bar Council of India or State Bar Council</div>
+        <div class="section-title">22. Whether any proceedings were initiated of are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof</div>
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <select name="bar_council_proceedings" class="form-select" data-toggle-detail="#bcDetail">

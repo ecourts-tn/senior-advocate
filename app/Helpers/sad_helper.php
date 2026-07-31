@@ -80,15 +80,21 @@ if (! function_exists('is_admin_role')) {
 }
 
 if (! function_exists('can_review_applications')) {
+    /**
+     * Temporarily: only admin decides applications (reviewer path disabled).
+     */
     function can_review_applications(): bool
     {
-        return in_array(session()->get('role'), ['admin', 'reviewer'], true);
+        return session()->get('role') === 'admin';
     }
 }
 
 if (! function_exists('can_approve_applications')) {
+    /**
+     * Temporarily: only admin decides applications (approver path disabled).
+     */
     function can_approve_applications(): bool
     {
-        return in_array(session()->get('role'), ['admin', 'approver'], true);
+        return session()->get('role') === 'admin';
     }
 }

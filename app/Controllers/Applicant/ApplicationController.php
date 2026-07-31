@@ -28,6 +28,10 @@ class ApplicationController extends BaseController
         helper(['form', 'url', 'sad']);
     }
 
+    /**
+     * Start a new application: show instructions first.
+     * The form is only created after the advocate accepts instructions (POST).
+     */
     public function start()
     {
         $userId = (int) session()->get('user_id');
@@ -47,27 +51,75 @@ class ApplicationController extends BaseController
                 ->with('error', 'You already have an application under process (' . $open['application_no'] . ').');
         }
 
+        return view('applicant/application/instructions', [
+            'title' => 'Instructions — Start Application',
+        ]);
+    }
+
+    /**
+     * Accept instructions and create a new draft application.
+     */
+    public function acceptInstructions()
+    {
+        $userId = (int) session()->get('user_id');
+        $draft  = $this->apps->findDraftForUser($userId);
+
+        if ($draft) {
+            return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
+        }
+
+        $open = $this->apps->where('user_id', $userId)
+            ->whereIn('status', ApplicationModel::inProcessStatuses())
+            ->first();
+
+        if ($open) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'You already have an application under process (' . $open['application_no'] . ').');
+        }
+
+        $accepted = $this->request->getPost('instructions_accepted');
+        if (! in_array($accepted, ['1', 'on', 'true', 'yes'], true)) {
+            return redirect()->to('/applicant/application/start')
+                ->with('error', 'You must read and accept the instructions before starting the application.');
+        }
+
+        $user    = model(UserModel::class)->find($userId);
         $contact = $this->registrationContact($userId);
 
         $id = $this->apps->insert([
-            'user_id'      => $userId,
-            'status'       => ApplicationModel::STATUS_DRAFT,
-            'current_step' => 1,
-            'email'        => $contact['email'],
-            'mobile'       => $contact['mobile'],
-            'full_name'    => session()->get('name'),
+            'user_id'               => $userId,
+            'status'                => ApplicationModel::STATUS_DRAFT,
+            'current_step'          => 1,
+            'email'                 => $contact['email'],
+            'mobile'                => $contact['mobile'],
+            'full_name'             => session()->get('name'),
+            'enrolment_number'      => $user['enrolment_number'] ?? null,
+            'instructions_accepted' => 't',
         ]);
 
-        model(AuditLogModel::class)->log('application_created', $userId, (int) $id);
-        model(ApplicationStatusHistoryModel::class)->record((int) $id, null, ApplicationModel::STATUS_DRAFT, $userId, 'Draft created');
+        model(AuditLogModel::class)->log('application_created', $userId, (int) $id, [
+            'instructions_accepted' => true,
+        ]);
+        model(ApplicationStatusHistoryModel::class)->record(
+            (int) $id,
+            null,
+            ApplicationModel::STATUS_DRAFT,
+            $userId,
+            'Draft created after accepting instructions'
+        );
 
-        return redirect()->to('/applicant/application/step/1');
+        return redirect()->to('/applicant/application/step/1')
+            ->with('success', 'Instructions accepted. You may now fill the application form.');
     }
 
     public function step(int $step = 1)
     {
         $step = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
         $app  = $this->requireEditableDraft();
+        if ($app === null) {
+            return redirect()->to('/applicant/application/start')
+                ->with('error', 'Please read and accept the instructions before filling the application.');
+        }
 
         $app = $this->apps->withDecoded($app);
 
@@ -78,6 +130,16 @@ class ApplicationController extends BaseController
             if ($ageParts !== null) {
                 $app['age_years']  = $ageParts['years'];
                 $app['age_months'] = $ageParts['months'];
+            }
+        }
+
+        // Practice duration from enrolment date (as on 01.01.2026) — readonly on form.
+        if ($step === 2 && ! empty($app['enrolment_date'])) {
+            $app['enrolment_date'] = substr((string) $app['enrolment_date'], 0, 10);
+            $practiceParts         = $this->apps->calculateAgePartsAsOn($app['enrolment_date'], '2026-01-01');
+            if ($practiceParts !== null) {
+                $app['practice_years']  = $practiceParts['years'];
+                $app['practice_months'] = $practiceParts['months'];
             }
         }
 
@@ -101,7 +163,12 @@ class ApplicationController extends BaseController
 
     public function saveStep(int $step)
     {
-        $app    = $this->requireEditableDraft();
+        $app = $this->requireEditableDraft();
+        if ($app === null) {
+            return redirect()->to('/applicant/application/start')
+                ->with('error', 'Please read and accept the instructions before filling the application.');
+        }
+
         $userId = (int) session()->get('user_id');
         $step   = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
         $post   = $this->request->getPost();
@@ -116,6 +183,24 @@ class ApplicationController extends BaseController
             } else {
                 $data['age_years']  = null;
                 $data['age_months'] = null;
+            }
+        }
+
+        // Always derive practice years/months from enrolment date (ignore client values).
+        if ($step === 2) {
+            if (! empty($data['enrolment_date'])) {
+                $data['enrolment_date'] = substr((string) $data['enrolment_date'], 0, 10);
+                $practiceParts          = $this->apps->calculateAgePartsAsOn($data['enrolment_date'], '2026-01-01');
+                if ($practiceParts !== null) {
+                    $data['practice_years']  = $practiceParts['years'];
+                    $data['practice_months'] = $practiceParts['months'];
+                } else {
+                    $data['practice_years']  = 0;
+                    $data['practice_months'] = 0;
+                }
+            } else {
+                $data['practice_years']  = 0;
+                $data['practice_months'] = 0;
             }
         }
 
@@ -229,7 +314,7 @@ class ApplicationController extends BaseController
 
         $appNo = $app['application_no'];
         if (empty($appNo)) {
-            $appNo = model(ApplicationSequenceModel::class)->nextNumber('SAD', 2026);
+            $appNo = model(ApplicationSequenceModel::class)->nextNumber('MHC/DSA', 2026);
         }
 
         $from = $app['status'];
@@ -324,29 +409,20 @@ class ApplicationController extends BaseController
         return $errors;
     }
 
-    protected function requireEditableDraft(): array
+    /**
+     * Editable draft for the current user, or null if none (must accept instructions first).
+     */
+    protected function requireEditableDraft(): ?array
     {
         $userId = (int) session()->get('user_id');
         $draft  = $this->apps->findDraftForUser($userId);
 
         if (! $draft) {
-            // Create a fresh draft if none exists
-            $contact = $this->registrationContact($userId);
-            $id = $this->apps->insert([
-                'user_id'      => $userId,
-                'status'       => ApplicationModel::STATUS_DRAFT,
-                'current_step' => 1,
-                'email'        => $contact['email'],
-                'mobile'       => $contact['mobile'],
-                'full_name'    => session()->get('name'),
-            ]);
-            $draft = $this->apps->find($id);
-        } else {
-            // Backfill registration contact if missing on older drafts
-            $draft = $this->ensureRegistrationContact($draft);
+            return null;
         }
 
-        return $draft;
+        // Backfill registration contact if missing on older drafts
+        return $this->ensureRegistrationContact($draft);
     }
 
     /**
@@ -444,13 +520,26 @@ class ApplicationController extends BaseController
                     'guest_lectures_count'       => (int) ($post['guest_lectures_count'] ?? 0),
                 ];
             case 5:
+                $dateOrNull = static function ($value): ?string {
+                    $value = trim((string) $value);
+                    if ($value === '') {
+                        return null;
+                    }
+                    if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                        return null;
+                    }
+                    $dt = \DateTime::createFromFormat('Y-m-d', $value);
+
+                    return ($dt && $dt->format('Y-m-d') === $value) ? $value : null;
+                };
+
                 $courts = [];
                 if (! empty($post['court_name']) && is_array($post['court_name'])) {
                     foreach ($post['court_name'] as $i => $name) {
                         $courts[] = [
-                            'court' => $name,
-                            'from'  => $post['court_from'][$i] ?? '',
-                            'to'    => $post['court_to'][$i] ?? '',
+                            'court'     => trim((string) $name),
+                            'from_date' => $dateOrNull($post['court_from'][$i] ?? null),
+                            'to_date'   => $dateOrNull($post['court_to'][$i] ?? null),
                         ];
                     }
                 }
@@ -458,9 +547,9 @@ class ApplicationController extends BaseController
                 if (! empty($post['tribunal_name']) && is_array($post['tribunal_name'])) {
                     foreach ($post['tribunal_name'] as $i => $name) {
                         $tribunals[] = [
-                            'tribunal' => $name,
-                            'from'     => $post['tribunal_from'][$i] ?? '',
-                            'to'       => $post['tribunal_to'][$i] ?? '',
+                            'tribunal'  => trim((string) $name),
+                            'from_date' => $dateOrNull($post['tribunal_from'][$i] ?? null),
+                            'to_date'   => $dateOrNull($post['tribunal_to'][$i] ?? null),
                         ];
                     }
                 }

@@ -1,17 +1,17 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 
-<div class="page-header">
+<!-- <div class="page-header">
     <h1 class="page-title">Instructions for Advocates</h1>
     <p class="page-subtitle">
-        Follow these instructions carefully while applying for Designation of Senior Advocate
+        Please read carefully before starting a new application for Designation of Senior Advocate
     </p>
-</div>
+</div> -->
 
 <div class="card card-mhc">
     <div class="card-header">
         <i class="bi bi-journal-bookmark me-1"></i>
-        Instructions to be followed while applying for Designation of Senior Advocate
+        INSTRUCTIONS TO BE FOLLOWED BY THE ADVOCATES WHILE APPLYING FOR DESIGNATION OF SENIOR ADVOCATE
     </div>
     <div class="card-body">
         <ol class="instruction-list lh-lg mb-0">
@@ -58,29 +58,39 @@
             </li>
         </ol>
     </div>
-</div>
+<!-- </div> -->
 
-<div class="warning-box mt-4">
+<!-- <div class="warning-box mt-4">
     <strong><i class="bi bi-exclamation-triangle me-1"></i>Important acknowledgement:</strong>
     Yes, I have read the instructions carefully and understand that an error in this application
     cannot be subsequently rectified and may result in rejection of my application.
-    (You will be required to confirm this at the time of final submission.)
-</div>
+</div> -->
 
-<div class="d-flex flex-wrap gap-2 mt-4">
-    <?php if (current_user() && ! is_admin_role()): ?>
-        <a href="<?= base_url('applicant/dashboard') ?>" class="btn btn-mhc">
-            <i class="bi bi-arrow-right me-1"></i> Proceed to Dashboard
-        </a>
-    <?php elseif (! current_user()): ?>
-        <a href="<?= base_url('register') ?>" class="btn btn-gold">
-            <i class="bi bi-person-plus me-1"></i> Register as Advocate
-        </a>
-        <a href="<?= base_url('login') ?>" class="btn btn-mhc">
-            <i class="bi bi-box-arrow-in-right me-1"></i> Login
-        </a>
-    <?php endif; ?>
-    <a href="<?= base_url('login') ?>" class="btn btn-outline-secondary">Back to Login</a>
+    <?= form_open('applicant/application/start', ['class' => 'mt-4']) ?>
+        <!-- <div class="card card-mhc">
+            <div class="card-body"> -->
+                <div class="p-3">
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="1" name="instructions_accepted"
+                            id="instructions_accepted" required>
+                        <label class="form-check-label" for="instructions_accepted">
+                            Yes, I have read the instructions carefully and understand that an error in this application
+                            cannot be subsequently rectified and may result in rejection of my application.
+                        </label>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-mhc" id="btnAcceptInstructions">
+                            <i class="bi bi-check2-circle me-1"></i> Accept &amp; Start Application
+                        </button>
+                        <a href="<?= base_url('applicant/dashboard') ?>" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            <!-- </div>
+        </div> -->
+    <?= form_close() ?>
 </div>
 
 <?= $this->endSection() ?>

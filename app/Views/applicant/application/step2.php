@@ -14,8 +14,12 @@
         <div class="row g-3">
             <div class="col-md-4">
                 <label class="form-label required">Date of Enrolment</label>
-                <input type="date" name="enrolment_date" class="form-control" required
-                       value="<?= esc(old('enrolment_date', $app['enrolment_date'] ?? '')) ?>">
+                <input type="date" name="enrolment_date" id="enrolment_date" class="form-control" required
+                       max="2026-01-01"
+                       value="<?= esc(old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '')) ?>"
+                       data-age-as-on="2026-01-01"
+                       data-age-years-target="practice_years_display"
+                       data-age-months-target="practice_months_display">
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Enrolment Number</label>
@@ -29,17 +33,22 @@
                        placeholder="e.g. Bar Council of Tamil Nadu & Puducherry">
             </div>
             <div class="col-md-3">
-                <label class="form-label">Years of practice</label>
-                <input type="number" name="practice_years" class="form-control" min="0" max="70"
-                       value="<?= esc(old('practice_years', $app['practice_years'] ?? 0)) ?>">
+                <label class="form-label" for="practice_years_display">Years of practice from enrolment</label>
+                <input type="number" name="practice_years" id="practice_years_display"
+                       class="form-control" min="0" max="70" readonly
+                       value="<?= esc(old('practice_years', $app['practice_years'] ?? '')) ?>"
+                       title="Calculated automatically from date of enrolment">
+                <div class="form-text">Auto-calculated as on 01.01.2026</div>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Months</label>
-                <input type="number" name="practice_months" class="form-control" min="0" max="11"
-                       value="<?= esc(old('practice_months', $app['practice_months'] ?? 0)) ?>">
+                <label class="form-label" for="practice_months_display">Months</label>
+                <input type="number" name="practice_months" id="practice_months_display"
+                       class="form-control" min="0" max="11" readonly
+                       value="<?= esc(old('practice_months', $app['practice_months'] ?? '')) ?>"
+                       title="Calculated automatically from date of enrolment">
             </div>
             <div class="col-md-6">
-                <label class="form-label">Net Professional Income per annum (₹ Lakhs)</label>
+                <label class="form-label">Net Professional Income per annum (₹ Lakhs) [Only earnings through practice as Advocate]</label>
                 <input type="number" step="0.01" name="net_income_lakhs" class="form-control"
                        value="<?= esc(old('net_income_lakhs', $app['net_income_lakhs'] ?? '')) ?>">
                 <div class="form-text">Only earnings through practice as Advocate.</div>
@@ -49,7 +58,7 @@
         <div class="section-title mt-4">8. Bar Association Membership</div>
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label">Member of any bar association attached to a specific court?</label>
+                <label class="form-label">Whether the applicant is a member of any bar association attached to a specific court</label>
                 <select name="is_bar_association_member" class="form-select" data-toggle-detail="#barAssocDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= old('is_bar_association_member', sad_bool_label($app['is_bar_association_member'] ?? null) === 'Yes' ? '1' : '') === '1' ? 'selected' : '' ?>>Yes</option>

@@ -20,7 +20,7 @@ class FileController extends BaseController
             throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
         }
 
-        if (! in_array($role, ['admin', 'reviewer'], true) && (int) $app['user_id'] !== $userId) {
+        if (! in_array($role, ['admin', 'reviewer', 'approver'], true) && (int) $app['user_id'] !== $userId) {
             return redirect()->to('/')->with('error', 'Access denied.');
         }
 

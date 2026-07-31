@@ -13,7 +13,7 @@ class UserModel extends Model
     protected $useSoftDeletes   = true;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'name', 'email', 'mobile', 'password_hash', 'role', 'is_active', 'last_login_at',
+        'name', 'email', 'mobile', 'enrolment_number', 'password_hash', 'role', 'is_active', 'last_login_at',
     ];
 
     protected $useTimestamps = true;
@@ -29,6 +29,16 @@ class UserModel extends Model
     public function findByEmail(string $email): ?array
     {
         return $this->where('email', strtolower(trim($email)))->first();
+    }
+
+    public function findByEnrolment(string $enrolment): ?array
+    {
+        $enrolment = trim($enrolment);
+        if ($enrolment === '') {
+            return null;
+        }
+
+        return $this->where('enrolment_number', $enrolment)->first();
     }
 
     public function verifyPassword(array $user, string $password): bool

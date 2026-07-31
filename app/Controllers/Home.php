@@ -8,6 +8,7 @@ class Home extends BaseController
 {
     public function index()
     {
+        // Home page temporarily disabled — send visitors to login / their dashboard.
         if (session()->get('user_id')) {
             if (is_admin_role()) {
                 return redirect()->to('/admin');
@@ -16,9 +17,7 @@ class Home extends BaseController
             return redirect()->to('/applicant/dashboard');
         }
 
-        return view('home', [
-            'title' => 'Senior Advocate Designation Portal',
-        ]);
+        return redirect()->to('/login');
     }
 
     public function instructions()

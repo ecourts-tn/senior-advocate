@@ -6,7 +6,7 @@
         <div class="card-header">
             <div class="auth-icon"><i class="bi bi-shield-lock"></i></div>
             <h2 class="auth-title">Sign in</h2>
-            <p class="auth-sub">Advocate / Reviewer / Administrator login</p>
+            <p class="auth-sub">Advocate / Administrator login</p>
         </div>
         <div class="card-body">
             <?= form_open('login') ?>

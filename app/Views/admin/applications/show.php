@@ -129,11 +129,10 @@
 
     <div class="col-lg-4">
         <div class="card card-mhc mb-3">
-            <div class="card-header">Workflow</div>
+            <div class="card-header">Decision</div>
             <div class="card-body">
                 <p class="small text-muted mb-3">
-                    <strong>Flow:</strong> Applicant submits → Reviewer reviews (return for correction or forward)
-                    → Approver approves or rejects.
+                    <strong>Flow:</strong> Applicant submits → Admin accepts or rejects with remarks.
                 </p>
                 <div class="mb-3">
                     <span class="text-muted small d-block mb-1">Current status</span>
@@ -153,49 +152,40 @@
                 <?php if (empty($actions)): ?>
                     <div class="alert alert-secondary small mb-0">
                         <?php if (in_array($app['status'], ['approved', 'rejected'], true)): ?>
-                            This application is closed. No further workflow actions are available.
+                            This application is closed. No further actions are available.
                         <?php elseif ($app['status'] === 'returned'): ?>
                             Returned to the advocate for correction. Waiting for resubmission.
-                        <?php elseif ($app['status'] === 'pending_approval' && ($role ?? '') === 'reviewer'): ?>
-                            Forwarded for approval. An <strong>approver</strong> must approve or reject.
-                        <?php elseif (in_array($app['status'], ['submitted', 'under_review'], true) && ($role ?? '') === 'approver'): ?>
-                            Awaiting <strong>reviewer</strong> action (return or forward for approval).
                         <?php elseif ($app['status'] === 'draft'): ?>
-                            Draft applications are not in the review queue.
+                            Draft applications are not in the decision queue.
+                        <?php elseif (($role ?? '') !== 'admin'): ?>
+                            Only an <strong>administrator</strong> can accept or reject applications.
                         <?php else: ?>
-                            No actions available for your role at this status.
+                            No actions available at this status.
                         <?php endif; ?>
                     </div>
                 <?php else: ?>
                     <?= form_open('admin/applications/' . $app['id'] . '/status') ?>
                     <div class="mb-3">
-                        <label class="form-label" for="remarks">Remarks</label>
-                        <textarea name="remarks" id="remarks" class="form-control" rows="4"
-                                  placeholder="Required for return / rejection. Optional for other actions."><?= esc(old('remarks', '')) ?></textarea>
-                        <div class="form-text">Advocates see these remarks when the application is returned or decided.</div>
+                        <label class="form-label" for="remarks">Remarks <span class="text-danger">*</span></label>
+                        <textarea name="remarks" id="remarks" class="form-control" rows="4" required
+                                  placeholder="Required when accepting or rejecting."><?= esc(old('remarks', '')) ?></textarea>
+                        <div class="form-text">These remarks are recorded and shared with the applicant on decision.</div>
                     </div>
                     <div class="d-grid gap-2">
                         <?php
                         $btnClass = [
-                            'start_review' => 'btn-outline-primary',
-                            'return'       => 'btn-warning',
-                            'forward'      => 'btn-mhc',
-                            'approve'      => 'btn-success',
-                            'reject'       => 'btn-danger',
+                            'approve' => 'btn-success',
+                            'reject'  => 'btn-danger',
                         ];
                         foreach ($actions as $key => $meta):
-                            $class = $btnClass[$key] ?? 'btn-outline-secondary';
-                            $confirm = in_array($key, ['return', 'forward', 'approve', 'reject'], true)
-                                ? "return confirm('Confirm: " . esc($meta['label'], 'js') . "?');"
-                                : '';
+                            $class   = $btnClass[$key] ?? 'btn-outline-secondary';
+                            $confirm = "return confirm('Confirm: " . esc($meta['label'], 'js') . "?');";
                         ?>
                             <button type="submit" name="action" value="<?= esc($key) ?>"
                                     class="btn <?= esc($class) ?>"
-                                    <?= $confirm !== '' ? 'onclick="' . $confirm . '"' : '' ?>>
+                                    onclick="<?= $confirm ?>">
                                 <?= esc($meta['label']) ?>
-                                <?php if (! empty($meta['remarks_required'])): ?>
-                                    <span class="small opacity-75">(remarks required)</span>
-                                <?php endif; ?>
+                                <span class="small opacity-75">(remarks required)</span>
                             </button>
                         <?php endforeach; ?>
                     </div>

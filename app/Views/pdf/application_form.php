@@ -126,6 +126,14 @@
         <td class="label">14. Courts practiced</td>
         <td colspan="2">
             <?php
+            $fmtPeriod = static function (array $row): string {
+                $from = $row['from_date'] ?? $row['from'] ?? '';
+                $to   = $row['to_date'] ?? $row['to'] ?? '';
+                $from = $from !== '' && $from !== null ? (string) $from : '—';
+                $to   = $to !== '' && $to !== null ? (string) $to : 'present';
+
+                return $from . ' – ' . $to;
+            };
             $courts = $app['courts_practiced'] ?? [];
             if (is_string($courts)) {
                 $courts = json_decode($courts, true) ?: [];
@@ -134,7 +142,7 @@
                 echo '—';
             } else {
                 foreach ($courts as $c) {
-                    echo esc(($c['court'] ?? '') . ' (' . ($c['from'] ?? '') . ' – ' . ($c['to'] ?? '') . ')') . '<br>';
+                    echo esc(($c['court'] ?? '') . ' (' . $fmtPeriod($c) . ')') . '<br>';
                 }
             }
             ?>
@@ -152,7 +160,7 @@
                 echo '—';
             } else {
                 foreach ($tribunals as $t) {
-                    echo esc(($t['tribunal'] ?? '') . ' (' . ($t['from'] ?? '') . ' – ' . ($t['to'] ?? '') . ')') . '<br>';
+                    echo esc(($t['tribunal'] ?? '') . ' (' . $fmtPeriod($t) . ')') . '<br>';
                 }
             }
             ?>
