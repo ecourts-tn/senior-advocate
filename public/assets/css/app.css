@@ -896,6 +896,48 @@ textarea.form-control {
   border-color: var(--ink);
 }
 
+/* Password show / hide toggle */
+.password-toggle-group .password-toggle-btn {
+  border-color: #d5cfc0;
+  color: var(--ink-2);
+  background: #fff;
+  min-width: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0.65rem;
+  padding-right: 0.65rem;
+}
+
+.password-toggle-group .password-toggle-btn:hover,
+.password-toggle-group .password-toggle-btn:focus {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--brass);
+  box-shadow: none;
+}
+
+.password-toggle-group .password-toggle-btn[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.password-toggle-group .password-toggle-btn .bi {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+body.contrast-high .password-toggle-group .password-toggle-btn {
+  border-color: #000;
+  color: #000;
+}
+
+body.contrast-high .password-toggle-group .password-toggle-btn[aria-pressed="true"] {
+  background: #000;
+  color: #fff;
+}
+
 /* ---------- Tables ---------- */
 .table thead th {
   background: var(--ink);

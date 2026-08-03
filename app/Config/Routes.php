@@ -52,6 +52,7 @@ $routes->get('files/application/(:num)/(:segment)', 'FileController::application
 $routes->group('admin', ['filter' => 'auth:admin,reviewer,approver'], static function ($routes) {
     $routes->get('/', 'Admin\DashboardController::index');
     $routes->get('applications', 'Admin\ApplicationController::index');
+    $routes->get('applications/export', 'Admin\ApplicationController::exportExcel');
     $routes->get('applications/(:num)', 'Admin\ApplicationController::show/$1');
     // Accept / reject — admin only while reviewer/approver path is disabled
     $routes->post('applications/(:num)/status', 'Admin\ApplicationController::updateStatus/$1', ['filter' => 'auth:admin']);
@@ -67,5 +68,38 @@ $routes->group('admin', ['filter' => 'auth:admin,reviewer,approver'], static fun
         $routes->get('sms', 'Admin\SettingsController::sms');
         $routes->post('sms', 'Admin\SettingsController::saveSms');
         $routes->post('sms/test', 'Admin\SettingsController::testSms');
+        $routes->get('application', 'Admin\SettingsController::application');
+        $routes->post('application', 'Admin\SettingsController::saveApplication');
     });
+
+    // Notification templates CRUD (admin only)
+    $routes->group('notifications', ['filter' => 'auth:admin'], static function ($routes) {
+        $routes->get('/', 'Admin\NotificationTemplateController::index');
+        $routes->get('new', 'Admin\NotificationTemplateController::create');
+        $routes->post('/', 'Admin\NotificationTemplateController::store');
+        $routes->get('(:num)/edit', 'Admin\NotificationTemplateController::edit/$1');
+        $routes->post('(:num)', 'Admin\NotificationTemplateController::update/$1');
+        $routes->post('(:num)/delete', 'Admin\NotificationTemplateController::delete/$1');
+    });
+
+    // Master management — separate CRUD per type (admin only)
+    $routes->group('masters', ['filter' => 'auth:admin'], static function ($routes) {
+        $routes->get('/', 'Admin\MasterController::hub');
+        $routes->post('seed-defaults', 'Admin\MasterController::seedDefaults');
+        $routes->get('(:segment)', 'Admin\MasterController::index/$1');
+        $routes->get('(:segment)/new', 'Admin\MasterController::create/$1');
+        $routes->post('(:segment)', 'Admin\MasterController::store/$1');
+        $routes->post('(:segment)/seed-defaults', 'Admin\MasterController::seedDefaults/$1');
+        $routes->get('(:segment)/(:num)/edit', 'Admin\MasterController::edit/$1/$2');
+        $routes->post('(:segment)/(:num)', 'Admin\MasterController::update/$1/$2');
+        $routes->post('(:segment)/(:num)/delete', 'Admin\MasterController::delete/$1/$2');
+    });
+
+    // Legacy lookups URL → masters hub
+    $routes->get('lookups', static function () {
+        return redirect()->to('/admin/masters');
+    }, ['filter' => 'auth:admin']);
+    $routes->get('lookups/(:any)', static function () {
+        return redirect()->to('/admin/masters');
+    }, ['filter' => 'auth:admin']);
 });

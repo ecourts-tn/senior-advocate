@@ -4,19 +4,36 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
     <div>
         <h1 class="page-title">Applicant Dashboard</h1>
-        <p class="page-subtitle">Welcome, <?= esc(session()->get('name')) ?></p>
+        <p class="page-subtitle">Welcome, <?= esc(session()->get('name')) ?>
+            · Cycle year <?= (int) ($cycleYear ?? date('Y')) ?></p>
     </div>
-    <?php if ($draft): ?>
+    <?php if (! empty($draft)): ?>
         <a href="<?= base_url('applicant/application/step/' . (int) $draft['current_step']) ?>" class="btn btn-gold">
             <i class="bi bi-pencil-square me-1"></i>
             Continue Draft (Step <?= (int) $draft['current_step'] ?>)
         </a>
-    <?php else: ?>
+    <?php elseif (! empty($editable) && \App\Models\ApplicationModel::isEditableByApplicant($editable)): ?>
+        <a href="<?= base_url('applicant/application/step/' . (int) ($editable['current_step'] ?: 1)) ?>" class="btn btn-gold">
+            <i class="bi bi-pencil-square me-1"></i>
+            Edit application (edit window open)
+        </a>
+    <?php elseif (! empty($canStart)): ?>
         <a href="<?= base_url('applicant/application/start') ?>" class="btn btn-mhc">
             <i class="bi bi-plus-lg me-1"></i> Start New Application
         </a>
     <?php endif; ?>
 </div>
+
+<?php if (! empty($editWindow['open'])): ?>
+    <div class="alert alert-info" role="status">
+        <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
+        <strong>Edit window open.</strong>
+        <?= esc($editWindow['message'] ?: 'You may correct and resubmit your application during this period.') ?>
+        <?php if (! empty($editWindow['to'])): ?>
+            <span class="d-block small mt-1">Closes: <?= esc($editWindow['to']) ?></span>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 
 <?php
 ob_start();
@@ -54,9 +71,11 @@ echo view('partials/table_toolbar', [
                 <i class="bi bi-inbox" aria-hidden="true"></i>
                 <p class="mb-2">No applications yet.</p>
                 <p class="small mb-3">Begin your Application-cum-Consent Letter for Senior Advocate designation.</p>
-                <a href="<?= base_url('applicant/application/start') ?>" class="btn btn-mhc btn-sm">
-                    <i class="bi bi-plus-lg me-1"></i> Start New Application
-                </a>
+                <?php if (! empty($canStart)): ?>
+                    <a href="<?= base_url('applicant/application/start') ?>" class="btn btn-mhc btn-sm">
+                        <i class="bi bi-plus-lg me-1"></i> Start New Application
+                    </a>
+                <?php endif; ?>
             </div>
         <?php else: ?>
             <div class="table-responsive">
@@ -75,6 +94,7 @@ echo view('partials/table_toolbar', [
                     <?php if (empty($applications)): ?>
                         <tr><td colspan="6" class="p-3 text-muted">No records match your filters.</td></tr>
                     <?php else: foreach ($applications as $a): ?>
+                        <?php $rowEditable = \App\Models\ApplicationModel::isEditableByApplicant($a); ?>
                         <tr>
                             <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
                             <td><?= esc(trim(($a['title'] ?? '') . ' ' . ($a['full_name'] ?? ''))) ?></td>
@@ -85,8 +105,8 @@ echo view('partials/table_toolbar', [
                             <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
                             <td class="text-md-end">
                                 <div class="d-flex flex-wrap gap-1 justify-content-md-end">
-                                    <?php if (in_array($a['status'], ['draft', 'returned'], true)): ?>
-                                        <a class="btn btn-sm btn-outline-primary" href="<?= base_url('applicant/application/step/' . (int) $a['current_step']) ?>">
+                                    <?php if ($rowEditable): ?>
+                                        <a class="btn btn-sm btn-outline-primary" href="<?= base_url('applicant/application/step/' . (int) ($a['current_step'] ?: 1)) ?>">
                                             <i class="bi bi-pencil"></i> Edit
                                         </a>
                                     <?php endif; ?>
@@ -127,13 +147,6 @@ echo view('partials/table_toolbar', [
                     <i class="bi bi-journal-text me-1"></i> Read Instructions
                 </a>
             </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="warning-box h-100 mb-0">
-            <strong class="d-block mb-1">Reminder</strong>
-            Errors cannot be rectified after submission and may result in rejection.
-            Ensure all particulars match your enrolment certificate.
         </div>
     </div>
 </div>

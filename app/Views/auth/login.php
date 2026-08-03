@@ -1,6 +1,35 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 
+<?php
+$editWindow = $editWindow ?? \App\Models\ApplicationModel::editWindowInfo();
+if (! empty($editWindow['open'])):
+?>
+    <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+        <div class="d-flex gap-2">
+            <i class="bi bi-info-circle-fill flex-shrink-0 mt-1" aria-hidden="true"></i>
+            <div>
+                <strong class="d-block mb-1">Application edit window is open</strong>
+                <?= esc($editWindow['message'] ?: 'The Permanent Secretariat has opened a limited window to correct and resubmit applications.') ?>
+                <?php if (! empty($editWindow['from']) || ! empty($editWindow['to'])): ?>
+                    <div class="small mt-2">
+                        <?php if (! empty($editWindow['from'])): ?>
+                            <span class="me-3"><strong>Opens:</strong> <?= esc($editWindow['from']) ?></span>
+                        <?php endif; ?>
+                        <?php if (! empty($editWindow['to'])): ?>
+                            <span><strong>Closes:</strong> <?= esc($editWindow['to']) ?></span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+                <div class="small mt-2">
+                    Sign in with your advocate account to edit and resubmit your application.
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <div class="auth-wrap">
     <div class="card card-mhc auth-card">
         <div class="card-header">
@@ -21,10 +50,16 @@
             </div>
             <div class="mb-3">
                 <label class="form-label required" for="password">Password</label>
-                <div class="input-group">
+                <div class="input-group password-toggle-group">
                     <span class="input-group-text bg-white"><i class="bi bi-key"></i></span>
                     <input type="password" name="password" id="password" class="form-control"
                            required autocomplete="current-password" placeholder="Enter password">
+                    <button type="button" class="btn btn-outline-secondary password-toggle-btn"
+                            data-password-toggle="1"
+                            aria-label="Show password" aria-pressed="false" title="Show password">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                        <span class="visually-hidden">Show password</span>
+                    </button>
                 </div>
             </div>
             <?= view('partials/captcha_field', ['fieldId' => 'loginCaptcha']) ?>

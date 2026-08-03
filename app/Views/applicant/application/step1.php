@@ -98,7 +98,29 @@
             </div>
             <div class="col-12">
                 <label class="form-label required">Educational / Professional Qualifications</label>
-                <textarea name="qualifications" class="form-control" rows="3" required><?= esc(old('qualifications', $app['qualifications'] ?? '')) ?></textarea>
+                <?php
+                $qualLabels = $lookupOptions['qualification'] ?? [];
+                $qualMulti  = $app['_multi']['qualification'] ?? null;
+                if ($qualMulti === null) {
+                    $qualMulti = \App\Models\MasterRegistry::parseMultiStored(
+                        (string) ($app['qualifications'] ?? ''),
+                        $qualLabels
+                    );
+                }
+                $qualSelected = old('qualifications');
+                if (is_array($qualSelected)) {
+                    $qualMulti['selected'] = $qualSelected;
+                    $qualMulti['other']    = (string) old('qualifications_other', '');
+                }
+                echo view('partials/multi_select_others', [
+                    'name'     => 'qualifications',
+                    'options'  => $qualLabels,
+                    'selected' => $qualMulti['selected'] ?? [],
+                    'other'    => $qualMulti['other'] ?? '',
+                    'required' => true,
+                    'help'     => 'Select all that apply. Choose Others to enter a qualification not listed.',
+                ]);
+                ?>
             </div>
         </div>
         <?= $this->include('applicant/application/_form_nav') ?>

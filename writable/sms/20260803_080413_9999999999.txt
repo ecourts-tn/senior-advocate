@@ -1,0 +1,5 @@
+To: 9999999999
+Date: 2026-08-03T08:04:13+00:00
+Method: log
+
+MHC SAD Portal: Registration successful for Smoke Test User. Login at http://127.0.0.1:8081/login to start your application.

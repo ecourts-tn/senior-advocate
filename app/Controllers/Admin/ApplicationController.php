@@ -24,25 +24,301 @@ class ApplicationController extends BaseController
     public function index()
     {
         $filters = $this->listQueryParams();
-        $status  = (string) ($this->request->getGet('status') ?? '');
+        $list    = $this->applicationListFilters();
         $q       = $filters['q'];
         $perPage = $filters['perPage'];
 
-        // Extra filter keys for reviewer / approver / admin lists
+        $model = $this->buildApplicationListQuery($list);
+        $model->orderBy('applications.submitted_at', 'DESC')
+            ->orderBy('applications.id', 'DESC');
+
+        $applications = $model->paginate($perPage, 'default', $filters['page']);
+        $pager        = $model->pager;
+        $pager->setPath('admin/applications');
+        $pager->only([
+            'q', 'per_page', 'status',
+            'age_min', 'age_max', 'experience_min',
+            'nature_of_practice', 'field_of_law', 'first_generation',
+        ]);
+
+        return view('admin/applications/index', [
+            'title'             => 'Applications',
+            'applications'      => $applications,
+            'status'            => $list['status'],
+            'q'                 => $q,
+            'perPage'           => $perPage,
+            'page'              => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
+            'total'             => (int) $pager->getTotal('default'),
+            'allowedPerPage'    => $filters['allowedPerPage'],
+            'pager'             => $pager,
+            'statuses'          => ApplicationModel::STATUSES,
+            'hasActiveFilters'  => $list['hasActiveFilters'],
+            'ageMin'            => $list['ageMin'],
+            'ageMax'            => $list['ageMax'],
+            'experienceMin'     => $list['experienceMin'],
+            'natureOfPractice'  => $list['natureOfPractice'],
+            'fieldOfLaw'        => $list['fieldOfLaw'],
+            'firstGeneration'   => $list['firstGeneration'],
+            'exportQuery'       => $this->exportQueryString($list, $q),
+        ]);
+    }
+
+    /**
+     * Export filtered applications to Excel-compatible .xls (SpreadsheetML).
+     * Defaults to non-draft applications; respects the same filters as the list.
+     */
+    public function exportExcel()
+    {
+        $filters = $this->listQueryParams();
+        $list    = $this->applicationListFilters();
+        $q       = $filters['q'];
+
+        // Export focuses on submitted pipeline: if no status chosen, exclude drafts only
+        // (same as list). Caller can pass status=submitted to limit further.
+        $model = $this->buildApplicationListQuery($list);
+        $model->orderBy('applications.submitted_at', 'DESC')
+            ->orderBy('applications.id', 'DESC');
+
+        $rows = $model->findAll(5000);
+
+        model(AuditLogModel::class)->log(
+            'applications_exported',
+            (int) session()->get('user_id'),
+            null,
+            [
+                'count'  => count($rows),
+                'status' => $list['status'] !== '' ? $list['status'] : 'all_non_draft',
+                'q'      => $q,
+            ]
+        );
+
+        $headers = [
+            'Application No.',
+            'Status',
+            'Cycle year',
+            'Title',
+            'Full name',
+            'Date of birth',
+            'Age (years)',
+            'Age (months)',
+            'Email',
+            'Mobile',
+            'Landline',
+            'Office address',
+            'Residential address',
+            'Qualifications',
+            'Enrolment number',
+            'Enrolment date',
+            'Bar Council',
+            'Practice years',
+            'Practice months',
+            'Net income (₹ lakhs)',
+            'Bar association member',
+            'Bar association name',
+            'Reported SC',
+            'Reported HC',
+            'Reported District/Tribunal',
+            'Unreported SC',
+            'Unreported HC',
+            'Unreported District/Tribunal',
+            'Pro bono total',
+            'Amicus total',
+            'First-generation lawyer',
+            'Academic articles',
+            'Academic books',
+            'Teaching assignments',
+            'Guest lectures',
+            'Nature of practice',
+            'Field of law',
+            'Applied MHC earlier',
+            'Applied MHC date',
+            'Applied MHC status',
+            'Applied other court',
+            'Applied other details',
+            'FIR lodged',
+            'FIR details',
+            'Criminal case party',
+            'Criminal case details',
+            'Bar Council proceedings',
+            'Bar Council details',
+            'General health',
+            'Other information',
+            'Submitted at',
+            'Reviewed at',
+            'Review remarks',
+            'Current step',
+        ];
+
+        $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $xml .= '<?mso-application progid="Excel.Sheet"?>' . "\n";
+        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+            . ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
+        $xml .= '<Styles>'
+            . '<Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#0F2340" ss:Pattern="Solid"/>'
+            . '<Font ss:Color="#FFFFFF" ss:Bold="1"/></Style>'
+            . '</Styles>' . "\n";
+        $xml .= '<Worksheet ss:Name="Applications"><Table>' . "\n";
+
+        $xml .= '<Row>';
+        foreach ($headers as $h) {
+            $xml .= '<Cell ss:StyleID="Header"><Data ss:Type="String">' . $this->xmlEscape($h) . '</Data></Cell>';
+        }
+        $xml .= '</Row>' . "\n";
+
+        foreach ($rows as $a) {
+            $statusLabel = ApplicationModel::STATUSES[$a['status'] ?? ''] ?? (string) ($a['status'] ?? '');
+            $cells       = [
+                $a['application_no'] ?? '',
+                $statusLabel,
+                $a['cycle_year'] ?? '',
+                $a['title'] ?? '',
+                $a['full_name'] ?? '',
+                $this->exportDate($a['date_of_birth'] ?? null),
+                $a['age_years'] ?? '',
+                $a['age_months'] ?? '',
+                $a['email'] ?? ($a['account_email'] ?? ''),
+                $a['mobile'] ?? '',
+                $a['phone_landline'] ?? '',
+                $a['address_office'] ?? '',
+                $a['address_residence'] ?? '',
+                $a['qualifications'] ?? '',
+                $a['enrolment_number'] ?? '',
+                $this->exportDate($a['enrolment_date'] ?? null),
+                $a['bar_council'] ?? '',
+                $a['practice_years'] ?? '',
+                $a['practice_months'] ?? '',
+                $a['net_income_lakhs'] ?? '',
+                $this->exportBool($a['is_bar_association_member'] ?? null),
+                $a['bar_association_name'] ?? '',
+                $a['reported_sc'] ?? '',
+                $a['reported_hc'] ?? '',
+                $a['reported_district'] ?? '',
+                $a['unreported_sc'] ?? '',
+                $a['unreported_hc'] ?? '',
+                $a['unreported_district'] ?? '',
+                $a['pro_bono_total'] ?? '',
+                $a['amicus_total'] ?? '',
+                $this->exportBool($a['is_first_generation'] ?? null),
+                $a['academic_articles_count'] ?? '',
+                $a['academic_books_count'] ?? '',
+                $a['teaching_assignments_count'] ?? '',
+                $a['guest_lectures_count'] ?? '',
+                $a['nature_of_practice'] ?? '',
+                $a['field_of_law'] ?? '',
+                $this->exportBool($a['applied_mhc_earlier'] ?? null),
+                $this->exportDate($a['applied_mhc_date'] ?? null),
+                $a['applied_mhc_status'] ?? '',
+                $this->exportBool($a['applied_other_court'] ?? null),
+                $a['applied_other_details'] ?? '',
+                $this->exportBool($a['fir_lodged'] ?? null),
+                $a['fir_details'] ?? '',
+                $this->exportBool($a['criminal_case_party'] ?? null),
+                $a['criminal_case_details'] ?? '',
+                $this->exportBool($a['bar_council_proceedings'] ?? null),
+                $a['bar_council_details'] ?? '',
+                $a['general_health'] ?? '',
+                $a['other_information'] ?? '',
+                $a['submitted_at'] ?? '',
+                $a['reviewed_at'] ?? '',
+                $a['review_remarks'] ?? '',
+                $a['current_step'] ?? '',
+            ];
+
+            $xml .= '<Row>';
+            foreach ($cells as $cell) {
+                $type = is_numeric($cell) && $cell !== '' && ! preg_match('/^0\d/', (string) $cell)
+                    ? 'Number'
+                    : 'String';
+                // Keep long text / mixed IDs as strings
+                if ($type === 'Number' && (str_contains((string) $cell, ' ') || strlen((string) $cell) > 12)) {
+                    $type = 'String';
+                }
+                $xml .= '<Cell><Data ss:Type="' . $type . '">' . $this->xmlEscape((string) $cell) . '</Data></Cell>';
+            }
+            $xml .= '</Row>' . "\n";
+        }
+
+        $xml .= '</Table></Worksheet></Workbook>';
+
+        $filename = 'SAD_applications_' . date('Ymd_His') . '.xls';
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setBody($xml);
+    }
+
+    /**
+     * @return array{
+     *   status: string,
+     *   ageMin: ?int,
+     *   ageMax: ?int,
+     *   experienceMin: ?int,
+     *   natureOfPractice: string,
+     *   fieldOfLaw: string,
+     *   firstGeneration: string,
+     *   hasActiveFilters: bool
+     * }
+     */
+    private function applicationListFilters(): array
+    {
+        $status           = (string) ($this->request->getGet('status') ?? '');
         $ageMin           = $this->nullableIntGet('age_min');
         $ageMax           = $this->nullableIntGet('age_max');
         $experienceMin    = $this->nullableIntGet('experience_min');
         $natureOfPractice = trim((string) ($this->request->getGet('nature_of_practice') ?? ''));
         $fieldOfLaw       = trim((string) ($this->request->getGet('field_of_law') ?? ''));
+        $firstGeneration  = trim((string) ($this->request->getGet('first_generation') ?? ''));
+        if (! in_array($firstGeneration, ['1', '0'], true)) {
+            $firstGeneration = '';
+        }
+        if ($status !== '' && ! array_key_exists($status, ApplicationModel::STATUSES)) {
+            $status = '';
+        }
+
+        $hasActiveFilters = $status !== ''
+            || $ageMin !== null
+            || $ageMax !== null
+            || $experienceMin !== null
+            || $natureOfPractice !== ''
+            || $fieldOfLaw !== ''
+            || $firstGeneration !== '';
+
+        return [
+            'status'           => $status,
+            'ageMin'           => $ageMin,
+            'ageMax'           => $ageMax,
+            'experienceMin'    => $experienceMin,
+            'natureOfPractice' => $natureOfPractice,
+            'fieldOfLaw'       => $fieldOfLaw,
+            'firstGeneration'  => $firstGeneration,
+            'hasActiveFilters' => $hasActiveFilters,
+        ];
+    }
+
+    /**
+     * @param array{
+     *   status: string,
+     *   ageMin: ?int,
+     *   ageMax: ?int,
+     *   experienceMin: ?int,
+     *   natureOfPractice: string,
+     *   fieldOfLaw: string,
+     *   firstGeneration: string
+     * } $list
+     */
+    private function buildApplicationListQuery(array $list): ApplicationModel
+    {
+        $q = trim((string) ($this->request->getGet('q') ?? ''));
 
         $model = model(ApplicationModel::class);
         $model->select('applications.*, users.name as applicant_account_name, users.email as account_email')
             ->join('users', 'users.id = applications.user_id', 'left');
 
-        if ($status !== '' && array_key_exists($status, ApplicationModel::STATUSES)) {
-            $model->where('applications.status', $status);
+        if ($list['status'] !== '' && array_key_exists($list['status'], ApplicationModel::STATUSES)) {
+            $model->where('applications.status', $list['status']);
         } else {
-            $status = '';
             $model->where('applications.status !=', ApplicationModel::STATUS_DRAFT);
         }
 
@@ -57,60 +333,87 @@ class ApplicationController extends BaseController
                 ->groupEnd();
         }
 
-        if ($ageMin !== null) {
-            $model->where('applications.age_years >=', $ageMin);
+        if ($list['ageMin'] !== null) {
+            $model->where('applications.age_years >=', $list['ageMin']);
         }
-        if ($ageMax !== null) {
-            $model->where('applications.age_years <=', $ageMax);
+        if ($list['ageMax'] !== null) {
+            $model->where('applications.age_years <=', $list['ageMax']);
         }
-        // Experience at the Bar (practice years)
-        if ($experienceMin !== null) {
-            $model->where('applications.practice_years >=', $experienceMin);
+        if ($list['experienceMin'] !== null) {
+            $model->where('applications.practice_years >=', $list['experienceMin']);
         }
-        if ($natureOfPractice !== '') {
-            $model->like('applications.nature_of_practice', $natureOfPractice, 'both', null, true);
+        if ($list['natureOfPractice'] !== '') {
+            $model->like('applications.nature_of_practice', $list['natureOfPractice'], 'both', null, true);
         }
-        if ($fieldOfLaw !== '') {
-            $model->like('applications.field_of_law', $fieldOfLaw, 'both', null, true);
+        if ($list['fieldOfLaw'] !== '') {
+            $model->like('applications.field_of_law', $list['fieldOfLaw'], 'both', null, true);
+        }
+        if ($list['firstGeneration'] === '1') {
+            $model->groupStart()
+                ->where('applications.is_first_generation', true)
+                ->orWhere('applications.is_first_generation', 1)
+                ->orWhere('applications.is_first_generation', 't')
+                ->orWhere('applications.is_first_generation', '1')
+                ->groupEnd();
+        } elseif ($list['firstGeneration'] === '0') {
+            $model->groupStart()
+                ->where('applications.is_first_generation', false)
+                ->orWhere('applications.is_first_generation', 0)
+                ->orWhere('applications.is_first_generation', 'f')
+                ->orWhere('applications.is_first_generation', '0')
+                ->groupEnd();
         }
 
-        $model->orderBy('applications.submitted_at', 'DESC')
-            ->orderBy('applications.id', 'DESC');
+        return $model;
+    }
 
-        $applications = $model->paginate($perPage, 'default', $filters['page']);
-        $pager        = $model->pager;
-        $pager->setPath('admin/applications');
-        $pager->only([
-            'q', 'per_page', 'status',
-            'age_min', 'age_max', 'experience_min',
-            'nature_of_practice', 'field_of_law',
-        ]);
+    /**
+     * @param array<string, mixed> $list
+     */
+    private function exportQueryString(array $list, string $q): string
+    {
+        $params = array_filter([
+            'q'                  => $q !== '' ? $q : null,
+            'status'             => $list['status'] !== '' ? $list['status'] : null,
+            'age_min'            => $list['ageMin'],
+            'age_max'            => $list['ageMax'],
+            'experience_min'     => $list['experienceMin'],
+            'nature_of_practice' => $list['natureOfPractice'] !== '' ? $list['natureOfPractice'] : null,
+            'field_of_law'       => $list['fieldOfLaw'] !== '' ? $list['fieldOfLaw'] : null,
+            'first_generation'   => $list['firstGeneration'] !== '' ? $list['firstGeneration'] : null,
+        ], static fn ($v) => $v !== null && $v !== '');
 
-        $hasActiveFilters = $status !== ''
-            || $ageMin !== null
-            || $ageMax !== null
-            || $experienceMin !== null
-            || $natureOfPractice !== ''
-            || $fieldOfLaw !== '';
+        return $params === [] ? '' : ('?' . http_build_query($params));
+    }
 
-        return view('admin/applications/index', [
-            'title'             => 'Applications',
-            'applications'      => $applications,
-            'status'            => $status,
-            'q'                 => $q,
-            'perPage'           => $perPage,
-            'page'              => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
-            'total'             => (int) $pager->getTotal('default'),
-            'allowedPerPage'    => $filters['allowedPerPage'],
-            'pager'             => $pager,
-            'statuses'          => ApplicationModel::STATUSES,
-            'hasActiveFilters'  => $hasActiveFilters,
-            'ageMin'            => $ageMin,
-            'ageMax'            => $ageMax,
-            'experienceMin'     => $experienceMin,
-            'natureOfPractice'  => $natureOfPractice,
-            'fieldOfLaw'        => $fieldOfLaw,
-        ]);
+    private function xmlEscape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
+
+    private function exportBool(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        if ($value === true || $value === 1 || $value === '1' || $value === 't' || $value === 'true') {
+            return 'Yes';
+        }
+        if ($value === false || $value === 0 || $value === '0' || $value === 'f' || $value === 'false') {
+            return 'No';
+        }
+
+        return (string) $value;
+    }
+
+    private function exportDate(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        $s = (string) $value;
+
+        return substr($s, 0, 10);
     }
 
     /**

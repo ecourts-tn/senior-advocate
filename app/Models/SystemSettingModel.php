@@ -52,6 +52,15 @@ class SystemSettingModel extends Model
                 'api_key'   => ['value' => (string) env('sms.apiKey', ''), 'secret' => true],
                 'sender_id' => ['value' => (string) env('sms.senderId', 'MHCSAD')],
             ],
+            // Application cycle + post-submission edit window (admin-controlled)
+            'application' => [
+                'cycle_year'           => ['value' => (string) env('application.cycleYear', '2026')],
+                'one_per_year'         => ['value' => '1'],
+                'edit_window_enabled'  => ['value' => '0'],
+                'edit_window_from'     => ['value' => ''],
+                'edit_window_to'       => ['value' => ''],
+                'edit_window_message'  => ['value' => 'The Permanent Secretariat has opened a limited window to correct and resubmit your application.'],
+            ],
         ];
     }
 

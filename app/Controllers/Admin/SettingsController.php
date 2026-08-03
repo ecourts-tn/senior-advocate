@@ -183,4 +183,80 @@ class SettingsController extends BaseController
 
         return redirect()->back()->with('error', 'Test SMS failed: ' . ($result['response'] ?? 'unknown error'));
     }
+
+    public function application()
+    {
+        $settings = model(SystemSettingModel::class);
+        $settings->ensureDefaults();
+
+        return view('admin/settings/application', [
+            'title'    => 'Application cycle & edit window',
+            'settings' => $settings->getGroup('application'),
+        ]);
+    }
+
+    public function saveApplication()
+    {
+        $settings = model(SystemSettingModel::class);
+        $settings->ensureDefaults();
+
+        $rules = [
+            'cycle_year'          => 'required|integer|greater_than[1999]|less_than[2101]',
+            'edit_window_from'    => 'permit_empty',
+            'edit_window_to'      => 'permit_empty',
+            'edit_window_message' => 'permit_empty|max_length[1000]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        $from = trim((string) $this->request->getPost('edit_window_from'));
+        $to   = trim((string) $this->request->getPost('edit_window_to'));
+
+        // Normalise datetime-local values (YYYY-MM-DDTHH:MM) to SQL datetime
+        $norm = static function (string $v): string {
+            $v = trim($v);
+            if ($v === '') {
+                return '';
+            }
+            $v = str_replace('T', ' ', $v);
+            if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $v)) {
+                $v .= ':00';
+            }
+
+            return $v;
+        };
+        $from = $norm($from);
+        $to   = $norm($to);
+
+        if ($from !== '' && $to !== '' && strtotime($to) !== false && strtotime($from) !== false
+            && strtotime($to) < strtotime($from)) {
+            return redirect()->back()->withInput()
+                ->with('error', 'Edit window end must be after the start.');
+        }
+
+        $values = [
+            'cycle_year'          => (string) (int) $this->request->getPost('cycle_year'),
+            'one_per_year'        => $this->request->getPost('one_per_year') ? '1' : '0',
+            'edit_window_enabled' => $this->request->getPost('edit_window_enabled') ? '1' : '0',
+            'edit_window_from'    => $from,
+            'edit_window_to'      => $to,
+            'edit_window_message' => trim((string) $this->request->getPost('edit_window_message')),
+        ];
+
+        $userId = (int) session()->get('user_id');
+        $settings->setGroup('application', $values, $userId);
+
+        model(AuditLogModel::class)->log('settings_application_updated', $userId, null, [
+            'cycle_year'          => $values['cycle_year'],
+            'one_per_year'        => $values['one_per_year'],
+            'edit_window_enabled' => $values['edit_window_enabled'],
+            'edit_window_from'    => $values['edit_window_from'],
+            'edit_window_to'      => $values['edit_window_to'],
+        ]);
+
+        return redirect()->to('/admin/settings/application')
+            ->with('success', 'Application cycle and edit window settings saved.');
+    }
 }

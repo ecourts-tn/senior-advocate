@@ -127,6 +127,10 @@ document.addEventListener('DOMContentLoaded', function () {
       clone.removeAttribute('data-row-template');
       clone.classList.remove('d-none');
       clearFields(clone);
+      // Allow Others toggles to re-bind on the new row
+      clone.querySelectorAll('[data-others-group]').forEach(function (g) {
+        delete g.dataset.othersBound;
+      });
       container.appendChild(clone);
     });
   });
@@ -322,4 +326,122 @@ document.addEventListener('DOMContentLoaded', function () {
     el.addEventListener('change', update);
     update();
   });
+
+  // Dropdown / multi-select "Others" free-text capture
+  function syncOthersGroup(group) {
+    if (!group) return;
+    var trigger = group.querySelector('[data-others-trigger]');
+    var fieldWrap = group.querySelector('[data-others-field]');
+    if (!trigger || !fieldWrap) return;
+
+    var show = false;
+    if (trigger.tagName === 'SELECT') {
+      show = trigger.value === '__others__' || String(trigger.value).toLowerCase() === 'others';
+    } else if (trigger.type === 'checkbox') {
+      show = !!trigger.checked;
+    }
+
+    if (show) {
+      fieldWrap.removeAttribute('hidden');
+    } else {
+      fieldWrap.setAttribute('hidden', 'hidden');
+    }
+
+    fieldWrap.querySelectorAll('input, textarea').forEach(function (inp) {
+      inp.disabled = !show;
+      if (!show) {
+        // Keep value for re-open; only clear if never used is not needed —
+        // disabled fields are not posted, which is correct.
+      }
+    });
+  }
+
+  function bindOthersGroup(group) {
+    if (!group || group.dataset.othersBound === '1') return;
+    group.dataset.othersBound = '1';
+    var trigger = group.querySelector('[data-others-trigger]');
+    if (!trigger) return;
+    trigger.addEventListener('change', function () {
+      syncOthersGroup(group);
+    });
+    syncOthersGroup(group);
+  }
+
+  document.querySelectorAll('[data-others-group]').forEach(bindOthersGroup);
+
+  // Re-bind Others handlers when dynamic rows are added
+  document.querySelectorAll('[data-add-row]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setTimeout(function () {
+        document.querySelectorAll('[data-others-group]').forEach(function (group) {
+          // New clones need a fresh bind flag
+          if (!group.dataset.othersBound) {
+            bindOthersGroup(group);
+          }
+        });
+        // Clones copy data-others-bound — rebind uncloned groups without handlers
+        var target = document.querySelector(btn.getAttribute('data-add-row'));
+        if (!target) return;
+        var container = getRowContainer(target);
+        if (!container) return;
+        var rows = container.querySelectorAll('.dynamic-row');
+        if (!rows.length) return;
+        var last = rows[rows.length - 1];
+        last.querySelectorAll('[data-others-group]').forEach(function (group) {
+          delete group.dataset.othersBound;
+          bindOthersGroup(group);
+          syncOthersGroup(group);
+        });
+      }, 0);
+    });
+  });
+
+  // ---------- Password show / hide ----------
+  function setPasswordToggleState(input, btn, showPlain) {
+    input.type = showPlain ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', showPlain ? 'true' : 'false');
+    btn.setAttribute('aria-label', showPlain ? 'Hide password' : 'Show password');
+    btn.setAttribute('title', showPlain ? 'Hide password' : 'Show password');
+    btn.innerHTML = showPlain
+      ? '<i class="bi bi-eye-slash" aria-hidden="true"></i><span class="visually-hidden">Hide password</span>'
+      : '<i class="bi bi-eye" aria-hidden="true"></i><span class="visually-hidden">Show password</span>';
+  }
+
+  function bindPasswordToggle(input, btn) {
+    if (!input || !btn || btn.dataset.passwordToggleBound === '1') return;
+    btn.dataset.passwordToggleBound = '1';
+    btn.addEventListener('click', function () {
+      setPasswordToggleState(input, btn, input.type === 'password');
+    });
+  }
+
+  function enhancePasswordField(input) {
+    if (!input || input.dataset.passwordToggleReady === '1') return;
+    if (input.getAttribute('data-no-password-toggle') === '1') return;
+    input.dataset.passwordToggleReady = '1';
+
+    var group = input.closest('.input-group');
+    if (!group) {
+      group = document.createElement('div');
+      group.className = 'input-group password-toggle-group';
+      input.parentNode.insertBefore(group, input);
+      group.appendChild(input);
+    } else {
+      group.classList.add('password-toggle-group');
+    }
+
+    var btn = group.querySelector('[data-password-toggle]');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-outline-secondary password-toggle-btn';
+      btn.setAttribute('data-password-toggle', '1');
+      setPasswordToggleState(input, btn, false);
+      group.appendChild(btn);
+    }
+
+    bindPasswordToggle(input, btn);
+  }
+
+  document.querySelectorAll('input[type="password"]').forEach(enhancePasswordField);
 });

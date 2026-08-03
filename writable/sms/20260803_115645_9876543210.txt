@@ -1,0 +1,5 @@
+To: 9876543210
+Date: 2026-08-03T11:56:45+00:00
+Method: log
+
+MHC SAD Portal: Application MHC/DSA/2026/0004 submitted successfully. Keep your Application No. for reference.

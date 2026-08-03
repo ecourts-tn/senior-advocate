@@ -1,9 +1,15 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 
-<div class="page-header">
-    <h1 class="page-title">Applications</h1>
-    <p class="page-subtitle">Search and review Senior Advocate designation applications</p>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1 class="page-title">Applications</h1>
+        <p class="page-subtitle">Search and review Senior Advocate designation applications</p>
+    </div>
+    <a href="<?= base_url('admin/applications/export' . ($exportQuery ?? '')) ?>"
+       class="btn btn-outline-success btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i> Export Excel
+    </a>
 </div>
 
 <?php
@@ -48,6 +54,15 @@ ob_start();
            value="<?= esc($fieldOfLaw ?? '') ?>"
            placeholder="e.g. Constitutional" autocomplete="off">
 </div>
+<div class="col-md-3 col-lg-2">
+    <label class="form-label" for="firstGeneration">First-generation lawyer</label>
+    <select name="first_generation" id="firstGeneration" class="form-select"
+            title="Filter by first-generation lawyer (Sl. No. 12)">
+        <option value="">All</option>
+        <option value="1" <?= ($firstGeneration ?? '') === '1' ? 'selected' : '' ?>>Yes</option>
+        <option value="0" <?= ($firstGeneration ?? '') === '0' ? 'selected' : '' ?>>No</option>
+    </select>
+</div>
 <?php
 $extraFilters = ob_get_clean();
 
@@ -74,6 +89,7 @@ echo view('partials/table_toolbar', [
                     <th>Age</th>
                     <th>Experience</th>
                     <th>Nature / Field</th>
+                    <th>1st-gen</th>
                     <th>Status</th>
                     <th>Submitted</th>
                     <th></th>
@@ -81,7 +97,7 @@ echo view('partials/table_toolbar', [
                 </thead>
                 <tbody>
                 <?php if (empty($applications)): ?>
-                    <tr><td colspan="9" class="p-3 text-muted">No records found.</td></tr>
+                    <tr><td colspan="10" class="p-3 text-muted">No records found.</td></tr>
                 <?php else: foreach ($applications as $a): ?>
                     <tr>
                         <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
@@ -120,6 +136,7 @@ echo view('partials/table_toolbar', [
                             }
                             ?>
                         </td>
+                        <td class="small"><?= sad_bool_label($a['is_first_generation'] ?? null) ?></td>
                         <td><?= sad_status_badge($a['status']) ?></td>
                         <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
                         <td class="text-end">

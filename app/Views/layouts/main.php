@@ -97,7 +97,33 @@ $site = $site ?? config(\Config\Site::class);
                                 <a class="nav-link" href="<?= base_url('admin/audit') ?>"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>Audit</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?= base_url('admin/settings/email') ?>"><i class="bi bi-gear me-1" aria-hidden="true"></i>Settings</a>
+                                <a class="nav-link" href="<?= base_url('admin/notifications') ?>"><i class="bi bi-envelope-paper me-1" aria-hidden="true"></i>Notifications</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navMasters" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-database me-1" aria-hidden="true"></i>Masters
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navMasters">
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters') ?>"><i class="bi bi-grid me-1"></i> All masters</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters/qualification') ?>">Educational qualifications</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters/court') ?>">Courts</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters/tribunal') ?>">Tribunals</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters/nature_of_practice') ?>">Nature of practice</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/masters/field_of_law') ?>">Field of law</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navSettings" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-gear me-1" aria-hidden="true"></i>Settings
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navSettings">
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/settings/application') ?>">Cycle &amp; edit window</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/settings/email') ?>">Email transport</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/settings/sms') ?>">SMS gateway</a></li>
+                                </ul>
                             </li>
                         <?php endif; ?>
                     <?php else: ?>

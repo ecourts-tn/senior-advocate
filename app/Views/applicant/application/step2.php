@@ -23,8 +23,23 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Enrolment Number</label>
-                <input type="text" name="enrolment_number" class="form-control" required
-                       value="<?= esc(old('enrolment_number', $app['enrolment_number'] ?? '')) ?>">
+                <?php
+                $enrolmentLocked = ! empty($enrolmentFromAccount);
+                $enrolmentValue  = old(
+                    'enrolment_number',
+                    $app['enrolment_number'] ?? ($enrolmentFromAccount ?? '')
+                );
+                ?>
+                <input type="text" name="enrolment_number" class="form-control <?= $enrolmentLocked ? 'bg-light' : '' ?>"
+                       required
+                       <?= $enrolmentLocked ? 'readonly tabindex="-1"' : '' ?>
+                       value="<?= esc($enrolmentValue) ?>"
+                       autocomplete="off">
+                <?php if ($enrolmentLocked): ?>
+                    <div class="form-text">From your registration (not editable).</div>
+                <?php else: ?>
+                    <div class="form-text">Enter the enrolment number as on your certificate.</div>
+                <?php endif; ?>
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Bar Council where registered</label>

@@ -43,12 +43,21 @@ class DashboardController extends BaseController
         $pager->setPath('applicant/dashboard');
         $pager->only(['q', 'per_page', 'status']);
 
-        $draft = model(ApplicationModel::class)->findDraftForUser($userId);
+        $appsModel   = model(ApplicationModel::class);
+        $draft       = $appsModel->findDraftForUser($userId);
+        $editable    = $appsModel->findEditableForUser($userId);
+        $canStart    = $appsModel->canStartNewApplication($userId);
+        $editWindow  = ApplicationModel::editWindowInfo();
+        $cycleYear   = ApplicationModel::currentCycleYear();
 
         return view('applicant/dashboard', [
             'title'            => 'Applicant Dashboard',
             'applications'     => $applications,
             'draft'            => $draft,
+            'editable'         => $editable,
+            'canStart'         => $canStart,
+            'editWindow'       => $editWindow,
+            'cycleYear'        => $cycleYear,
             'q'                => $q,
             'status'           => $status,
             'statuses'         => ApplicationModel::STATUSES,

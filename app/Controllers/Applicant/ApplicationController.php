@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Libraries\NotificationService;
 use App\Libraries\PdfService;
 use App\Libraries\UploadService;
+use App\Models\AdvocateDbModel;
 use App\Models\ApplicationModel;
 use App\Models\ApplicationSequenceModel;
 use App\Models\ApplicationStatusHistoryModel;
@@ -15,6 +16,8 @@ use App\Models\FormatL2Model;
 use App\Models\FormatL3AmicusModel;
 use App\Models\FormatL3ProBonoModel;
 use App\Models\FormatL4Model;
+use App\Models\ApplicationMasterLink;
+use App\Models\MasterRegistry;
 use App\Models\UserModel;
 
 class ApplicationController extends BaseController
@@ -41,18 +44,25 @@ class ApplicationController extends BaseController
             return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
         }
 
-        // Only one active non-final application at a time
-        $open = $this->apps->where('user_id', $userId)
-            ->whereIn('status', ApplicationModel::inProcessStatuses())
-            ->first();
+        if (! $this->apps->canStartNewApplication($userId)) {
+            $existing = $this->apps->findForUserCycle($userId)
+                ?? $this->apps->where('user_id', $userId)
+                    ->whereIn('status', ApplicationModel::inProcessStatuses())
+                    ->first();
+            $year = ApplicationModel::currentCycleYear();
+            $msg  = 'You may submit only one application for the ' . $year
+                . ' designation cycle. '
+                . ($existing
+                    ? 'Existing application: ' . ($existing['application_no'] ?? ('#' . $existing['id'])) . ' (' . (ApplicationModel::STATUSES[$existing['status']] ?? $existing['status']) . ').'
+                    : '');
 
-        if ($open) {
-            return redirect()->to('/applicant/dashboard')
-                ->with('error', 'You already have an application under process (' . $open['application_no'] . ').');
+            return redirect()->to('/applicant/dashboard')->with('error', trim($msg));
         }
 
         return view('applicant/application/instructions', [
-            'title' => 'Instructions — Start Application',
+            'title'      => 'Instructions — Start Application',
+            'cycleYear'  => ApplicationModel::currentCycleYear(),
+            'editWindow' => ApplicationModel::editWindowInfo(),
         ]);
     }
 
@@ -68,13 +78,11 @@ class ApplicationController extends BaseController
             return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
         }
 
-        $open = $this->apps->where('user_id', $userId)
-            ->whereIn('status', ApplicationModel::inProcessStatuses())
-            ->first();
+        if (! $this->apps->canStartNewApplication($userId)) {
+            $year = ApplicationModel::currentCycleYear();
 
-        if ($open) {
             return redirect()->to('/applicant/dashboard')
-                ->with('error', 'You already have an application under process (' . $open['application_no'] . ').');
+                ->with('error', 'You may submit only one application for the ' . $year . ' designation cycle.');
         }
 
         $accepted = $this->request->getPost('instructions_accepted');
@@ -85,10 +93,12 @@ class ApplicationController extends BaseController
 
         $user    = model(UserModel::class)->find($userId);
         $contact = $this->registrationContact($userId);
+        $year    = ApplicationModel::currentCycleYear();
 
         $id = $this->apps->insert([
             'user_id'               => $userId,
             'status'                => ApplicationModel::STATUS_DRAFT,
+            'cycle_year'            => $year,
             'current_step'          => 1,
             'email'                 => $contact['email'],
             'mobile'                => $contact['mobile'],
@@ -99,6 +109,7 @@ class ApplicationController extends BaseController
 
         model(AuditLogModel::class)->log('application_created', $userId, (int) $id, [
             'instructions_accepted' => true,
+            'cycle_year'            => $year,
         ]);
         model(ApplicationStatusHistoryModel::class)->record(
             (int) $id,
@@ -115,10 +126,10 @@ class ApplicationController extends BaseController
     public function step(int $step = 1)
     {
         $step = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
-        $app  = $this->requireEditableDraft();
+        $app  = $this->requireEditableApplication();
         if ($app === null) {
-            return redirect()->to('/applicant/application/start')
-                ->with('error', 'Please read and accept the instructions before filling the application.');
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'No editable application found. You can edit only drafts, returned applications, or during an admin-opened edit window.');
         }
 
         $app = $this->apps->withDecoded($app);
@@ -143,12 +154,65 @@ class ApplicationController extends BaseController
             }
         }
 
+        // Auto-populate enrolment (and related fields) from registration / advocate_db.
+        $enrolmentFromAccount = null;
+        if ($step === 2) {
+            $user = model(UserModel::class)->find((int) session()->get('user_id'));
+            $enrolmentFromAccount = trim((string) ($user['enrolment_number'] ?? session()->get('enrolment_number') ?? ''));
+            if ($enrolmentFromAccount === '') {
+                $enrolmentFromAccount = null;
+            }
+
+            if (empty($app['enrolment_number']) && $enrolmentFromAccount) {
+                $app['enrolment_number'] = $enrolmentFromAccount;
+            }
+
+            // Prefill date / bar council from advocate master when still blank.
+            $lookupNo = trim((string) ($app['enrolment_number'] ?? $enrolmentFromAccount ?? ''));
+            if ($lookupNo !== '' && (empty($app['enrolment_date']) || empty($app['bar_council']))) {
+                $adv = model(AdvocateDbModel::class)->findByEnrolment($lookupNo);
+                if ($adv) {
+                    $prefill = model(AdvocateDbModel::class)->toRegistrationPrefill($adv);
+                    if (empty($app['enrolment_date']) && ! empty($prefill['enrolment_date'])) {
+                        $app['enrolment_date'] = $prefill['enrolment_date'];
+                    }
+                    if (empty($app['bar_council']) && ! empty($prefill['bar'])) {
+                        $app['bar_council'] = $prefill['bar'];
+                    }
+                    if (! empty($app['enrolment_date'])) {
+                        $practiceParts = $this->apps->calculateAgePartsAsOn(
+                            substr((string) $app['enrolment_date'], 0, 10),
+                            '2026-01-01'
+                        );
+                        if ($practiceParts !== null) {
+                            $app['practice_years']  = $practiceParts['years'];
+                            $app['practice_months'] = $practiceParts['months'];
+                        }
+                    }
+                }
+            }
+        }
+
         $data = [
             'title' => 'Application – Step ' . $step,
             'app'   => $app,
             'step'  => $step,
             'steps' => sad_step_labels(),
         ];
+
+        if ($step === 2) {
+            $data['enrolmentFromAccount'] = $enrolmentFromAccount;
+        }
+
+        if (in_array($step, [1, 5], true)) {
+            $data['lookupOptions'] = $this->lookupOptionsForSteps();
+        }
+
+        $data['editWindow'] = ApplicationModel::editWindowInfo();
+        $data['isEditWindowEdit'] = ! in_array($app['status'], [
+            ApplicationModel::STATUS_DRAFT,
+            ApplicationModel::STATUS_RETURNED,
+        ], true);
 
         if (in_array($step, [3, 4], true)) {
             $data['l1']   = model(FormatL1Model::class)->forApplication((int) $app['id']);
@@ -163,10 +227,10 @@ class ApplicationController extends BaseController
 
     public function saveStep(int $step)
     {
-        $app = $this->requireEditableDraft();
+        $app = $this->requireEditableApplication();
         if ($app === null) {
-            return redirect()->to('/applicant/application/start')
-                ->with('error', 'Please read and accept the instructions before filling the application.');
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'This application cannot be edited right now.');
         }
 
         $userId = (int) session()->get('user_id');
@@ -216,6 +280,11 @@ class ApplicationController extends BaseController
 
         $this->apps->update($app['id'], $data);
 
+        // One-to-many multi-select masters (also keep denormalised text columns in $data)
+        if ($step === 1 || $step === 5) {
+            $this->syncMultiMasters((int) $app['id'], $step, $post);
+        }
+
         // Nested format tables
         if ($step === 3) {
             $this->saveFormatRows((int) $app['id'], $post);
@@ -251,8 +320,15 @@ class ApplicationController extends BaseController
             return redirect()->to('/applicant/application/step/' . ($step - 1));
         }
 
+        $savedMsg = in_array($app['status'], [
+            ApplicationModel::STATUS_DRAFT,
+            ApplicationModel::STATUS_RETURNED,
+        ], true)
+            ? 'Draft saved successfully.'
+            : 'Changes saved. Use Submit on the last step to resubmit the application.';
+
         return redirect()->to('/applicant/application/step/' . $step)
-            ->with('success', 'Draft saved successfully.');
+            ->with('success', $savedMsg);
     }
 
     public function view(int $id)
@@ -312,24 +388,37 @@ class ApplicationController extends BaseController
                 ->with('error', implode(' ', $errors));
         }
 
-        $appNo = $app['application_no'];
+        $cycleYear = (int) ($app['cycle_year'] ?? 0) ?: ApplicationModel::currentCycleYear();
+        $appNo     = $app['application_no'];
         if (empty($appNo)) {
-            $appNo = model(ApplicationSequenceModel::class)->nextNumber('MHC/DSA', 2026);
+            $appNo = model(ApplicationSequenceModel::class)->nextNumber('MHC/DSA', $cycleYear);
         }
 
         $from = $app['status'];
+        $isResubmit = in_array($from, [
+            ApplicationModel::STATUS_RETURNED,
+            ApplicationModel::STATUS_SUBMITTED,
+            ApplicationModel::STATUS_UNDER_REVIEW,
+            ApplicationModel::STATUS_PENDING_APPROVAL,
+        ], true);
+
         $this->apps->update($id, [
-            'application_no'       => $appNo,
-            'status'               => ApplicationModel::STATUS_SUBMITTED,
-            'submitted_at'         => date('Y-m-d H:i:s'),
-            'declaration_accepted' => 't',
-            'instructions_accepted'=> 't',
-            'declaration_date'     => date('Y-m-d'),
+            'application_no'        => $appNo,
+            'status'                => ApplicationModel::STATUS_SUBMITTED,
+            'cycle_year'            => $cycleYear,
+            'submitted_at'          => date('Y-m-d H:i:s'),
+            'declaration_accepted'  => 't',
+            'instructions_accepted' => 't',
+            'declaration_date'      => date('Y-m-d'),
+            // Clear generated PDF so a fresh snapshot is produced after edits
+            'generated_pdf_path'    => null,
         ]);
 
-        $submitNote = $from === ApplicationModel::STATUS_RETURNED
-            ? 'Application resubmitted after correction'
-            : 'Application submitted';
+        $submitNote = match (true) {
+            $from === ApplicationModel::STATUS_RETURNED => 'Application resubmitted after correction',
+            $isResubmit && $from !== ApplicationModel::STATUS_DRAFT => 'Application updated during edit window and resubmitted',
+            default => 'Application submitted',
+        };
 
         model(ApplicationStatusHistoryModel::class)->record(
             $id,
@@ -340,7 +429,9 @@ class ApplicationController extends BaseController
         );
         model(AuditLogModel::class)->log('application_submitted', $userId, $id, [
             'application_no' => $appNo,
-            'resubmit'       => $from === ApplicationModel::STATUS_RETURNED,
+            'resubmit'       => $isResubmit && $from !== ApplicationModel::STATUS_DRAFT,
+            'from_status'    => $from,
+            'cycle_year'     => $cycleYear,
         ]);
 
         // Generate PDF snapshot
@@ -362,7 +453,7 @@ class ApplicationController extends BaseController
         $user = model(UserModel::class)->find($userId);
         (new NotificationService())->applicationSubmitted($fresh, $user ?: null);
 
-        $msg = $from === ApplicationModel::STATUS_RETURNED
+        $msg = ($isResubmit && $from !== ApplicationModel::STATUS_DRAFT)
             ? 'Application resubmitted successfully. Application No: ' . $appNo
             : 'Application submitted successfully. Application No: ' . $appNo;
 
@@ -410,19 +501,25 @@ class ApplicationController extends BaseController
     }
 
     /**
-     * Editable draft for the current user, or null if none (must accept instructions first).
+     * Application the current user may edit: draft / returned, or submitted during edit window.
      */
-    protected function requireEditableDraft(): ?array
+    protected function requireEditableApplication(): ?array
     {
         $userId = (int) session()->get('user_id');
-        $draft  = $this->apps->findDraftForUser($userId);
+        $app    = $this->apps->findEditableForUser($userId);
 
-        if (! $draft) {
+        if (! $app || ! ApplicationModel::isEditableByApplicant($app)) {
             return null;
         }
 
         // Backfill registration contact if missing on older drafts
-        return $this->ensureRegistrationContact($draft);
+        return $this->ensureRegistrationContact($app);
+    }
+
+    /** @deprecated Use requireEditableApplication() */
+    protected function requireEditableDraft(): ?array
+    {
+        return $this->requireEditableApplication();
     }
 
     /**
@@ -478,6 +575,7 @@ class ApplicationController extends BaseController
                 // Email & mobile are fixed from registration; ignore client tampering.
                 $contact = $this->registrationContact((int) session()->get('user_id'));
 
+                // Display string is refreshed after pivot sync in saveStep
                 return [
                     'title'             => $post['title'] ?? null,
                     'full_name'         => trim($post['full_name'] ?? ''),
@@ -487,12 +585,17 @@ class ApplicationController extends BaseController
                     'phone_landline'    => trim($post['phone_landline'] ?? ''),
                     'mobile'            => $contact['mobile'] !== '' ? $contact['mobile'] : (string) ($app['mobile'] ?? ''),
                     'email'             => $contact['email'] !== '' ? $contact['email'] : (string) ($app['email'] ?? ''),
-                    'qualifications'    => trim($post['qualifications'] ?? ''),
                 ];
             case 2:
+                // Prefer registration enrolment number when present (locked on form).
+                $user = model(UserModel::class)->find((int) session()->get('user_id'));
+                $fromAccount = trim((string) ($user['enrolment_number'] ?? session()->get('enrolment_number') ?? ''));
+                $postedEnrol = trim((string) ($post['enrolment_number'] ?? ''));
+                $enrolmentNumber = $fromAccount !== '' ? $fromAccount : $postedEnrol;
+
                 return [
                     'enrolment_date'            => $post['enrolment_date'] ?: null,
-                    'enrolment_number'          => trim($post['enrolment_number'] ?? ''),
+                    'enrolment_number'          => $enrolmentNumber,
                     'bar_council'               => trim($post['bar_council'] ?? ''),
                     'practice_years'            => (int) ($post['practice_years'] ?? 0),
                     'practice_months'           => (int) ($post['practice_months'] ?? 0),
@@ -536,8 +639,15 @@ class ApplicationController extends BaseController
                 $courts = [];
                 if (! empty($post['court_name']) && is_array($post['court_name'])) {
                     foreach ($post['court_name'] as $i => $name) {
+                        $resolved = MasterRegistry::resolveSingle(
+                            (string) $name,
+                            isset($post['court_other'][$i]) ? (string) $post['court_other'][$i] : null
+                        );
+                        if ($resolved === '' && empty($post['court_from'][$i]) && empty($post['court_to'][$i])) {
+                            continue;
+                        }
                         $courts[] = [
-                            'court'     => trim((string) $name),
+                            'court'     => $resolved,
                             'from_date' => $dateOrNull($post['court_from'][$i] ?? null),
                             'to_date'   => $dateOrNull($post['court_to'][$i] ?? null),
                         ];
@@ -546,8 +656,15 @@ class ApplicationController extends BaseController
                 $tribunals = [];
                 if (! empty($post['tribunal_name']) && is_array($post['tribunal_name'])) {
                     foreach ($post['tribunal_name'] as $i => $name) {
+                        $resolved = MasterRegistry::resolveSingle(
+                            (string) $name,
+                            isset($post['tribunal_other'][$i]) ? (string) $post['tribunal_other'][$i] : null
+                        );
+                        if ($resolved === '' && empty($post['tribunal_from'][$i]) && empty($post['tribunal_to'][$i])) {
+                            continue;
+                        }
                         $tribunals[] = [
-                            'tribunal'  => trim((string) $name),
+                            'tribunal'  => $resolved,
                             'from_date' => $dateOrNull($post['tribunal_from'][$i] ?? null),
                             'to_date'   => $dateOrNull($post['tribunal_to'][$i] ?? null),
                         ];
@@ -557,8 +674,7 @@ class ApplicationController extends BaseController
                 return [
                     'courts_practiced'    => $courts,
                     'tribunals_practiced' => $tribunals,
-                    'nature_of_practice'  => trim($post['nature_of_practice'] ?? ''),
-                    'field_of_law'        => trim($post['field_of_law'] ?? ''),
+                    // nature_of_practice / field_of_law denormalised via pivot sync
                 ];
             case 6:
                 return [
@@ -586,6 +702,69 @@ class ApplicationController extends BaseController
         }
 
         return [];
+    }
+
+    /**
+     * Active dropdown labels for form steps that use admin-managed lookups.
+     *
+     * @return array<string, list<string>>
+     */
+    protected function lookupOptionsForSteps(): array
+    {
+        MasterRegistry::ensureAllDefaults();
+
+        return MasterRegistry::allActiveLabels();
+    }
+
+    /**
+     * Persist multi-select masters as one-to-many rows and refresh denormalised TEXT columns.
+     *
+     * @param array<string, mixed> $post
+     */
+    protected function syncMultiMasters(int $applicationId, int $step, array $post): void
+    {
+        $link = new ApplicationMasterLink();
+        $patch = [];
+
+        if ($step === 1) {
+            $selected = $post['qualifications'] ?? [];
+            if (! is_array($selected)) {
+                $selected = $selected !== '' && $selected !== null ? [(string) $selected] : [];
+            }
+            $patch['qualifications'] = $link->syncMulti(
+                $applicationId,
+                'qualification',
+                $selected,
+                isset($post['qualifications_other']) ? (string) $post['qualifications_other'] : null
+            );
+        }
+
+        if ($step === 5) {
+            $nature = $post['nature_of_practice'] ?? [];
+            if (! is_array($nature)) {
+                $nature = $nature !== '' && $nature !== null ? [(string) $nature] : [];
+            }
+            $field = $post['field_of_law'] ?? [];
+            if (! is_array($field)) {
+                $field = $field !== '' && $field !== null ? [(string) $field] : [];
+            }
+            $patch['nature_of_practice'] = $link->syncMulti(
+                $applicationId,
+                'nature_of_practice',
+                $nature,
+                isset($post['nature_of_practice_other']) ? (string) $post['nature_of_practice_other'] : null
+            );
+            $patch['field_of_law'] = $link->syncMulti(
+                $applicationId,
+                'field_of_law',
+                $field,
+                isset($post['field_of_law_other']) ? (string) $post['field_of_law_other'] : null
+            );
+        }
+
+        if ($patch !== []) {
+            $this->apps->update($applicationId, $patch);
+        }
     }
 
     protected function saveFormatRows(int $appId, array $post): void

@@ -5,10 +5,12 @@ namespace App\Libraries;
 use App\Models\ApplicationModel;
 use App\Models\AuditLogModel;
 use App\Models\NotificationLogModel;
+use App\Models\NotificationTemplateModel;
 use Config\Site;
 
 /**
  * Email + SMS notifications for key portal events.
+ * Content comes from admin-managed notification_templates (with view fallbacks).
  * Every attempt is stored in notification_logs and summarised in audit_logs.
  */
 class NotificationService
@@ -16,12 +18,14 @@ class NotificationService
     private MailTransport $mail;
     private SmsService $sms;
     private Site $site;
+    private NotificationTemplateModel $templates;
 
     public function __construct(?MailTransport $mail = null, ?SmsService $sms = null)
     {
-        $this->mail = $mail ?? new MailTransport();
-        $this->sms  = $sms ?? new SmsService();
-        $this->site = config(Site::class);
+        $this->mail      = $mail ?? new MailTransport();
+        $this->sms       = $sms ?? new SmsService();
+        $this->site      = config(Site::class);
+        $this->templates = model(NotificationTemplateModel::class);
     }
 
     /**
@@ -36,24 +40,30 @@ class NotificationService
         $mobile = $user['mobile'] ?? '';
         $login  = base_url('login');
 
-        $subject = 'Registration successful — ' . $this->site->portalName;
-        $body    = view('emails/notify_registration', [
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'      => $name,
+            'email'     => $email,
+            'login_url' => $login,
+        ]);
+
+        $fallbackSubject = 'Registration successful — ' . $this->site->portalName;
+        $fallbackBody    = view('emails/notify_registration', [
             'name'     => $name,
             'email'    => $email,
             'loginUrl' => $login,
             'site'     => $this->site,
         ]);
+        $fallbackSms = "MHC SAD Portal: Registration successful for {$name}. Login at {$login} to start your application.";
 
-        $sms = "MHC SAD Portal: Registration successful for {$name}. Login at {$login} to start your application.";
-
-        $this->dispatch(
+        $this->sendEvent(
             'registration',
+            $vars,
             $email,
             $name,
             $mobile,
-            $subject,
-            $body,
-            $sms,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
             (int) ($user['id'] ?? 0),
             0
         );
@@ -69,26 +79,34 @@ class NotificationService
         [$name, $email, $mobile] = $this->recipientFromApp($app, $user);
         $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
         $url   = base_url('applicant/application/view/' . (int) ($app['id'] ?? 0));
+        $submittedAt = $app['submitted_at'] ?? date('Y-m-d H:i:s');
 
-        $subject = 'Application submitted — ' . $appNo;
-        $body    = view('emails/notify_application_submitted', [
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'           => $name,
+            'application_no' => $appNo,
+            'view_url'       => $url,
+            'submitted_at'   => $submittedAt,
+        ]);
+
+        $fallbackSubject = 'Application submitted — ' . $appNo;
+        $fallbackBody    = view('emails/notify_application_submitted', [
             'name'          => $name,
             'applicationNo' => $appNo,
-            'submittedAt'   => $app['submitted_at'] ?? date('Y-m-d H:i:s'),
+            'submittedAt'   => $submittedAt,
             'viewUrl'       => $url,
             'site'          => $this->site,
         ]);
+        $fallbackSms = "MHC SAD Portal: Application {$appNo} submitted successfully. Keep your Application No. for reference.";
 
-        $sms = "MHC SAD Portal: Application {$appNo} submitted successfully. Keep your Application No. for reference.";
-
-        $this->dispatch(
+        $this->sendEvent(
             'application_submitted',
+            $vars,
             $email,
             $name,
             $mobile,
-            $subject,
-            $body,
-            $sms,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
             (int) ($user['id'] ?? $app['user_id'] ?? 0),
             (int) ($app['id'] ?? 0)
         );
@@ -104,8 +122,17 @@ class NotificationService
         [$name, $email, $mobile] = $this->recipientFromApp($app, $user);
         $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
 
-        $subject = 'Application accepted — ' . $appNo;
-        $body    = view('emails/notify_application_decision', [
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'                  => $name,
+            'application_no'        => $appNo,
+            'remarks'               => $remarks,
+            'remarks_sms'           => NotificationTemplateModel::remarksSms($remarks, 80),
+            'decision_label'        => 'Accepted',
+            'decision_label_lower'  => 'accepted',
+        ]);
+
+        $fallbackSubject = 'Application accepted — ' . $appNo;
+        $fallbackBody    = view('emails/notify_application_decision', [
             'name'          => $name,
             'applicationNo' => $appNo,
             'decision'      => 'approved',
@@ -113,18 +140,18 @@ class NotificationService
             'remarks'       => $remarks,
             'site'          => $this->site,
         ]);
-
-        $sms = "MHC SAD Portal: Application {$appNo} has been ACCEPTED."
+        $fallbackSms = "MHC SAD Portal: Application {$appNo} has been ACCEPTED."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 80) : '');
 
-        $this->dispatch(
+        $this->sendEvent(
             'application_approved',
+            $vars,
             $email,
             $name,
             $mobile,
-            $subject,
-            $body,
-            $sms,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
             (int) ($user['id'] ?? $app['user_id'] ?? 0),
             (int) ($app['id'] ?? 0)
         );
@@ -140,8 +167,17 @@ class NotificationService
         [$name, $email, $mobile] = $this->recipientFromApp($app, $user);
         $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
 
-        $subject = 'Application rejected — ' . $appNo;
-        $body    = view('emails/notify_application_decision', [
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'                 => $name,
+            'application_no'       => $appNo,
+            'remarks'              => $remarks,
+            'remarks_sms'          => NotificationTemplateModel::remarksSms($remarks, 80),
+            'decision_label'       => 'Rejected',
+            'decision_label_lower' => 'rejected',
+        ]);
+
+        $fallbackSubject = 'Application rejected — ' . $appNo;
+        $fallbackBody    = view('emails/notify_application_decision', [
             'name'          => $name,
             'applicationNo' => $appNo,
             'decision'      => 'rejected',
@@ -149,18 +185,18 @@ class NotificationService
             'remarks'       => $remarks,
             'site'          => $this->site,
         ]);
-
-        $sms = "MHC SAD Portal: Application {$appNo} has been REJECTED."
+        $fallbackSms = "MHC SAD Portal: Application {$appNo} has been REJECTED."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 80) : '');
 
-        $this->dispatch(
+        $this->sendEvent(
             'application_rejected',
+            $vars,
             $email,
             $name,
             $mobile,
-            $subject,
-            $body,
-            $sms,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
             (int) ($user['id'] ?? $app['user_id'] ?? 0),
             (int) ($app['id'] ?? 0)
         );
@@ -177,26 +213,34 @@ class NotificationService
         $appNo = $app['application_no'] ?? ('#' . ($app['id'] ?? ''));
         $url   = base_url('applicant/application/view/' . (int) ($app['id'] ?? 0));
 
-        $subject = 'Application returned for correction — ' . $appNo;
-        $body    = view('emails/notify_application_returned', [
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'           => $name,
+            'application_no' => $appNo,
+            'remarks'        => $remarks,
+            'remarks_sms'    => NotificationTemplateModel::remarksSms($remarks, 60),
+            'view_url'       => $url,
+        ]);
+
+        $fallbackSubject = 'Application returned for correction — ' . $appNo;
+        $fallbackBody    = view('emails/notify_application_returned', [
             'name'          => $name,
             'applicationNo' => $appNo,
             'remarks'       => $remarks,
             'viewUrl'       => $url,
             'site'          => $this->site,
         ]);
-
-        $sms = "MHC SAD Portal: Application {$appNo} returned for correction. Login to update and resubmit."
+        $fallbackSms = "MHC SAD Portal: Application {$appNo} returned for correction. Login to update and resubmit."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 60) : '');
 
-        $this->dispatch(
+        $this->sendEvent(
             'application_returned',
+            $vars,
             $email,
             $name,
             $mobile,
-            $subject,
-            $body,
-            $sms,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
             (int) ($user['id'] ?? $app['user_id'] ?? 0),
             (int) ($app['id'] ?? 0)
         );
@@ -216,6 +260,87 @@ class NotificationService
         } elseif ($status === ApplicationModel::STATUS_RETURNED) {
             $this->applicationReturned($app, $user, $remarks);
         }
+    }
+
+    /**
+     * @param array<string,mixed> $vars
+     */
+    private function sendEvent(
+        string $event,
+        array $vars,
+        string $email,
+        string $name,
+        string $mobile,
+        string $fallbackSubject,
+        string $fallbackBodyHtml,
+        string $fallbackSms,
+        int $userId = 0,
+        int $applicationId = 0
+    ): void {
+        $subject  = $fallbackSubject;
+        $bodyHtml = $fallbackBodyHtml;
+        $smsText  = $fallbackSms;
+        $sendEmail = $email !== '';
+        $sendSms   = $mobile !== '';
+
+        try {
+            $resolved = $this->templates->resolveForSend($event);
+            if ($resolved !== null) {
+                if (! empty($resolved['_inactive'])) {
+                    // Admin disabled this event entirely — log as skipped
+                    $this->dispatch(
+                        $event,
+                        '',
+                        $name,
+                        '',
+                        $subject,
+                        '',
+                        '',
+                        $userId,
+                        $applicationId
+                    );
+
+                    return;
+                }
+
+                $htmlVars  = $this->templates->escapeVars($vars);
+                $plainVars = $this->templates->plainVars($vars);
+
+                if (! empty($resolved['email_enabled']) && $email !== '') {
+                    $subject  = $this->templates->render($resolved['email_subject'], $plainVars);
+                    $inner    = $this->templates->render($resolved['email_body'], $htmlVars);
+                    $bodyHtml = $this->templates->wrapEmailHtml($inner, $subject);
+                    $sendEmail = true;
+                } else {
+                    $sendEmail = false;
+                    $subject   = $this->templates->render($resolved['email_subject'] ?: $fallbackSubject, $plainVars);
+                    $bodyHtml  = '';
+                }
+
+                if (! empty($resolved['sms_enabled']) && $mobile !== '' && ($resolved['sms_body'] ?? '') !== '') {
+                    $smsText = $this->templates->render($resolved['sms_body'], $plainVars);
+                    $sendSms = true;
+                } else {
+                    $sendSms = false;
+                    $smsText = '';
+                }
+            }
+        } catch (\Throwable $e) {
+            log_message('error', "Notification template resolve failed [{$event}]: " . $e->getMessage());
+            // Keep fallbacks
+        }
+
+        $this->dispatch(
+            $event,
+            $sendEmail ? $email : '',
+            $name,
+            $sendSms ? $mobile : '',
+            $subject,
+            $bodyHtml,
+            $smsText,
+            $userId,
+            $applicationId
+        );
     }
 
     /**
@@ -259,7 +384,7 @@ class NotificationService
         $smsResult   = null;
 
         try {
-            if ($email !== '') {
+            if ($email !== '' && $bodyHtml !== '') {
                 $emailResult = $this->mail->send($email, $name, $subject, $bodyHtml);
             }
         } catch (\Throwable $e) {
@@ -268,7 +393,7 @@ class NotificationService
         }
 
         try {
-            if ($mobile !== '') {
+            if ($mobile !== '' && $smsText !== '') {
                 $smsResult = $this->sms->send($mobile, $smsText);
             }
         } catch (\Throwable $e) {
@@ -287,9 +412,9 @@ class NotificationService
                 'recipient_email'  => $email !== '' ? $email : null,
                 'recipient_mobile' => $mobile !== '' ? $mobile : null,
                 'email_subject'    => $subject,
-                'email_body'       => $bodyHtml,
+                'email_body'       => $bodyHtml !== '' ? $bodyHtml : null,
                 'email_result'     => $emailResult,
-                'sms_body'         => $smsText,
+                'sms_body'         => $smsText !== '' ? $smsText : null,
                 'sms_result'       => $smsResult,
             ]);
         } catch (\Throwable $e) {
@@ -308,10 +433,10 @@ class NotificationService
                     'recipient_mobile'    => $mobile,
                     'email_status'        => $emailResult
                         ? (! empty($emailResult['sent']) ? 'sent' : 'failed')
-                        : ($email === '' ? 'skipped' : 'failed'),
+                        : ($email === '' || $bodyHtml === '' ? 'skipped' : 'failed'),
                     'sms_status' => $smsResult
                         ? (! empty($smsResult['sent']) ? 'sent' : 'failed')
-                        : ($mobile === '' ? 'skipped' : 'failed'),
+                        : ($mobile === '' || $smsText === '' ? 'skipped' : 'failed'),
                     'email_method' => $emailResult['method'] ?? null,
                     'sms_method'   => $smsResult['method'] ?? null,
                 ],

@@ -12,7 +12,10 @@ class AuthController extends BaseController
 {
     public function login()
     {
-        return view('auth/login', ['title' => 'Login']);
+        return view('auth/login', [
+            'title'      => 'Login',
+            'editWindow' => \App\Models\ApplicationModel::editWindowInfo(),
+        ]);
     }
 
     public function attemptLogin()

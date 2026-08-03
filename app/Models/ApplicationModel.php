@@ -14,7 +14,7 @@ class ApplicationModel extends Model
     protected $protectFields    = true;
 
     protected $allowedFields = [
-        'user_id', 'application_no', 'status', 'current_step',
+        'user_id', 'application_no', 'status', 'cycle_year', 'current_step',
         'title', 'full_name', 'date_of_birth', 'age_years', 'age_months',
         'address_office', 'address_residence',
         'phone_landline', 'mobile', 'email', 'qualifications',
@@ -150,6 +150,224 @@ class ApplicationModel extends Model
             ->first();
     }
 
+    /**
+     * Statuses that an applicant may edit during an admin-opened edit window.
+     *
+     * @return list<string>
+     */
+    public static function editWindowStatuses(): array
+    {
+        return [
+            self::STATUS_SUBMITTED,
+            self::STATUS_UNDER_REVIEW,
+            self::STATUS_PENDING_APPROVAL,
+        ];
+    }
+
+    /**
+     * Current designation cycle year from system settings (default 2026).
+     */
+    public static function currentCycleYear(): int
+    {
+        try {
+            $year = (int) model(SystemSettingModel::class)->get('application', 'cycle_year', '2026');
+        } catch (\Throwable $e) {
+            $year = 2026;
+        }
+
+        if ($year < 2000 || $year > 2100) {
+            $year = (int) date('Y');
+        }
+
+        return $year;
+    }
+
+    /**
+     * Whether admin has opened the global post-submission edit window (now).
+     */
+    public static function isEditWindowOpen(?array $settings = null): bool
+    {
+        try {
+            $settings ??= model(SystemSettingModel::class)->getGroup('application');
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (empty($settings['edit_window_enabled']) || $settings['edit_window_enabled'] === '0') {
+            return false;
+        }
+
+        $from = trim((string) ($settings['edit_window_from'] ?? ''));
+        $to   = trim((string) ($settings['edit_window_to'] ?? ''));
+        $now  = time();
+
+        if ($from !== '') {
+            $fromTs = strtotime($from);
+            if ($fromTs !== false && $now < $fromTs) {
+                return false;
+            }
+        }
+        if ($to !== '') {
+            $toTs = strtotime($to);
+            if ($toTs !== false && $now > $toTs) {
+                return false;
+            }
+        }
+
+        // Enabled with no dates → open; with only one bound → respect that bound
+        return true;
+    }
+
+    /**
+     * @return array{open: bool, from: string, to: string, message: string, cycle_year: int}
+     */
+    public static function editWindowInfo(): array
+    {
+        try {
+            $s = model(SystemSettingModel::class)->getGroup('application');
+        } catch (\Throwable $e) {
+            $s = [];
+        }
+
+        return [
+            'open'       => self::isEditWindowOpen($s),
+            'from'       => (string) ($s['edit_window_from'] ?? ''),
+            'to'         => (string) ($s['edit_window_to'] ?? ''),
+            'message'    => (string) ($s['edit_window_message'] ?? ''),
+            'cycle_year' => self::currentCycleYear(),
+            'enabled'    => ! empty($s['edit_window_enabled']) && $s['edit_window_enabled'] !== '0',
+        ];
+    }
+
+    /**
+     * Whether this application row is editable by the applicant right now.
+     */
+    public static function isEditableByApplicant(array $app): bool
+    {
+        $status = (string) ($app['status'] ?? '');
+        if (in_array($status, [self::STATUS_DRAFT, self::STATUS_RETURNED], true)) {
+            return true;
+        }
+
+        if (! in_array($status, self::editWindowStatuses(), true)) {
+            return false;
+        }
+
+        if (! self::isEditWindowOpen()) {
+            return false;
+        }
+
+        $cycle = (int) ($app['cycle_year'] ?? 0);
+        if ($cycle > 0 && $cycle !== self::currentCycleYear()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Find the application the applicant may currently edit (draft/returned, or edit-window).
+     */
+    public function findEditableForUser(int $userId): ?array
+    {
+        $draft = $this->findDraftForUser($userId);
+        if ($draft) {
+            return $draft;
+        }
+
+        if (! self::isEditWindowOpen()) {
+            return null;
+        }
+
+        $year = self::currentCycleYear();
+
+        return $this->where('user_id', $userId)
+            ->whereIn('status', self::editWindowStatuses())
+            ->groupStart()
+                ->where('cycle_year', $year)
+                ->orWhere('cycle_year', null)
+            ->groupEnd()
+            ->orderBy('id', 'DESC')
+            ->first();
+    }
+
+    /**
+     * Existing application for this user in the given cycle year (blocks a second start).
+     */
+    public function findForUserCycle(int $userId, ?int $year = null): ?array
+    {
+        $year = $year ?? self::currentCycleYear();
+
+        $byCycle = $this->where('user_id', $userId)
+            ->where('cycle_year', $year)
+            ->orderBy('id', 'DESC')
+            ->first();
+        if ($byCycle) {
+            return $byCycle;
+        }
+
+        // Legacy rows without cycle_year — match by application no. / submitted / created year
+        $rows = $this->where('user_id', $userId)
+            ->groupStart()
+                ->where('cycle_year', null)
+                ->orWhere('cycle_year', 0)
+            ->groupEnd()
+            ->orderBy('id', 'DESC')
+            ->findAll();
+
+        foreach ($rows as $row) {
+            if (self::resolveCycleYear($row) === $year) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort cycle year for a row.
+     */
+    public static function resolveCycleYear(array $app): int
+    {
+        if (! empty($app['cycle_year'])) {
+            return (int) $app['cycle_year'];
+        }
+        if (! empty($app['application_no']) && preg_match('/(20\d{2})/', (string) $app['application_no'], $m)) {
+            return (int) $m[1];
+        }
+        foreach (['submitted_at', 'created_at'] as $field) {
+            if (! empty($app[$field]) && preg_match('/^(20\d{2})/', (string) $app[$field], $m)) {
+                return (int) $m[1];
+            }
+        }
+
+        return self::currentCycleYear();
+    }
+
+    /**
+     * Whether the user may start a new application for the current cycle.
+     */
+    public function canStartNewApplication(int $userId): bool
+    {
+        try {
+            $onePerYear = model(SystemSettingModel::class)->bool('application', 'one_per_year', true);
+        } catch (\Throwable $e) {
+            $onePerYear = true;
+        }
+
+        if (! $onePerYear) {
+            // Still block concurrent in-process applications
+            $open = $this->where('user_id', $userId)
+                ->whereIn('status', self::inProcessStatuses())
+                ->first();
+
+            return $open === null && $this->findDraftForUser($userId) === null;
+        }
+
+        // One application per cycle year (any status, including draft)
+        return $this->findForUserCycle($userId) === null;
+    }
+
     public function findForUser(int $userId, int $id): ?array
     {
         return $this->where('user_id', $userId)->find($id);
@@ -179,6 +397,14 @@ class ApplicationModel extends Model
             if (is_array($app[$field])) {
                 $app[$field] = array_map([$this, 'normalizePracticePeriodRow'], $app[$field]);
             }
+        }
+
+        // One-to-many multi-select masters (qualifications, nature, field of law)
+        try {
+            $app = (new ApplicationMasterLink())->hydrateApplication($app);
+        } catch (\Throwable $e) {
+            // Tables may not exist yet during early migrate
+            log_message('debug', 'Master link hydrate skipped: ' . $e->getMessage());
         }
 
         return $app;
