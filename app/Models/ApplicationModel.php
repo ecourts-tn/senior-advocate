@@ -165,14 +165,14 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Current designation cycle year from system settings (default 2026).
+     * Current designation cycle year from system settings (default: calendar year).
      */
     public static function currentCycleYear(): int
     {
         try {
-            $year = (int) model(SystemSettingModel::class)->get('application', 'cycle_year', '2026');
+            $year = (int) model(SystemSettingModel::class)->get('application', 'cycle_year', (string) date('Y'));
         } catch (\Throwable $e) {
-            $year = 2026;
+            $year = (int) date('Y');
         }
 
         if ($year < 2000 || $year > 2100) {
@@ -180,6 +180,23 @@ class ApplicationModel extends Model
         }
 
         return $year;
+    }
+
+    /**
+     * Reference date for age / practice duration: 01 January of the cycle year.
+     * Auto-updates when cycle year (or calendar year fallback) changes.
+     */
+    public static function ageAsOnDate(): string
+    {
+        return sprintf('%04d-01-01', self::currentCycleYear());
+    }
+
+    /**
+     * Display label for the age reference date, e.g. "01.01.2026".
+     */
+    public static function ageAsOnLabel(): string
+    {
+        return sprintf('01.01.%04d', self::currentCycleYear());
     }
 
     /**
@@ -467,7 +484,7 @@ class ApplicationModel extends Model
     /**
      * Age in whole years as on a reference date (legacy helper).
      */
-    public function calculateAgeAsOn(?string $dob, string $asOn = '2026-01-01'): ?int
+    public function calculateAgeAsOn(?string $dob, ?string $asOn = null): ?int
     {
         $parts = $this->calculateAgePartsAsOn($dob, $asOn);
 
@@ -475,15 +492,17 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Age as years and months on a reference date.
+     * Age as years and months on a reference date (default: 01 Jan of cycle year).
      *
      * @return array{years: int, months: int}|null
      */
-    public function calculateAgePartsAsOn(?string $dob, string $asOn = '2026-01-01'): ?array
+    public function calculateAgePartsAsOn(?string $dob, ?string $asOn = null): ?array
     {
         if (empty($dob)) {
             return null;
         }
+
+        $asOn = $asOn ?: self::ageAsOnDate();
 
         try {
             $birth = new \DateTime($dob);

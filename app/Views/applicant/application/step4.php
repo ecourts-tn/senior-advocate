@@ -9,7 +9,11 @@
 
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open('applicant/application/step/4') ?>
+        <?= form_open('applicant/application/step/4', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
 
         <div class="section-title">11. Pro Bono / Amicus Curiae work Format L-3(i), FonnatL-3(ii)</div>
         <div class="row g-3 mb-4">

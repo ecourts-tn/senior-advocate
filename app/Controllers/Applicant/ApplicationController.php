@@ -29,6 +29,19 @@ class ApplicationController extends BaseController
         parent::initController($request, $response, $logger);
         $this->apps = model(ApplicationModel::class);
         helper(['form', 'url', 'sad']);
+        // Never cache application forms — browser Back must revalidate with the server
+        $this->preventSensitiveCache();
+    }
+
+    /**
+     * Stop browsers (and bfcache) from restoring editable form pages after submit.
+     */
+    protected function preventSensitiveCache(): void
+    {
+        $this->response
+            ->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0')
+            ->setHeader('Pragma', 'no-cache')
+            ->setHeader('Expires', '0');
     }
 
     /**
@@ -125,6 +138,7 @@ class ApplicationController extends BaseController
 
     public function step(int $step = 1)
     {
+        $this->preventSensitiveCache();
         $step = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
         $app  = $this->requireEditableApplication();
         if ($app === null) {
@@ -134,20 +148,22 @@ class ApplicationController extends BaseController
 
         $app = $this->apps->withDecoded($app);
 
+        $ageAsOn = ApplicationModel::ageAsOnDate();
+
         // Normalise DOB and always recompute age years/months for display (readonly fields).
         if ($step === 1 && ! empty($app['date_of_birth'])) {
             $app['date_of_birth'] = substr((string) $app['date_of_birth'], 0, 10);
-            $ageParts             = $this->apps->calculateAgePartsAsOn($app['date_of_birth'], '2026-01-01');
+            $ageParts             = $this->apps->calculateAgePartsAsOn($app['date_of_birth'], $ageAsOn);
             if ($ageParts !== null) {
                 $app['age_years']  = $ageParts['years'];
                 $app['age_months'] = $ageParts['months'];
             }
         }
 
-        // Practice duration from enrolment date (as on 01.01.2026) — readonly on form.
+        // Practice duration from enrolment date (as on 01.01 of cycle year) — readonly on form.
         if ($step === 2 && ! empty($app['enrolment_date'])) {
             $app['enrolment_date'] = substr((string) $app['enrolment_date'], 0, 10);
-            $practiceParts         = $this->apps->calculateAgePartsAsOn($app['enrolment_date'], '2026-01-01');
+            $practiceParts         = $this->apps->calculateAgePartsAsOn($app['enrolment_date'], $ageAsOn);
             if ($practiceParts !== null) {
                 $app['practice_years']  = $practiceParts['years'];
                 $app['practice_months'] = $practiceParts['months'];
@@ -182,7 +198,7 @@ class ApplicationController extends BaseController
                     if (! empty($app['enrolment_date'])) {
                         $practiceParts = $this->apps->calculateAgePartsAsOn(
                             substr((string) $app['enrolment_date'], 0, 10),
-                            '2026-01-01'
+                            $ageAsOn
                         );
                         if ($practiceParts !== null) {
                             $app['practice_years']  = $practiceParts['years'];
@@ -227,20 +243,36 @@ class ApplicationController extends BaseController
 
     public function saveStep(int $step)
     {
-        $app = $this->requireEditableApplication();
+        $this->preventSensitiveCache();
+        $postedId = (int) ($this->request->getPost('application_id') ?? 0);
+        $app      = $this->requireEditableApplication($postedId > 0 ? $postedId : null);
         if ($app === null) {
             return redirect()->to('/applicant/dashboard')
-                ->with('error', 'This application cannot be edited right now.');
+                ->with('error', 'This application cannot be edited. It may already have been submitted.');
         }
 
         $userId = (int) session()->get('user_id');
         $step   = max(1, min(ApplicationModel::TOTAL_STEPS, $step));
         $post   = $this->request->getPost();
 
+        // Re-load from DB immediately before write (guards browser-Back + stale forms)
+        $fresh = $this->apps->find((int) $app['id']);
+        if (
+            ! $fresh
+            || (int) ($fresh['user_id'] ?? 0) !== $userId
+            || ! ApplicationModel::isEditableByApplicant($fresh)
+        ) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'This application can no longer be modified after submission.');
+        }
+        $app = $fresh;
+
         $data = $this->mapStepData($step, $post, $app);
 
+        $ageAsOn = ApplicationModel::ageAsOnDate();
+
         if ($step === 1 && ! empty($data['date_of_birth'])) {
-            $ageParts = $this->apps->calculateAgePartsAsOn($data['date_of_birth'], '2026-01-01');
+            $ageParts = $this->apps->calculateAgePartsAsOn($data['date_of_birth'], $ageAsOn);
             if ($ageParts !== null) {
                 $data['age_years']  = $ageParts['years'];
                 $data['age_months'] = $ageParts['months'];
@@ -254,7 +286,7 @@ class ApplicationController extends BaseController
         if ($step === 2) {
             if (! empty($data['enrolment_date'])) {
                 $data['enrolment_date'] = substr((string) $data['enrolment_date'], 0, 10);
-                $practiceParts          = $this->apps->calculateAgePartsAsOn($data['enrolment_date'], '2026-01-01');
+                $practiceParts          = $this->apps->calculateAgePartsAsOn($data['enrolment_date'], $ageAsOn);
                 if ($practiceParts !== null) {
                     $data['practice_years']  = $practiceParts['years'];
                     $data['practice_months'] = $practiceParts['months'];
@@ -306,6 +338,13 @@ class ApplicationController extends BaseController
         $action = $this->request->getPost('action') ?? 'save';
 
         if ($action === 'submit' && $step === ApplicationModel::TOTAL_STEPS) {
+            // Final gate before status change (stale Back-button form)
+            $fresh = $this->apps->find((int) $app['id']);
+            if (! $fresh || ! ApplicationModel::isEditableByApplicant($fresh)) {
+                return redirect()->to('/applicant/dashboard')
+                    ->with('error', 'This application has already been submitted and cannot be submitted again.');
+            }
+
             return $this->submitApplication((int) $app['id']);
         }
 
@@ -382,6 +421,15 @@ class ApplicationController extends BaseController
         $userId = (int) session()->get('user_id');
         $app    = $this->apps->find($id);
 
+        if (
+            ! $app
+            || (int) ($app['user_id'] ?? 0) !== $userId
+            || ! ApplicationModel::isEditableByApplicant($app)
+        ) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'This application has already been submitted and cannot be modified.');
+        }
+
         $errors = $this->validateForSubmit($app);
         if ($errors) {
             return redirect()->to('/applicant/application/step/7')
@@ -402,17 +450,33 @@ class ApplicationController extends BaseController
             ApplicationModel::STATUS_PENDING_APPROVAL,
         ], true);
 
-        $this->apps->update($id, [
-            'application_no'        => $appNo,
-            'status'                => ApplicationModel::STATUS_SUBMITTED,
-            'cycle_year'            => $cycleYear,
-            'submitted_at'          => date('Y-m-d H:i:s'),
-            'declaration_accepted'  => 't',
-            'instructions_accepted' => 't',
-            'declaration_date'      => date('Y-m-d'),
-            // Clear generated PDF so a fresh snapshot is produced after edits
-            'generated_pdf_path'    => null,
-        ]);
+        // Atomic-ish guard: only draft/returned (or edit-window statuses) may transition to submitted
+        $allowedFrom = array_values(array_unique(array_merge(
+            [ApplicationModel::STATUS_DRAFT, ApplicationModel::STATUS_RETURNED],
+            ApplicationModel::editWindowStatuses()
+        )));
+        $db = db_connect();
+        $db->table('applications')
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->whereIn('status', $allowedFrom)
+            ->update([
+                'application_no'        => $appNo,
+                'status'                => ApplicationModel::STATUS_SUBMITTED,
+                'cycle_year'            => $cycleYear,
+                'submitted_at'          => date('Y-m-d H:i:s'),
+                'declaration_accepted'  => 't',
+                'instructions_accepted' => 't',
+                'declaration_date'      => date('Y-m-d'),
+                // Clear generated PDF so a fresh snapshot is produced after edits
+                'generated_pdf_path'    => null,
+                'updated_at'            => date('Y-m-d H:i:s'),
+            ]);
+
+        if ($db->affectedRows() < 1) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'This application has already been submitted and cannot be modified.');
+        }
 
         $submitNote = match (true) {
             $from === ApplicationModel::STATUS_RETURNED => 'Application resubmitted after correction',
@@ -502,11 +566,27 @@ class ApplicationController extends BaseController
 
     /**
      * Application the current user may edit: draft / returned, or submitted during edit window.
+     *
+     * @param int|null $applicationId When posted from a form, prefer this id (ownership + editable check).
      */
-    protected function requireEditableApplication(): ?array
+    protected function requireEditableApplication(?int $applicationId = null): ?array
     {
         $userId = (int) session()->get('user_id');
-        $app    = $this->apps->findEditableForUser($userId);
+
+        if ($applicationId !== null && $applicationId > 0) {
+            $app = $this->apps->find($applicationId);
+            if (
+                ! $app
+                || (int) ($app['user_id'] ?? 0) !== $userId
+                || ! ApplicationModel::isEditableByApplicant($app)
+            ) {
+                return null;
+            }
+
+            return $this->ensureRegistrationContact($app);
+        }
+
+        $app = $this->apps->findEditableForUser($userId);
 
         if (! $app || ! ApplicationModel::isEditableByApplicant($app)) {
             return null;

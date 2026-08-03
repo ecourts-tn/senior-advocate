@@ -54,7 +54,7 @@ class SystemSettingModel extends Model
             ],
             // Application cycle + post-submission edit window (admin-controlled)
             'application' => [
-                'cycle_year'           => ['value' => (string) env('application.cycleYear', '2026')],
+                'cycle_year'           => ['value' => (string) env('application.cycleYear', (string) date('Y'))],
                 'one_per_year'         => ['value' => '1'],
                 'edit_window_enabled'  => ['value' => '0'],
                 'edit_window_from'     => ['value' => ''],

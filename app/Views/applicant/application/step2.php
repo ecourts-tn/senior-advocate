@@ -9,15 +9,23 @@
 
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open_multipart('applicant/application/step/2') ?>
+        <?= form_open_multipart('applicant/application/step/2', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
+        <?php
+        $ageAsOnDate  = sad_age_as_on_date();
+        $ageAsOnLabel = sad_age_as_on_label();
+        ?>
         <div class="section-title">6. Enrolment as Advocate</div>
         <div class="row g-3">
             <div class="col-md-4">
                 <label class="form-label required">Date of Enrolment</label>
                 <input type="date" name="enrolment_date" id="enrolment_date" class="form-control" required
-                       max="2026-01-01"
+                       max="<?= esc($ageAsOnDate) ?>"
                        value="<?= esc(old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '')) ?>"
-                       data-age-as-on="2026-01-01"
+                       data-age-as-on="<?= esc($ageAsOnDate) ?>"
                        data-age-years-target="practice_years_display"
                        data-age-months-target="practice_months_display">
             </div>
@@ -53,7 +61,7 @@
                        class="form-control" min="0" max="70" readonly
                        value="<?= esc(old('practice_years', $app['practice_years'] ?? '')) ?>"
                        title="Calculated automatically from date of enrolment">
-                <div class="form-text">Auto-calculated as on 01.01.2026</div>
+                <div class="form-text">Auto-calculated as on <?= esc($ageAsOnLabel) ?></div>
             </div>
             <div class="col-md-3">
                 <label class="form-label" for="practice_months_display">Months</label>

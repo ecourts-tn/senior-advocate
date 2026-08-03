@@ -26,7 +26,11 @@ $periodDate = static function (array $row, string $key): string {
 
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open('applicant/application/step/5') ?>
+        <?= form_open('applicant/application/step/5', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
 
         <div class="section-title">14. Courts where the applicant is practicing / has practiced</div>
         <div class="d-flex justify-content-end mb-2">
@@ -37,10 +41,11 @@ $periodDate = static function (array $row, string $key): string {
             $courts = ! empty($app['courts_practiced']) ? $app['courts_practiced'] : [
                 ['court' => '', 'from_date' => '', 'to_date' => ''],
             ];
+            // Editable rows first (never disabled)
             foreach ($courts as $i => $c):
                 $parsed = \App\Models\MasterRegistry::parseSingleStored($c['court'] ?? '', $courtOptions);
             ?>
-                <div class="row g-2 mb-2 dynamic-row align-items-end" <?= $i === 0 ? 'data-row-template' : '' ?>>
+                <div class="row g-2 mb-2 dynamic-row align-items-end">
                     <div class="col-md-5">
                         <?= view('partials/select_others', [
                             'name'        => 'court_name[]',
@@ -51,7 +56,8 @@ $periodDate = static function (array $row, string $key): string {
                             'placeholder' => 'Select court…',
                             'showLabel'   => $i === 0,
                             'label'       => 'Court',
-                        ]) ?>
+                            'disabled'    => false,
+                        ], ['saveData' => false]) ?>
                     </div>
                     <div class="col-md-3">
                         <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
@@ -71,8 +77,36 @@ $periodDate = static function (array $row, string $key): string {
                     </div>
                 </div>
             <?php endforeach; ?>
+            <!-- Hidden clone template last (disabled fields; not submitted) -->
+            <div class="row g-2 mb-2 dynamic-row align-items-end d-none" data-row-template hidden aria-hidden="true">
+                <div class="col-md-5">
+                    <?= view('partials/select_others', [
+                        'name'        => 'court_name[]',
+                        'otherName'   => 'court_other[]',
+                        'options'     => $courtOptions,
+                        'value'       => '',
+                        'other'       => '',
+                        'placeholder' => 'Select court…',
+                        'showLabel'   => true,
+                        'label'       => 'Court',
+                        'disabled'    => true,
+                    ], ['saveData' => false]) ?>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From (date)</label>
+                    <input type="date" name="court_from[]" class="form-control" disabled title="Practice from date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To (date)</label>
+                    <input type="date" name="court_to[]" class="form-control" disabled title="Practice to date (leave blank if ongoing)">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label d-none d-md-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger w-100" data-remove-row aria-label="Remove">&times;</button>
+                </div>
+            </div>
         </div>
-        <p class="form-text">Use calendar dates (YYYY-MM-DD). Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
+        <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
 
         <div class="section-title mt-4">15. Tribunals Where the applicant has specialized practice: (Applicable to those before practising Tribunals)</div>
         <div class="d-flex justify-content-end mb-2">
@@ -83,10 +117,11 @@ $periodDate = static function (array $row, string $key): string {
             $tribunals = ! empty($app['tribunals_practiced']) ? $app['tribunals_practiced'] : [
                 ['tribunal' => '', 'from_date' => '', 'to_date' => ''],
             ];
+            // Editable rows first (never disabled)
             foreach ($tribunals as $i => $t):
                 $parsedT = \App\Models\MasterRegistry::parseSingleStored($t['tribunal'] ?? '', $tribunalOptions);
             ?>
-                <div class="row g-2 mb-2 dynamic-row align-items-end" <?= $i === 0 ? 'data-row-template' : '' ?>>
+                <div class="row g-2 mb-2 dynamic-row align-items-end">
                     <div class="col-md-5">
                         <?= view('partials/select_others', [
                             'name'        => 'tribunal_name[]',
@@ -97,7 +132,8 @@ $periodDate = static function (array $row, string $key): string {
                             'placeholder' => 'Select tribunal…',
                             'showLabel'   => $i === 0,
                             'label'       => 'Tribunal',
-                        ]) ?>
+                            'disabled'    => false,
+                        ], ['saveData' => false]) ?>
                     </div>
                     <div class="col-md-3">
                         <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
@@ -117,8 +153,36 @@ $periodDate = static function (array $row, string $key): string {
                     </div>
                 </div>
             <?php endforeach; ?>
+            <!-- Hidden clone template last (disabled fields; not submitted) -->
+            <div class="row g-2 mb-2 dynamic-row align-items-end d-none" data-row-template hidden aria-hidden="true">
+                <div class="col-md-5">
+                    <?= view('partials/select_others', [
+                        'name'        => 'tribunal_name[]',
+                        'otherName'   => 'tribunal_other[]',
+                        'options'     => $tribunalOptions,
+                        'value'       => '',
+                        'other'       => '',
+                        'placeholder' => 'Select tribunal…',
+                        'showLabel'   => true,
+                        'label'       => 'Tribunal',
+                        'disabled'    => true,
+                    ], ['saveData' => false]) ?>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">From (date)</label>
+                    <input type="date" name="tribunal_from[]" class="form-control" disabled title="Practice from date">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To (date)</label>
+                    <input type="date" name="tribunal_to[]" class="form-control" disabled title="Practice to date (leave blank if ongoing)">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label d-none d-md-block">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger w-100" data-remove-row aria-label="Remove">&times;</button>
+                </div>
+            </div>
         </div>
-        <p class="form-text">Use calendar dates (YYYY-MM-DD). Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
+        <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
 
         <div class="section-title mt-4">16. Nature of practice</div>
         <?php

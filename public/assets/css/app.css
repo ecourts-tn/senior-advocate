@@ -1393,6 +1393,20 @@ body.contrast-high .password-toggle-group .password-toggle-btn[aria-pressed="tru
   color: #fff;
 }
 
+/* Hidden clone templates — must never occupy layout or be interactive */
+.dynamic-row[data-row-template],
+.dynamic-row[data-row-template].d-none,
+tr.dynamic-row[data-row-template] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
 /* ---------- Dynamic tables ---------- */
 .dynamic-table {
   width: 100%;

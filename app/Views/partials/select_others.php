@@ -11,6 +11,10 @@
  * - string|null $placeholder
  * - bool $showLabel
  * - string|null $label
+ * - bool $disabled      when true, fields are disabled (clone templates only)
+ *
+ * Note: Config\View::$saveData is true, so always pass disabled explicitly
+ * (true or false) to avoid leaking the previous partial's value.
  */
 use App\Models\MasterRegistry;
 
@@ -22,6 +26,8 @@ $other       = $other ?? '';
 $placeholder = $placeholder ?? 'Select…';
 $showLabel   = $showLabel ?? false;
 $label       = $label ?? 'Option';
+// Strict check: only true when explicitly enabled for templates
+$disabled    = isset($disabled) && ($disabled === true || $disabled === 1 || $disabled === '1');
 $othersVal   = MasterRegistry::OTHERS_VALUE;
 $isOthers    = ($value === $othersVal) || strcasecmp((string) $value, MasterRegistry::OTHERS_LABEL) === 0;
 ?>
@@ -29,7 +35,7 @@ $isOthers    = ($value === $othersVal) || strcasecmp((string) $value, MasterRegi
     <?php if ($showLabel): ?>
         <label class="form-label"><?= esc($label) ?></label>
     <?php endif; ?>
-    <select name="<?= esc($name) ?>" class="form-select" data-others-trigger>
+    <select name="<?= esc($name) ?>" class="form-select" data-others-trigger<?= $disabled ? ' disabled' : '' ?>>
         <option value=""><?= esc($placeholder) ?></option>
         <?php foreach ($options as $opt): ?>
             <option value="<?= esc($opt) ?>" <?= $value === $opt ? 'selected' : '' ?>><?= esc($opt) ?></option>
@@ -41,6 +47,10 @@ $isOthers    = ($value === $othersVal) || strcasecmp((string) $value, MasterRegi
                value="<?= esc($other) ?>"
                placeholder="Please specify"
                maxlength="255"
-               <?= $isOthers ? '' : 'disabled' ?>>
+               <?= ($isOthers && ! $disabled) ? '' : 'disabled' ?>>
     </div>
 </div>
+<?php
+// Prevent Config\View::$saveData from poisoning the next partial call
+$disabled = false;
+?>

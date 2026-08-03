@@ -1,3 +1,7 @@
+<?php if (! empty($app['id'])): ?>
+    <input type="hidden" name="application_id" value="<?= (int) $app['id'] ?>">
+    <input type="hidden" name="application_status" value="<?= esc($app['status'] ?? '') ?>">
+<?php endif; ?>
 <div class="form-actions no-print">
     <div class="form-actions-left">
         <?php if ($step > 1): ?>

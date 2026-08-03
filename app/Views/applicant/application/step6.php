@@ -9,7 +9,11 @@
 
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open('applicant/application/step/6') ?>
+        <?= form_open('applicant/application/step/6', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
 
         <?php
         $yn = static function ($field, $app) {

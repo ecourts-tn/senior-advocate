@@ -53,7 +53,7 @@
         </td>
     </tr>
     <tr>
-        <td class="label">2. Date of Birth / Age (as on 01.01.2026)</td>
+        <td class="label">2. Date of Birth / Age (as on <?= esc(sad_age_as_on_label()) ?>)</td>
         <td><?= esc($app['date_of_birth'] ?? '') ?> /
             <?= esc($app['age_years'] ?? '—') ?> years
             <?= esc($app['age_months'] ?? '—') ?> months</td>

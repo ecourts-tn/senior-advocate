@@ -7,8 +7,10 @@
         <div class="mt-1"><?= sad_status_badge($app['status']) ?></div>
     </div>
     <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
-        <?php if (in_array($app['status'], ['draft', 'returned'], true)): ?>
-            <a href="<?= base_url('applicant/application/step/' . (int) $app['current_step']) ?>" class="btn btn-mhc flex-grow-1 flex-md-grow-0">Continue Editing</a>
+        <?php if (\App\Models\ApplicationModel::isEditableByApplicant($app)): ?>
+            <a href="<?= base_url('applicant/application/step/' . (int) ($app['current_step'] ?: 1)) ?>" class="btn btn-mhc flex-grow-1 flex-md-grow-0">
+                <?= in_array($app['status'] ?? '', ['draft', 'returned'], true) ? 'Continue Editing' : 'Edit application' ?>
+            </a>
         <?php endif; ?>
         <a href="<?= base_url('applicant/application/pdf/' . $app['id']) ?>" class="btn btn-outline-danger flex-grow-1 flex-md-grow-0" target="_blank">Download PDF</a>
         <a href="<?= base_url('applicant/dashboard') ?>" class="btn btn-outline-secondary flex-grow-1 flex-md-grow-0">Back</a>
@@ -40,7 +42,7 @@
         <div class="row g-3">
             <div class="col-md-6"><strong>Name:</strong> <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?></div>
             <div class="col-md-3"><strong>DOB:</strong> <?= esc($app['date_of_birth'] ?? '—') ?></div>
-            <div class="col-md-3"><strong>Age (01.01.2026):</strong>
+            <div class="col-md-3"><strong>Age (<?= esc(sad_age_as_on_label()) ?>):</strong>
                 <?= esc($app['age_years'] ?? '—') ?> yrs
                 <?= esc($app['age_months'] ?? '—') ?> mo
             </div>

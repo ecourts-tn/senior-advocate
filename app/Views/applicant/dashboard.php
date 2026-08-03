@@ -4,8 +4,7 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3">
     <div>
         <h1 class="page-title">Applicant Dashboard</h1>
-        <p class="page-subtitle">Welcome, <?= esc(session()->get('name')) ?>
-            · Cycle year <?= (int) ($cycleYear ?? date('Y')) ?></p>
+        <p class="page-subtitle">Welcome, <?= esc(session()->get('name')) ?></p>
     </div>
     <?php if (! empty($draft)): ?>
         <a href="<?= base_url('applicant/application/step/' . (int) $draft['current_step']) ?>" class="btn btn-gold">

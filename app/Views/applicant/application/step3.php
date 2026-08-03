@@ -7,9 +7,96 @@
 </div>
 <?= $this->include('applicant/application/_stepper') ?>
 
+<?php
+$courtLevels = [
+    'madras_hc'         => 'Madras HC',
+    'supreme_other_hc'  => 'SC / Other HC',
+    'district_tribunal' => 'District / Tribunal',
+];
+
+/**
+ * Render one L-1 / L-2 judgment entry card.
+ *
+ * @param string               $prefix  Field name prefix: l1 | l2
+ * @param array<string,mixed>  $row
+ * @param array<string,string> $courtLevels
+ * @param bool                 $isTemplate
+ * @param string               $label
+ */
+$renderJudgmentCard = static function (
+    string $prefix,
+    array $row,
+    array $courtLevels,
+    bool $isTemplate,
+    string $label
+): void {
+    $disabled = $isTemplate ? ' disabled' : '';
+    $classes  = 'entry-card dynamic-row' . ($isTemplate ? ' d-none' : '');
+    $attrs    = $isTemplate ? ' data-row-template hidden aria-hidden="true"' : '';
+    $level    = (string) ($row['court_level'] ?? 'madras_hc');
+    ?>
+    <div class="<?= esc($classes, 'attr') ?>"<?= $attrs ?>>
+        <div class="entry-card-top">
+            <span class="entry-card-label"><?= esc($label) ?></span>
+            <button type="button" class="btn btn-sm btn-outline-danger entry-remove" data-remove-row aria-label="Remove entry">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="row g-2 g-md-3">
+            <div class="col-12 col-sm-6 col-lg-4">
+                <label class="form-label">Court level</label>
+                <select name="<?= esc($prefix) ?>_court_level[]" class="form-select form-select-sm"<?= $disabled ?>>
+                    <?php foreach ($courtLevels as $k => $lab): ?>
+                        <option value="<?= esc($k) ?>" <?= $level === $k ? 'selected' : '' ?>><?= esc($lab) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-4">
+                <label class="form-label">Court name</label>
+                <input name="<?= esc($prefix) ?>_court_name[]" class="form-control form-control-sm"
+                       value="<?= esc($row['court_name'] ?? '') ?>"
+                       placeholder="Name of the court"<?= $disabled ?>>
+            </div>
+            <div class="col-12 col-sm-6 col-lg-4">
+                <label class="form-label">Decided on</label>
+                <input type="date" name="<?= esc($prefix) ?>_decided_on[]" class="form-control form-control-sm"
+                       value="<?= esc($row['decided_on'] ?? '') ?>"<?= $disabled ?>>
+            </div>
+            <div class="col-12 col-sm-6">
+                <label class="form-label">Case No.</label>
+                <input name="<?= esc($prefix) ?>_case_number[]" class="form-control form-control-sm"
+                       value="<?= esc($row['case_number'] ?? '') ?>"
+                       placeholder="Case number"<?= $disabled ?>>
+            </div>
+            <div class="col-12 col-sm-6">
+                <label class="form-label">Citation</label>
+                <input name="<?= esc($prefix) ?>_citation[]" class="form-control form-control-sm"
+                       value="<?= esc($row['citation'] ?? '') ?>"
+                       placeholder="Citation (if any)"<?= $disabled ?>>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Cause Title &amp; Subject</label>
+                <textarea name="<?= esc($prefix) ?>_cause_title[]" class="form-control form-control-sm" rows="2"
+                          placeholder="Cause title and subject matter"<?= $disabled ?>><?= esc($row['cause_title'] ?? '') ?></textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Legal formulation</label>
+                <textarea name="<?= esc($prefix) ?>_legal_formulation[]" class="form-control form-control-sm" rows="2"
+                          placeholder="Principle of law laid down"<?= $disabled ?>><?= esc($row['legal_formulation'] ?? '') ?></textarea>
+            </div>
+        </div>
+    </div>
+    <?php
+};
+?>
+
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open('applicant/application/step/3') ?>
+        <?= form_open('applicant/application/step/3', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
 
         <div class="section-title">9. Number of Reported Judgments (excluding orders that do not lay down any principle of law): Format L-1</div>
         <div class="row g-3 mb-3">
@@ -27,49 +114,25 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>Format L-1 entries (as arguing counsel)</strong>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l1Rows">+ Add row</button>
-        </div>
-        <div class="table-responsive mb-4">
-            <table class="table table-bordered dynamic-table" id="l1Rows" data-rows>
-                <thead>
-                <tr>
-                    <th>Court level</th>
-                    <th>Court</th>
-                    <th>Case No. / Citation</th>
-                    <th>Cause Title &amp; Subject</th>
-                    <th>Decided on</th>
-                    <th>Legal formulation</th>
-                    <th class="col-actions"></th>
-                </tr>
-                </thead>
-                <tbody>
+        <div class="entry-block mb-4">
+            <div class="entry-block-head">
+                <strong>Format L-1 entries <span class="text-muted fw-normal">(as arguing counsel)</span></strong>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l1Rows">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
+                </button>
+            </div>
+            <div id="l1Rows" class="entry-list" data-rows>
                 <?php
+                // Hidden clone template — never submitted (disabled fields)
+                $renderJudgmentCard('l1', ['court_level' => 'madras_hc'], $courtLevels, true, 'L-1 entry');
                 $l1 = $l1 ?: [['court_level' => 'madras_hc']];
-                foreach ($l1 as $i => $row):
+                $l1Index = 0;
+                foreach ($l1 as $row):
+                    $l1Index++;
+                    $renderJudgmentCard('l1', $row, $courtLevels, false, 'L-1 entry #' . $l1Index);
+                endforeach;
                 ?>
-                    <tr class="dynamic-row" <?= $i === 0 ? 'data-row-template' : '' ?>>
-                        <td>
-                            <select name="l1_court_level[]" class="form-select form-select-sm">
-                                <?php foreach (['madras_hc' => 'Madras HC', 'supreme_other_hc' => 'SC / Other HC', 'district_tribunal' => 'District / Tribunal'] as $k => $lab): ?>
-                                    <option value="<?= $k ?>" <?= ($row['court_level'] ?? '') === $k ? 'selected' : '' ?>><?= $lab ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input name="l1_court_name[]" class="form-control form-control-sm" value="<?= esc($row['court_name'] ?? '') ?>"></td>
-                        <td>
-                            <input name="l1_case_number[]" class="form-control form-control-sm mb-1" placeholder="Case No." value="<?= esc($row['case_number'] ?? '') ?>">
-                            <input name="l1_citation[]" class="form-control form-control-sm" placeholder="Citation" value="<?= esc($row['citation'] ?? '') ?>">
-                        </td>
-                        <td><textarea name="l1_cause_title[]" class="form-control form-control-sm" rows="2"><?= esc($row['cause_title'] ?? '') ?></textarea></td>
-                        <td><input type="date" name="l1_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>"></td>
-                        <td><textarea name="l1_legal_formulation[]" class="form-control form-control-sm" rows="2"><?= esc($row['legal_formulation'] ?? '') ?></textarea></td>
-                        <td class="col-actions"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-row aria-label="Remove"><i class="bi bi-x-lg"></i></button></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+            </div>
         </div>
 
         <div class="section-title">10. Number of Unreported Judgments (excluding orders that do not lay down any principle of law): Format L-2</div>
@@ -88,51 +151,27 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>Format L-2 entries</strong>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l2Rows">+ Add row</button>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-bordered dynamic-table" id="l2Rows" data-rows>
-                <thead>
-                <tr>
-                    <th>Court level</th>
-                    <th>Court</th>
-                    <th>Case No. / Citation</th>
-                    <th>Cause Title &amp; Subject</th>
-                    <th>Decided on</th>
-                    <th>Legal formulation</th>
-                    <th class="col-actions"></th>
-                </tr>
-                </thead>
-                <tbody>
+        <div class="entry-block mb-3">
+            <div class="entry-block-head">
+                <strong>Format L-2 entries</strong>
+                <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l2Rows">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
+                </button>
+            </div>
+            <div id="l2Rows" class="entry-list" data-rows>
                 <?php
+                $renderJudgmentCard('l2', ['court_level' => 'madras_hc'], $courtLevels, true, 'L-2 entry');
                 $l2 = $l2 ?: [['court_level' => 'madras_hc']];
-                foreach ($l2 as $i => $row):
+                $l2Index = 0;
+                foreach ($l2 as $row):
+                    $l2Index++;
+                    $renderJudgmentCard('l2', $row, $courtLevels, false, 'L-2 entry #' . $l2Index);
+                endforeach;
                 ?>
-                    <tr class="dynamic-row" <?= $i === 0 ? 'data-row-template' : '' ?>>
-                        <td>
-                            <select name="l2_court_level[]" class="form-select form-select-sm">
-                                <?php foreach (['madras_hc' => 'Madras HC', 'supreme_other_hc' => 'SC / Other HC', 'district_tribunal' => 'District / Tribunal'] as $k => $lab): ?>
-                                    <option value="<?= $k ?>" <?= ($row['court_level'] ?? '') === $k ? 'selected' : '' ?>><?= $lab ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input name="l2_court_name[]" class="form-control form-control-sm" value="<?= esc($row['court_name'] ?? '') ?>"></td>
-                        <td>
-                            <input name="l2_case_number[]" class="form-control form-control-sm mb-1" placeholder="Case No." value="<?= esc($row['case_number'] ?? '') ?>">
-                            <input name="l2_citation[]" class="form-control form-control-sm" placeholder="Citation" value="<?= esc($row['citation'] ?? '') ?>">
-                        </td>
-                        <td><textarea name="l2_cause_title[]" class="form-control form-control-sm" rows="2"><?= esc($row['cause_title'] ?? '') ?></textarea></td>
-                        <td><input type="date" name="l2_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>"></td>
-                        <td><textarea name="l2_legal_formulation[]" class="form-control form-control-sm" rows="2"><?= esc($row['legal_formulation'] ?? '') ?></textarea></td>
-                        <td class="col-actions"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-row aria-label="Remove"><i class="bi bi-x-lg"></i></button></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+            </div>
         </div>
-        <p class="form-text">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB).</p>
+
+        <p class="form-text mb-0">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB). Use <strong>Add entry</strong> for additional judgments. Removing entries always keeps one blank card so you can add again.</p>
 
         <?= $this->include('applicant/application/_form_nav') ?>
         <?= form_close() ?>

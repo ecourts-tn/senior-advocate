@@ -1,4 +1,35 @@
+// After submit, browser Back can restore a cached editable form (bfcache).
+// Force a full reload so the server can redirect to the dashboard.
+window.addEventListener('pageshow', function (event) {
+  var form = document.querySelector('form.application-step-form, form[data-prevent-bfcache="1"]');
+  var path = window.location.pathname || '';
+  var isAppForm = !!form || /\/applicant\/application\/step\//.test(path);
+  if (!isAppForm) return;
+
+  if (event.persisted) {
+    window.location.reload();
+    return;
+  }
+  try {
+    var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type === 'back_forward') {
+      window.location.reload();
+    }
+  } catch (e) {}
+});
+
 document.addEventListener('DOMContentLoaded', function () {
+  // Block double-submit on application forms; disable controls after first submit
+  document.querySelectorAll('form.application-step-form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      window.setTimeout(function () {
+        form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+          btn.disabled = true;
+        });
+      }, 0);
+    });
+  });
+
   // ---------- GIGW accessibility controls ----------
   var root = document.documentElement;
   var body = document.body;
@@ -99,18 +130,73 @@ document.addEventListener('DOMContentLoaded', function () {
     return target;
   }
 
+  function isTemplateRow(row) {
+    if (!row) return true;
+    if (row.hasAttribute('data-row-template')) return true;
+    if (row.getAttribute('aria-hidden') === 'true' && row.hasAttribute('hidden')) return true;
+    return false;
+  }
+
+  function isRowHidden(row) {
+    if (!row) return true;
+    if (isTemplateRow(row)) return true;
+    if (row.hasAttribute('hidden')) return true;
+    if (row.classList.contains('d-none')) return true;
+    try {
+      if (window.getComputedStyle(row).display === 'none') return true;
+    } catch (e) {}
+    return false;
+  }
+
   function getVisibleRows(container) {
-    return container.querySelectorAll('.dynamic-row:not([data-row-template]):not(.d-none), tr.dynamic-row:not([data-row-template])');
+    // Only real editable rows — never the hidden clone template
+    var rows = container.querySelectorAll('.dynamic-row');
+    var out = [];
+    for (var i = 0; i < rows.length; i++) {
+      if (!isRowHidden(rows[i])) {
+        out.push(rows[i]);
+      }
+    }
+    return out;
   }
 
   function clearFields(root) {
     root.querySelectorAll('input, select, textarea').forEach(function (el) {
+      // Always re-enable after cloning a disabled template
       el.disabled = false;
+      el.removeAttribute('disabled');
+      el.readOnly = false;
+      el.removeAttribute('readonly');
       if (el.type === 'checkbox' || el.type === 'radio') {
         el.checked = false;
+      } else if (el.tagName === 'SELECT') {
+        el.selectedIndex = 0;
       } else {
         el.value = '';
       }
+    });
+    // Reset Others free-text groups after clear (re-bind + hide "other" text)
+    root.querySelectorAll('[data-others-group]').forEach(function (g) {
+      delete g.dataset.othersBound;
+      var otherField = g.querySelector('[data-others-field]');
+      if (otherField) {
+        otherField.setAttribute('hidden', 'hidden');
+        otherField.querySelectorAll('input, textarea').forEach(function (inp) {
+          inp.disabled = true;
+          inp.value = '';
+        });
+      }
+    });
+  }
+
+  function renumberEntryLabels(container) {
+    var visible = getVisibleRows(container);
+    visible.forEach(function (row, idx) {
+      var label = row.querySelector('.entry-card-label');
+      if (!label) return;
+      var text = (label.textContent || '').replace(/\s*#\d+\s*$/, '').trim();
+      if (!text) text = 'Entry';
+      label.textContent = text + ' #' + (idx + 1);
     });
   }
 
@@ -120,11 +206,14 @@ document.addEventListener('DOMContentLoaded', function () {
       var target = document.querySelector(btn.getAttribute('data-add-row'));
       if (!target) return;
       var container = getRowContainer(target);
-      var template = target.querySelector('[data-row-template]') || container.querySelector('[data-row-template]');
+      var template =
+        target.querySelector('[data-row-template]') || container.querySelector('[data-row-template]');
       if (!template) return;
 
       var clone = template.cloneNode(true);
       clone.removeAttribute('data-row-template');
+      clone.removeAttribute('hidden');
+      clone.removeAttribute('aria-hidden');
       clone.classList.remove('d-none');
       clearFields(clone);
       // Allow Others toggles to re-bind on the new row
@@ -132,30 +221,35 @@ document.addEventListener('DOMContentLoaded', function () {
         delete g.dataset.othersBound;
       });
       container.appendChild(clone);
+      renumberEntryLabels(container);
     });
   });
 
-  // Remove dynamic rows
+  // Remove dynamic rows — keep exactly ONE visible data row (template stays hidden)
   document.querySelectorAll('[data-rows]').forEach(function (host) {
     host.addEventListener('click', function (e) {
       var removeBtn = e.target.closest('[data-remove-row]');
       if (!removeBtn) return;
+      e.preventDefault();
 
       var container = getRowContainer(host);
       var row = removeBtn.closest('tr.dynamic-row, .dynamic-row');
-      if (!row || row.hasAttribute('data-row-template')) return;
+      // Never act on the hidden clone template
+      if (!row || isTemplateRow(row) || row.hasAttribute('data-row-template')) return;
 
       var visible = getVisibleRows(container);
-      // Keep at least one visible row
+      // Keep exactly one visible data row: clear fields instead of removing
       if (visible.length <= 1) {
         clearFields(row);
+        renumberEntryLabels(container);
         return;
       }
       row.remove();
+      renumberEntryLabels(container);
     });
   });
 
-  // Age (years + months) as on a reference date — personal details step
+  // Age / practice duration (years + months) as on a reference date
   function normalizeDateStr(value) {
     if (!value) return '';
     // Accept YYYY-MM-DD or YYYY-MM-DD HH:MM:SS / ISO
@@ -164,13 +258,22 @@ document.addEventListener('DOMContentLoaded', function () {
     return m[1] + '-' + m[2] + '-' + m[3];
   }
 
+  function defaultAgeAsOnDate() {
+    // Fallback when data-age-as-on is missing: 01 Jan of the current calendar year
+    return new Date().getFullYear() + '-01-01';
+  }
+
   function calcAgeParts(dobStr, asOnStr) {
     dobStr = normalizeDateStr(dobStr);
-    asOnStr = normalizeDateStr(asOnStr) || '2026-01-01';
+    asOnStr = normalizeDateStr(asOnStr) || defaultAgeAsOnDate();
     if (!dobStr) return null;
 
-    var dobParts = dobStr.split('-').map(Number);
-    var asParts = asOnStr.split('-').map(Number);
+    var dobParts = dobStr.split('-').map(function (p) {
+      return parseInt(p, 10);
+    });
+    var asParts = asOnStr.split('-').map(function (p) {
+      return parseInt(p, 10);
+    });
     if (dobParts.length !== 3 || asParts.length !== 3) return null;
 
     var y1 = dobParts[0],
@@ -179,7 +282,26 @@ document.addEventListener('DOMContentLoaded', function () {
     var y2 = asParts[0],
       m2 = asParts[1],
       d2 = asParts[2];
-    if (!y1 || !m1 || !d1 || !y2 || !m2 || !d2) return null;
+
+    // Use range checks (not truthiness) so month/day = 1 is valid
+    if (
+      !isFinite(y1) ||
+      !isFinite(m1) ||
+      !isFinite(d1) ||
+      !isFinite(y2) ||
+      !isFinite(m2) ||
+      !isFinite(d2) ||
+      m1 < 1 ||
+      m1 > 12 ||
+      d1 < 1 ||
+      d1 > 31 ||
+      m2 < 1 ||
+      m2 > 12 ||
+      d2 < 1 ||
+      d2 > 31
+    ) {
+      return null;
+    }
 
     // Reject future DOB relative to as-on date
     if (y1 > y2 || (y1 === y2 && m1 > m2) || (y1 === y2 && m1 === m2 && d1 > d2)) {
@@ -197,38 +319,99 @@ document.addEventListener('DOMContentLoaded', function () {
       months += 12;
     }
     if (years < 0) return null;
+
+    // months is always 0–11 after borrow; keep integer
     return { years: years, months: months };
+  }
+
+  /**
+   * Force a visible update on readonly display fields.
+   * Some browsers (esp. readonly + type=number, or first write after empty)
+   * paint years but leave months stale until a later event.
+   */
+  function setReadonlyDisplayValue(el, value) {
+    if (!el) return;
+    var next = value === null || value === undefined ? '' : String(value);
+    var wasReadonly = el.readOnly;
+    var wasDisabled = el.disabled;
+
+    el.readOnly = false;
+    el.disabled = false;
+
+    // Clear-then-set forces a repaint when previous value was empty or identical
+    if (el.type === 'number') {
+      el.value = '';
+    }
+    if (el.value !== next) {
+      el.value = next;
+    } else {
+      // Same string still needs a kick on some engines after partial date picks
+      el.value = '';
+      el.value = next;
+    }
+    el.defaultValue = next;
+    el.setAttribute('value', next);
+
+    el.readOnly = wasReadonly || true;
+    el.disabled = wasDisabled;
+  }
+
+  function resolveAgeTarget(input, attrName) {
+    var id = input.getAttribute(attrName);
+    if (!id) return null;
+    var el = document.getElementById(id);
+    if (el) return el;
+    var form = input.form || (input.closest && input.closest('form'));
+    if (form) {
+      try {
+        return form.querySelector('#' + CSS.escape(id));
+      } catch (e) {
+        return form.querySelector('[id="' + id.replace(/"/g, '') + '"]');
+      }
+    }
+    return null;
   }
 
   function updateAgeDisplays(input) {
     if (!input) return;
-    var asOn = input.getAttribute('data-age-as-on') || '2026-01-01';
-    var yearsId = input.getAttribute('data-age-years-target');
-    var monthsId = input.getAttribute('data-age-months-target');
-    var yearsEl = yearsId ? document.getElementById(yearsId) : null;
-    var monthsEl = monthsId ? document.getElementById(monthsId) : null;
+    var asOn = input.getAttribute('data-age-as-on') || defaultAgeAsOnDate();
+    var yearsEl = resolveAgeTarget(input, 'data-age-years-target');
+    var monthsEl = resolveAgeTarget(input, 'data-age-months-target');
     if (!yearsEl && !monthsEl) return;
 
-    var parts = calcAgeParts(input.value, asOn);
-    if (yearsEl) {
-      yearsEl.value = parts ? String(parts.years) : '';
-      yearsEl.readOnly = true;
-    }
-    if (monthsEl) {
-      monthsEl.value = parts ? String(parts.months) : '';
-      monthsEl.readOnly = true;
-    }
+    // Prefer live value; fall back to attribute if the picker has not committed yet
+    var raw = input.value || input.getAttribute('value') || '';
+    var parts = calcAgeParts(raw, asOn);
+
+    // Always write both fields in one pass (months was lagging on first change)
+    setReadonlyDisplayValue(yearsEl, parts ? parts.years : '');
+    setReadonlyDisplayValue(monthsEl, parts ? parts.months : '');
+  }
+
+  function scheduleAgeUpdate(input) {
+    updateAgeDisplays(input);
+    // Date pickers sometimes commit value after the first input/change event
+    window.requestAnimationFrame(function () {
+      updateAgeDisplays(input);
+    });
+    window.setTimeout(function () {
+      updateAgeDisplays(input);
+    }, 0);
   }
 
   function bindAgeAutoCalc() {
     document.querySelectorAll('input[data-age-as-on]').forEach(function (input) {
-      ['change', 'input', 'blur'].forEach(function (evt) {
+      if (input.dataset.ageBound === '1') return;
+      input.dataset.ageBound = '1';
+
+      ['change', 'input', 'blur', 'focusout'].forEach(function (evt) {
         input.addEventListener(evt, function () {
-          updateAgeDisplays(input);
+          scheduleAgeUpdate(input);
         });
       });
-      // Initial fill when DOB is already present
-      updateAgeDisplays(input);
+
+      // Initial fill when DOB / enrolment date is already present
+      scheduleAgeUpdate(input);
     });
   }
 
@@ -373,20 +556,21 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[data-add-row]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       setTimeout(function () {
-        document.querySelectorAll('[data-others-group]').forEach(function (group) {
-          // New clones need a fresh bind flag
-          if (!group.dataset.othersBound) {
-            bindOthersGroup(group);
-          }
-        });
-        // Clones copy data-others-bound — rebind uncloned groups without handlers
         var target = document.querySelector(btn.getAttribute('data-add-row'));
         if (!target) return;
         var container = getRowContainer(target);
         if (!container) return;
-        var rows = container.querySelectorAll('.dynamic-row');
-        if (!rows.length) return;
-        var last = rows[rows.length - 1];
+        // Re-bind on the newest *visible* row only (skip hidden template)
+        var visible = getVisibleRows(container);
+        if (!visible.length) return;
+        var last = visible[visible.length - 1];
+        // Ensure all controls on the new row are enabled (cloned from disabled template)
+        last.querySelectorAll('input, select, textarea').forEach(function (el) {
+          if (el.closest('[data-others-field]')) return; // leave "other" text gated
+          el.disabled = false;
+          el.removeAttribute('disabled');
+          el.readOnly = false;
+        });
         last.querySelectorAll('[data-others-group]').forEach(function (group) {
           delete group.dataset.othersBound;
           bindOthersGroup(group);

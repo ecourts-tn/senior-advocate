@@ -28,13 +28,13 @@ ob_start();
     <label class="form-label" for="ageMin">Age min</label>
     <input type="number" name="age_min" id="ageMin" class="form-control" min="0" max="120"
            value="<?= esc($ageMin !== null ? (string) $ageMin : '') ?>"
-           placeholder="Yrs" title="Minimum age (years as on 01.01.2026)">
+           placeholder="Yrs" title="Minimum age (years as on <?= esc(sad_age_as_on_label()) ?>)">
 </div>
 <div class="col-6 col-md-2 col-lg-1">
     <label class="form-label" for="ageMax">Age max</label>
     <input type="number" name="age_max" id="ageMax" class="form-control" min="0" max="120"
            value="<?= esc($ageMax !== null ? (string) $ageMax : '') ?>"
-           placeholder="Yrs" title="Maximum age (years as on 01.01.2026)">
+           placeholder="Yrs" title="Maximum age (years as on <?= esc(sad_age_as_on_label()) ?>)">
 </div>
 <div class="col-6 col-md-2 col-lg-2">
     <label class="form-label" for="experienceMin">Experience (min yrs)</label>

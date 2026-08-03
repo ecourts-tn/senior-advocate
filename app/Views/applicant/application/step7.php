@@ -9,7 +9,11 @@
 
 <div class="card card-mhc">
     <div class="card-body">
-        <?= form_open_multipart('applicant/application/step/7') ?>
+        <?= form_open_multipart('applicant/application/step/7', [
+            'autocomplete'         => 'off',
+            'data-prevent-bfcache' => '1',
+            'class'                => 'application-step-form',
+        ]) ?>
 
         <div class="section-title">Required uploads (strict validation)</div>
         <div class="row g-3">

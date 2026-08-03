@@ -48,7 +48,6 @@ class DashboardController extends BaseController
         $editable    = $appsModel->findEditableForUser($userId);
         $canStart    = $appsModel->canStartNewApplication($userId);
         $editWindow  = ApplicationModel::editWindowInfo();
-        $cycleYear   = ApplicationModel::currentCycleYear();
 
         return view('applicant/dashboard', [
             'title'            => 'Applicant Dashboard',
@@ -57,7 +56,6 @@ class DashboardController extends BaseController
             'editable'         => $editable,
             'canStart'         => $canStart,
             'editWindow'       => $editWindow,
-            'cycleYear'        => $cycleYear,
             'q'                => $q,
             'status'           => $status,
             'statuses'         => ApplicationModel::STATUSES,

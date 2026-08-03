@@ -52,6 +52,26 @@ if (! function_exists('sad_step_labels')) {
     }
 }
 
+if (! function_exists('sad_age_as_on_date')) {
+    /**
+     * ISO date used for age / practice calc: 01 January of the cycle year.
+     */
+    function sad_age_as_on_date(): string
+    {
+        return \App\Models\ApplicationModel::ageAsOnDate();
+    }
+}
+
+if (! function_exists('sad_age_as_on_label')) {
+    /**
+     * Human label for age reference date, e.g. "01.01.2026".
+     */
+    function sad_age_as_on_label(): string
+    {
+        return \App\Models\ApplicationModel::ageAsOnLabel();
+    }
+}
+
 if (! function_exists('current_user')) {
     function current_user(): ?array
     {

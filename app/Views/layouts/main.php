@@ -9,7 +9,7 @@
     <title><?= esc($title ?? 'SAD Portal') ?> | Madras High Court</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/app.css') ?>?v=<?= @filemtime(FCPATH . 'assets/css/app.css') ?: time() ?>" rel="stylesheet">
     <link rel="icon" href="<?= base_url('assets/img/logo.svg') ?>" type="image/svg+xml">
 </head>
 <?php
