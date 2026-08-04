@@ -22,9 +22,9 @@
         };
         ?>
 
-        <div class="section-title">18. Whether the applicant has; applied earlier to the Madras High Court for designation; If so, date of the application & current status thereof:</div>
+        <div class="section-title">18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application & current status thereof:</div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-3 mt-4 pt-4">
                 <select name="applied_mhc_earlier" class="form-select" data-toggle-detail="#mhcDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $yn('applied_mhc_earlier', $app) === '1' ? 'selected' : '' ?>>Yes</option>
@@ -45,9 +45,9 @@
             </div>
         </div>
 
-        <div class="section-title">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the applidation and details thereof</div>
+        <div class="section-title">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof:</div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-3 mt-4 pt-4">
                 <select name="applied_other_court" class="form-select" data-toggle-detail="#otherCourtDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $yn('applied_other_court', $app) === '1' ? 'selected' : '' ?>>Yes</option>
@@ -55,14 +55,22 @@
                 </select>
             </div>
             <div class="col-md-9" id="otherCourtDetail">
-                <label class="form-label">Date and details</label>
-                <textarea name="applied_other_details" class="form-control" rows="2"><?= esc($app['applied_other_details'] ?? '') ?></textarea>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Date of application</label>
+                        <input type="date" name="applied_other_date" class="form-control" value="<?= esc($app['applied_other_date'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Details thereof</label>
+                        <input type="text" name="applied_other_details" class="form-control" value="<?= esc($app['applied_other_details'] ?? '') ?>">
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="section-title">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof:</div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-3 pt-4 mt-4">
                 <select name="fir_lodged" class="form-select" data-toggle-detail="#firDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $yn('fir_lodged', $app) === '1' ? 'selected' : '' ?>>Yes</option>
@@ -77,7 +85,7 @@
 
         <div class="section-title">21. Whether the applicant is a party to any criminal case; if so, details thereof:</div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-3 mt-4 pt-4">
                 <select name="criminal_case_party" class="form-select" data-toggle-detail="#crimDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $yn('criminal_case_party', $app) === '1' ? 'selected' : '' ?>>Yes</option>
@@ -90,9 +98,9 @@
             </div>
         </div>
 
-        <div class="section-title">22. Whether any proceedings were initiated of are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof</div>
+        <div class="section-title">22. Whether any proceedings were initiated or are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof</div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-3 mt-4 pt-4">
                 <select name="bar_council_proceedings" class="form-select" data-toggle-detail="#bcDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $yn('bar_council_proceedings', $app) === '1' ? 'selected' : '' ?>>Yes</option>

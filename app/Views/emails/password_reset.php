@@ -29,7 +29,7 @@
     <p style="font-size:0.9rem;color:#6b6558;">
         If you did not request a password reset, you can ignore this message. Your password will remain unchanged.
     </p>
-    <?= view('emails/_contact_footer', ['site' => $site ?? config(\Config\Site::class)]) ?>
+    <?php #= view('emails/_contact_footer', ['site' => $site ?? config(\Config\Site::class)]) ?>
 </div>
 </body>
 </html>

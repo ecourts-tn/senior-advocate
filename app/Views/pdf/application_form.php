@@ -181,7 +181,8 @@
     </tr>
     <tr>
         <td class="label">19. Other Court applications</td>
-        <td colspan="2"><?= sad_bool_label($app['applied_other_court'] ?? null) ?> <?= esc($app['applied_other_details'] ?? '') ?></td>
+        <td colspan="2"><?= sad_bool_label($app['applied_other_court'] ?? null) ?>
+            <?= esc($app['applied_other_date'] ?? '') ?> <?= esc($app['applied_other_details'] ?? '') ?></td>
     </tr>
     <tr>
         <td class="label">20. FIR lodged</td>

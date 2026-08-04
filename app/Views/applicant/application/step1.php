@@ -15,7 +15,7 @@
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
         ]) ?>
-        <div class="section-title">1–5. Personal Particulars</div>
+        <div class="section-title">1–6. Personal Particulars</div>
         <div class="row g-3">
             <div class="col-md-2">
                 <label class="form-label required">Title</label>
@@ -29,7 +29,8 @@
                 <label class="form-label required">Name of the Applicant-Advocate</label>
                 <input type="text" name="full_name" class="form-control" required
                        value="<?= esc(old('full_name', $app['full_name'] ?? '')) ?>">
-                <div class="form-text">Must tally with enrolment certificate. No abbreviations.</div>
+                <div class="form-text">Name of the applicant should tally with his/her name as mentioned in
+his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
             </div>
             <?php
             $ageAsOnDate  = sad_age_as_on_date();

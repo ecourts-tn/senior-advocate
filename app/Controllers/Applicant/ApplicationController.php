@@ -762,6 +762,7 @@ class ApplicationController extends BaseController
                     'applied_mhc_date'         => $post['applied_mhc_date'] ?: null,
                     'applied_mhc_status'       => trim($post['applied_mhc_status'] ?? ''),
                     'applied_other_court'      => $bool($post['applied_other_court'] ?? null),
+                    'applied_other_date'       => $post['applied_other_date'] ?: null,
                     'applied_other_details'    => trim($post['applied_other_details'] ?? ''),
                     'fir_lodged'               => $bool($post['fir_lodged'] ?? null),
                     'fir_details'              => trim($post['fir_details'] ?? ''),

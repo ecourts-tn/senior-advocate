@@ -32,7 +32,7 @@
             View application
         </a>
     </p>
-    <?= view('emails/_contact_footer', ['site' => $site]) ?>
+    <?php #= view('emails/_contact_footer', ['site' => $site]) ?>
 </div>
 </body>
 </html>

@@ -29,7 +29,7 @@ class ApplicationModel extends Model
         'courts_practiced', 'tribunals_practiced',
         'nature_of_practice', 'field_of_law',
         'applied_mhc_earlier', 'applied_mhc_date', 'applied_mhc_status',
-        'applied_other_court', 'applied_other_details',
+        'applied_other_court', 'applied_other_date', 'applied_other_details',
         'fir_lodged', 'fir_details',
         'criminal_case_party', 'criminal_case_details',
         'bar_council_proceedings', 'bar_council_details',

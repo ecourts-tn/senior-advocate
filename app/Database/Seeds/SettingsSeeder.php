@@ -19,12 +19,12 @@ class SettingsSeeder extends Seeder
         $samples = [
             'email' => [
                 'enabled'     => '1',
-                'from_email'  => 'noreply@hcmadras.tn.gov.in',
-                'from_name'   => 'High Court of Madras — SAD Portal',
+                'from_email'  => 'ibms.mhc@gmail.com',
+                'from_name'   => 'Madras High Court — DSA Portal',
                 'protocol'    => 'file', // writes under writable/mail/
                 'smtp_host'   => 'smtp.gmail.com',
-                'smtp_user'   => 'sad.portal@example.com',
-                'smtp_pass'   => 'your-app-password-here',
+                'smtp_user'   => 'ibms.mhc@gmail.com',
+                'smtp_pass'   => 'bpzcrxxhrzbtktdd',
                 'smtp_port'   => '587',
                 'smtp_crypto' => 'tls',
             ],

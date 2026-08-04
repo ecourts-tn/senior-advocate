@@ -17,7 +17,7 @@
         <strong>Registrar (Administration), Madras High Court</strong> immediately
         and use the “Forgot password” option if you still have access to your registered email.
     </p>
-    <?= view('emails/_contact_footer', ['site' => $site ?? config(\Config\Site::class)]) ?>
+    <?php #= view('emails/_contact_footer', ['site' => $site ?? config(\Config\Site::class)]) ?>
 </div>
 </body>
 </html>

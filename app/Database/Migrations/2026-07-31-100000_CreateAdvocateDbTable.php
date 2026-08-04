@@ -92,11 +92,11 @@ class CreateAdvocateDbTable extends Migration
         $this->forge->addKey('advenrol', true);
         $this->forge->addKey('advname');
         $this->forge->addKey('mobileno');
-        $this->forge->createTable('advocate_db', true);
+        $this->forge->createTable('advocate_t', true);
     }
 
     public function down()
     {
-        $this->forge->dropTable('advocate_db', true);
+        $this->forge->dropTable('advocate_t', true);
     }
 }

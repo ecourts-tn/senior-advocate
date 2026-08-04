@@ -268,6 +268,10 @@ class CreateApplicationsTable extends Migration
                 'type' => 'BOOLEAN',
                 'null' => true,
             ],
+            'applied_other_date' => [
+                'type' => 'DATE',
+                'null' => true,
+            ],
             'applied_other_details' => [
                 'type' => 'TEXT',
                 'null' => true,

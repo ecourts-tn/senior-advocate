@@ -28,7 +28,7 @@
     <p style="font-size:0.9rem;color:#6b6558;">
         Please read the Instructions carefully before submitting. Errors cannot be rectified after submission.
     </p>
-    <?= view('emails/_contact_footer', ['site' => $site]) ?>
+    <?php #= view('emails/_contact_footer', ['site' => $site]) ?>
 </div>
 </body>
 </html>

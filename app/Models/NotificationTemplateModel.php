@@ -123,8 +123,8 @@ HTML,
 HTML,
                 'sms_body' => 'MHC SAD Portal: Application {{application_no}} submitted successfully. Keep your Application No. for reference.',
             ],
-            'application_approved' => [
-                'name'          => self::EVENTS['application_approved'],
+            'application_accepted' => [
+                'name'          => self::EVENTS['application_accepted'],
                 'description'   => 'Sent when an application is accepted by admin.',
                 'email_enabled' => true,
                 'sms_enabled'   => true,

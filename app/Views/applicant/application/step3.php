@@ -9,9 +9,9 @@
 
 <?php
 $courtLevels = [
-    'madras_hc'         => 'Madras HC',
-    'supreme_other_hc'  => 'SC / Other HC',
-    'district_tribunal' => 'District / Tribunal',
+    'madras_hc'         => 'Madras High Court',
+    'supreme_other_hc'  => 'Supreme Court / Other High Courts',
+    'district_tribunal' => 'District Courts / Labour Courts / Tribunals',
 ];
 
 /**
@@ -44,7 +44,7 @@ $renderJudgmentCard = static function (
         </div>
         <div class="row g-2 g-md-3">
             <div class="col-12 col-sm-6 col-lg-4">
-                <label class="form-label">Court level</label>
+                <label class="form-label">Court</label>
                 <select name="<?= esc($prefix) ?>_court_level[]" class="form-select form-select-sm"<?= $disabled ?>>
                     <?php foreach ($courtLevels as $k => $lab): ?>
                         <option value="<?= esc($k) ?>" <?= $level === $k ? 'selected' : '' ?>><?= esc($lab) ?></option>
@@ -55,7 +55,7 @@ $renderJudgmentCard = static function (
                 <label class="form-label">Court name</label>
                 <input name="<?= esc($prefix) ?>_court_name[]" class="form-control form-control-sm"
                        value="<?= esc($row['court_name'] ?? '') ?>"
-                       placeholder="Name of the court"<?= $disabled ?>>
+                       <?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-6 col-lg-4">
                 <label class="form-label">Decided on</label>
@@ -66,23 +66,23 @@ $renderJudgmentCard = static function (
                 <label class="form-label">Case No.</label>
                 <input name="<?= esc($prefix) ?>_case_number[]" class="form-control form-control-sm"
                        value="<?= esc($row['case_number'] ?? '') ?>"
-                       placeholder="Case number"<?= $disabled ?>>
+                       <?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-6">
                 <label class="form-label">Citation</label>
                 <input name="<?= esc($prefix) ?>_citation[]" class="form-control form-control-sm"
                        value="<?= esc($row['citation'] ?? '') ?>"
-                       placeholder="Citation (if any)"<?= $disabled ?>>
+                       <?= $disabled ?>>
             </div>
             <div class="col-12">
-                <label class="form-label">Cause Title &amp; Subject</label>
+                <label class="form-label">Cause Title and Subject Matter</label>
                 <textarea name="<?= esc($prefix) ?>_cause_title[]" class="form-control form-control-sm" rows="2"
-                          placeholder="Cause title and subject matter"<?= $disabled ?>><?= esc($row['cause_title'] ?? '') ?></textarea>
+                          <?= $disabled ?>><?= esc($row['cause_title'] ?? '') ?></textarea>
             </div>
             <div class="col-12">
-                <label class="form-label">Legal formulation</label>
+                <label class="form-label">Legal formulation advanced by the applicant</label>
                 <textarea name="<?= esc($prefix) ?>_legal_formulation[]" class="form-control form-control-sm" rows="2"
-                          placeholder="Principle of law laid down"<?= $disabled ?>><?= esc($row['legal_formulation'] ?? '') ?></textarea>
+                          <?= $disabled ?>><?= esc($row['legal_formulation'] ?? '') ?></textarea>
             </div>
         </div>
     </div>
@@ -100,6 +100,7 @@ $renderJudgmentCard = static function (
 
         <div class="section-title">9. Number of Reported Judgments (excluding orders that do not lay down any principle of law): Format L-1</div>
         <div class="row g-3 mb-3">
+            <span class="text-muted mb-0">No. of Reported Judgments that the Advocate actually argued</span>
             <div class="col-md-4">
                 <label class="form-label">Supreme Court</label>
                 <input type="number" min="0" name="reported_sc" class="form-control" value="<?= (int) old('reported_sc', $app['reported_sc'] ?? 0) ?>">
@@ -109,14 +110,14 @@ $renderJudgmentCard = static function (
                 <input type="number" min="0" name="reported_hc" class="form-control" value="<?= (int) old('reported_hc', $app['reported_hc'] ?? 0) ?>">
             </div>
             <div class="col-md-4">
-                <label class="form-label">District / Labour Court / Tribunals</label>
+                <label class="form-label">District Court / Labour Court / Tribunals</label>
                 <input type="number" min="0" name="reported_district" class="form-control" value="<?= (int) old('reported_district', $app['reported_district'] ?? 0) ?>">
             </div>
         </div>
 
         <div class="entry-block mb-4">
             <div class="entry-block-head">
-                <strong>Format L-1 entries <span class="text-muted fw-normal">(as arguing counsel)</span></strong>
+                <strong>Format L-1 entries <br/><span class="text-muted fw-bold small">LIST OF REPORTED JUDGMENTS (EXCLUDING ORDERS NOT LAYING DOWN ANY PRINCIPLE OF LAW)</span></strong>
                 <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l1Rows">
                     <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
                 </button>
@@ -137,6 +138,7 @@ $renderJudgmentCard = static function (
 
         <div class="section-title">10. Number of Unreported Judgments (excluding orders that do not lay down any principle of law): Format L-2</div>
         <div class="row g-3 mb-3">
+            <span class="text-muted mb-0">No. of Unreported Judgments that the Advocate actually argued</span>
             <div class="col-md-4">
                 <label class="form-label">Supreme Court</label>
                 <input type="number" min="0" name="unreported_sc" class="form-control" value="<?= (int) old('unreported_sc', $app['unreported_sc'] ?? 0) ?>">
@@ -153,7 +155,7 @@ $renderJudgmentCard = static function (
 
         <div class="entry-block mb-3">
             <div class="entry-block-head">
-                <strong>Format L-2 entries</strong>
+                <strong>Format L-2 entries<br/><span class="text-muted fw-bold small">LIST OF UNREPORTED JUDGMENTS (EXCLUDING ORDERS NOT LAYING DOWN ANY PRINCIPLE OF LAW)</span></strong>
                 <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l2Rows">
                     <i class="bi bi-plus-lg" aria-hidden="true"></i> Add entry
                 </button>

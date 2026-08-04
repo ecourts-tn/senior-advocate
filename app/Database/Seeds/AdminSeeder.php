@@ -41,16 +41,16 @@ class AdminSeeder extends Seeder
                 'created_at'    => $now,
                 'updated_at'    => $now,
             ],
-            [
-                'name'          => 'Demo Advocate',
-                'email'         => 'advocate@example.com',
-                'mobile'        => '9876543210',
-                'password_hash' => password_hash('Advocate@123', PASSWORD_DEFAULT),
-                'role'          => 'applicant',
-                'is_active'     => true,
-                'created_at'    => $now,
-                'updated_at'    => $now,
-            ],
+            // [
+            //     'name'          => 'Demo Advocate',
+            //     'email'         => 'advocate@example.com',
+            //     'mobile'        => '9876543210',
+            //     'password_hash' => password_hash('Advocate@123', PASSWORD_DEFAULT),
+            //     'role'          => 'applicant',
+            //     'is_active'     => true,
+            //     'created_at'    => $now,
+            //     'updated_at'    => $now,
+            // ],
         ];
 
         foreach ($users as $user) {

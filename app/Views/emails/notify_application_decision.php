@@ -25,7 +25,7 @@ $bannerBg   = $isApproved ? '#1b6b3a' : '#9b1c1c';
         <p style="margin:16px 0 8px;font-weight:600;">Remarks</p>
         <div style="background:#faf8f3;border:1px solid #d9d2c5;border-radius:4px;padding:12px;white-space:pre-wrap;"><?= esc($remarks) ?></div>
     <?php endif; ?>
-    <?= view('emails/_contact_footer', ['site' => $site]) ?>
+    <?php #= view('emails/_contact_footer', ['site' => $site]) ?>
 </div>
 </body>
 </html>

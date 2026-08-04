@@ -49,23 +49,23 @@
                     </div>
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <label class="form-label">Court / Tribunal</label>
+                            <label class="form-label">Court(s) / Tribunal(s)</label>
                             <input name="pb_court[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Case No.</label>
+                            <label class="form-label">Citation / Case Number</label>
                             <input name="pb_case_number[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-md-8">
                             <label class="form-label">Cause Title</label>
-                            <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="2" disabled></textarea>
+                            <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="1" disabled></textarea>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Decided on</label>
                             <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Society benefit</label>
+                            <label class="form-label">Describe Manner in which society was sought to be benefited by the litigation</label>
                             <textarea name="pb_society_benefit[]" class="form-control form-control-sm" rows="2" disabled></textarea>
                         </div>
                     </div>
@@ -80,23 +80,23 @@
                         </div>
                         <div class="row g-2">
                             <div class="col-md-6">
-                                <label class="form-label">Court / Tribunal</label>
+                                <label class="form-label">Court(s) / Tribunal(s)</label>
                                 <input name="pb_court[]" class="form-control form-control-sm" value="<?= esc($row['court_tribunal'] ?? '') ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Case No.</label>
+                                <label class="form-label">Citation / Case Number</label>
                                 <input name="pb_case_number[]" class="form-control form-control-sm" value="<?= esc($row['case_number'] ?? '') ?>">
                             </div>
                             <div class="col-md-8">
                                 <label class="form-label">Cause Title</label>
-                                <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="2"><?= esc($row['cause_title'] ?? '') ?></textarea>
+                                <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="1"><?= esc($row['cause_title'] ?? '') ?></textarea>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Decided on</label>
                                 <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Society benefit</label>
+                                <label class="form-label">Describe Manner in which society was sought to be benefited by the litigation</label>
                                 <textarea name="pb_society_benefit[]" class="form-control form-control-sm" rows="2"><?= esc($row['society_benefit'] ?? '') ?></textarea>
                             </div>
                         </div>
@@ -123,23 +123,23 @@
                     </div>
                     <div class="row g-2">
                         <div class="col-md-6">
-                            <label class="form-label">Court / Tribunal</label>
+                            <label class="form-label">Court(s) / Tribunal(s)</label>
                             <input name="am_court[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Case No.</label>
+                            <label class="form-label">Citation / Case Number</label>
                             <input name="am_case_number[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cause Title</label>
-                            <textarea name="am_cause_title[]" class="form-control form-control-sm" rows="2" disabled></textarea>
+                            <textarea name="am_cause_title[]" class="form-control form-control-sm" rows="1" disabled></textarea>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Decided on</label>
                             <input type="date" name="am_decided_on[]" class="form-control form-control-sm" disabled>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Reportable?</label>
+                            <label class="form-label">Reportable / Unreportable?</label>
                             <select name="am_reportable[]" class="form-select form-select-sm" disabled>
                                 <option value="">—</option>
                                 <option value="Reportable">Reportable</option>
@@ -158,23 +158,23 @@
                         </div>
                         <div class="row g-2">
                             <div class="col-md-6">
-                                <label class="form-label">Court / Tribunal</label>
+                                <label class="form-label">Court(s) / Tribunal(s)</label>
                                 <input name="am_court[]" class="form-control form-control-sm" value="<?= esc($row['court_tribunal'] ?? '') ?>">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Case No.</label>
+                                <label class="form-label">Citation / Case Number</label>
                                 <input name="am_case_number[]" class="form-control form-control-sm" value="<?= esc($row['case_number'] ?? '') ?>">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Cause Title</label>
-                                <textarea name="am_cause_title[]" class="form-control form-control-sm" rows="2"><?= esc($row['cause_title'] ?? '') ?></textarea>
+                                <textarea name="am_cause_title[]" class="form-control form-control-sm" rows="1"><?= esc($row['cause_title'] ?? '') ?></textarea>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Decided on</label>
                                 <input type="date" name="am_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>">
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Reportable?</label>
+                                <label class="form-label">Reportable / Unreportable?</label>
                                 <select name="am_reportable[]" class="form-select form-select-sm">
                                     <option value="">—</option>
                                     <option value="Reportable" <?= ($row['reportable'] ?? '') === 'Reportable' ? 'selected' : '' ?>>Reportable</option>
@@ -198,7 +198,7 @@
             </div>
         </div>
 
-        <div class="section-title">13. Aqademic Articles/Books published, experience of Teaching Assignments in the field of law. Guest Lectures delivered, in law schools or professional institutions connected with law: Format L-4</div>
+        <div class="section-title">13. Aqademic Articles/Books published, experience of Teaching Assignments in the field of law, Guest Lectures delivered in law schools or professional institutions connected with law: Format L-4</div>
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-3">
                 <label class="form-label">No. of Academic Articles</label>
@@ -209,11 +209,11 @@
                 <input type="number" min="0" name="academic_books_count" class="form-control" value="<?= (int) ($app['academic_books_count'] ?? 0) ?>">
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label">Teaching Assignments</label>
+                <label class="form-label">No. of Teaching Assignments</label>
                 <input type="number" min="0" name="teaching_assignments_count" class="form-control" value="<?= (int) ($app['teaching_assignments_count'] ?? 0) ?>">
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label">Guest Lectures</label>
+                <label class="form-label">No. of Guest Lectures</label>
                 <input type="number" min="0" name="guest_lectures_count" class="form-control" value="<?= (int) ($app['guest_lectures_count'] ?? 0) ?>">
             </div>
         </div>

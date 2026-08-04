@@ -32,7 +32,7 @@ $periodDate = static function (array $row, string $key): string {
             'class'                => 'application-step-form',
         ]) ?>
 
-        <div class="section-title">14. Courts where the applicant is practicing / has practiced</div>
+        <div class="section-title">14. Courts where the applicant is practicing / has practiced <span class="small text-muted">(Court-wise period may be indicated)</span></div>
         <div class="d-flex justify-content-end mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#courtRows">+ Add court</button>
         </div>
@@ -108,7 +108,7 @@ $periodDate = static function (array $row, string $key): string {
         </div>
         <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
 
-        <div class="section-title mt-4">15. Tribunals Where the applicant has specialized practice: (Applicable to those before practising Tribunals)</div>
+        <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those before practising Tribunals)</span></div>
         <div class="d-flex justify-content-end mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#tribRows">+ Add tribunal</button>
         </div>
@@ -131,7 +131,7 @@ $periodDate = static function (array $row, string $key): string {
                             'other'       => $parsedT['other'],
                             'placeholder' => 'Select tribunal…',
                             'showLabel'   => $i === 0,
-                            'label'       => 'Tribunal',
+                            'label'       => 'Tribunal(s)',
                             'disabled'    => false,
                         ], ['saveData' => false]) ?>
                     </div>

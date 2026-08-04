@@ -6,7 +6,7 @@ use CodeIgniter\Model;
 
 class AdvocateDbModel extends Model
 {
-    protected $table            = 'advocate_db';
+    protected $table            = 'advocate_t';
     protected $primaryKey       = 'advenrol';
     protected $useAutoIncrement = false;
     protected $returnType       = 'array';
@@ -41,7 +41,7 @@ class AdvocateDbModel extends Model
             return null;
         }
 
-        $sql = 'SELECT * FROM advocate_db WHERE advenrol = ? OR LOWER(advenrol) = LOWER(?) LIMIT 1';
+        $sql = 'SELECT * FROM advocate_t WHERE advenrol = ? OR LOWER(advenrol) = LOWER(?) LIMIT 1';
         $row = $this->db->query($sql, [$enrolment, $enrolment])->getRowArray();
 
         return $row ?: null;

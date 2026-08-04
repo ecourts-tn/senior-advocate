@@ -1,0 +1,5 @@
+To: 8072003846
+Date: 2026-08-04T07:18:52+00:00
+Method: log
+
+MHC SAD Portal: Registration successful for KRISHNA VENI T. Login at http://127.0.0.1:8081/login to start your application.

@@ -18,10 +18,10 @@
         $ageAsOnDate  = sad_age_as_on_date();
         $ageAsOnLabel = sad_age_as_on_label();
         ?>
-        <div class="section-title">6. Enrolment as Advocate</div>
+        <div class="section-title">7. Enrolment Details</div>
         <div class="row g-3">
             <div class="col-md-4">
-                <label class="form-label required">Date of Enrolment</label>
+                <label class="form-label required">Date, Month and Year of Enrolment as an Advocate</label>
                 <input type="date" name="enrolment_date" id="enrolment_date" class="form-control" required
                        max="<?= esc($ageAsOnDate) ?>"
                        value="<?= esc(old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '')) ?>"
@@ -52,7 +52,7 @@
             <div class="col-md-4">
                 <label class="form-label required">Bar Council where registered</label>
                 <input type="text" name="bar_council" class="form-control" required
-                       value="<?= esc(old('bar_council', $app['bar_council'] ?? '')) ?>"
+                       value="<?= esc(old('bar_council', ''))#= esc(old('bar_council', $app['bar_council'] ?? '')) ?>"
                        placeholder="e.g. Bar Council of Tamil Nadu & Puducherry">
             </div>
             <div class="col-md-3">
@@ -80,7 +80,7 @@
 
         <div class="section-title mt-4">8. Bar Association Membership</div>
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label class="form-label">Whether the applicant is a member of any bar association attached to a specific court</label>
                 <select name="is_bar_association_member" class="form-select" data-toggle-detail="#barAssocDetail">
                     <option value="">— Select —</option>
@@ -88,14 +88,13 @@
                     <option value="0" <?= old('is_bar_association_member', sad_bool_label($app['is_bar_association_member'] ?? null) === 'No' ? '0' : '') === '0' ? 'selected' : '' ?>>No</option>
                 </select>
             </div>
-            <div class="col-md-8" id="barAssocDetail">
+            <div class="col-md-6" id="barAssocDetail">
                 <label class="form-label">Name of Bar Association</label>
                 <input type="text" name="bar_association_name" class="form-control"
                        value="<?= esc(old('bar_association_name', $app['bar_association_name'] ?? '')) ?>"
                        placeholder="e.g. Madras High Court Advocates Association">
             </div>
         </div>
-        <p class="form-text mt-3">Enrolment Certificate PDF upload is available on Step 7 (Uploads).</p>
         <?= $this->include('applicant/application/_form_nav') ?>
         <?= form_close() ?>
     </div>

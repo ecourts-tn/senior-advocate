@@ -126,11 +126,11 @@
             </p>
             <p class="small">
                 I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief.
-                No material information is concealed or suppressed therefrom. I understand that furnishing of false information
+                No material information is concealed or suppressed there from. I understand that furnishing of false information
                 or suppression of any factual information would render me unfit from being designated as Senior Advocate.
             </p>
             <p class="small mb-0">
-                I undertake that if my application is accepted I will strictly adhere to the code of conduct applicable under the
+                I undertake that if my application is accepted, I will strictly adhere to the code of conduct applicable under the
                 Advocates Act and Bar Council Act, as well as these Rules, and shall not do any act which directly or indirectly
                 violates any of the above, either in letter or in spirit.
             </p>
