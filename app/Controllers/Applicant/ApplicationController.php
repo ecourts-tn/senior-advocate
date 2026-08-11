@@ -11,6 +11,7 @@ use App\Models\ApplicationModel;
 use App\Models\ApplicationSequenceModel;
 use App\Models\ApplicationStatusHistoryModel;
 use App\Models\AuditLogModel;
+use App\Models\DesignationNotificationModel;
 use App\Models\FormatL1Model;
 use App\Models\FormatL2Model;
 use App\Models\FormatL3AmicusModel;
@@ -28,7 +29,7 @@ class ApplicationController extends BaseController
     {
         parent::initController($request, $response, $logger);
         $this->apps = model(ApplicationModel::class);
-        helper(['form', 'url', 'sad']);
+        helper(['form', 'url', 'ssa']);
         // Never cache application forms — browser Back must revalidate with the server
         $this->preventSensitiveCache();
     }
@@ -48,34 +49,119 @@ class ApplicationController extends BaseController
      * Start a new application: show instructions first.
      * The form is only created after the advocate accepts instructions (POST).
      */
+    // public function start()
+    // {
+    //     $userId = (int) session()->get('user_id');
+    //     $draft  = $this->apps->findDraftForUser($userId);
+
+    //     if ($draft) {
+    //         return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
+    //     }
+
+    //     if (! $this->apps->canStartNewApplication($userId)) {
+    //         $existing = $this->apps->findForUserCycle($userId)
+    //             ?? $this->apps->where('user_id', $userId)
+    //                 ->whereIn('status', ApplicationModel::inProcessStatuses())
+    //                 ->first();
+    //         $year = ApplicationModel::currentCycleYear();
+    //         $msg  = 'You may submit only one application for the ' . $year
+    //             . ' designation cycle. '
+    //             . ($existing
+    //                 ? 'Existing application: ' . ($existing['application_no'] ?? ('#' . $existing['id'])) . ' (' . (ApplicationModel::STATUSES[$existing['status']] ?? $existing['status']) . ').'
+    //                 : '');
+
+    //         return redirect()->to('/applicant/dashboard')->with('error', trim($msg));
+    //     }
+
+    //     return view('applicant/application/instructions', [
+    //         'title'      => 'Instructions — Start Application',
+    //         'cycleYear'  => ApplicationModel::currentCycleYear(),
+    //         'editWindow' => ApplicationModel::editWindowInfo(),
+    //     ]);
+    // }
+
     public function start()
     {
         $userId = (int) session()->get('user_id');
-        $draft  = $this->apps->findDraftForUser($userId);
 
+        $draft = $this->apps->findDraftForUser($userId);
+
+        /*
+         * If the applicant already has a draft,
+         * allow them to continue the draft.
+         */
         if ($draft) {
-            return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
+            return redirect()->to(
+                '/applicant/application/step/' . (int) $draft['current_step']
+            );
         }
 
-        if (! $this->apps->canStartNewApplication($userId)) {
-            $existing = $this->apps->findForUserCycle($userId)
-                ?? $this->apps->where('user_id', $userId)
-                    ->whereIn('status', ApplicationModel::inProcessStatuses())
-                    ->first();
-            $year = ApplicationModel::currentCycleYear();
-            $msg  = 'You may submit only one application for the ' . $year
-                . ' designation cycle. '
-                . ($existing
-                    ? 'Existing application: ' . ($existing['application_no'] ?? ('#' . $existing['id'])) . ' (' . (ApplicationModel::STATUSES[$existing['status']] ?? $existing['status']) . ').'
-                    : '');
+        // Gate: application period must be open (date + time on active notification)
+        $period = DesignationNotificationModel::applicationPeriodInfo();
+        if (empty($period['open'])) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', $period['message'] ?? 'The application submission period is not open.');
+        }
 
-            return redirect()->to('/applicant/dashboard')->with('error', trim($msg));
+        $year = ApplicationModel::currentCycleYear();
+
+        /*
+         * Check whether the applicant has already
+         * submitted an application for this cycle / notification.
+         */
+        if (! $this->apps->canStartNewApplication($userId)) {
+            $existing = null;
+            if (! empty($period['notification_id'])) {
+                $existing = $this->apps->findForUserNotification($userId, (int) $period['notification_id']);
+            }
+            $existing ??= $this->apps->findForUserCycle($userId)
+                ?? $this->apps->where('user_id', $userId)
+                    ->whereIn(
+                        'status',
+                        ApplicationModel::inProcessStatuses()
+                    )
+                    ->first();
+
+            $label = $period['notification_number'] !== ''
+                ? 'notification ' . $period['notification_number']
+                : $year . ' designation cycle';
+
+            $msg = 'You may submit only one application for '
+                . $label
+                . '. '
+                . (
+                    $existing
+                        ? 'Existing application: '
+                            . (
+                                $existing['application_no']
+                                ?? ('#' . $existing['id'])
+                            )
+                            . ' ('
+                            . (
+                                ApplicationModel::STATUSES[
+                                    $existing['status']
+                                ]
+                                ?? $existing['status']
+                            )
+                            . ').'
+                        : ''
+                );
+
+            return redirect()
+                ->to('/applicant/dashboard')
+                ->with('error', trim($msg));
         }
 
         return view('applicant/application/instructions', [
             'title'      => 'Instructions — Start Application',
-            'cycleYear'  => ApplicationModel::currentCycleYear(),
+            'cycleYear'  => $year,
             'editWindow' => ApplicationModel::editWindowInfo(),
+
+            'applicationStartDate' => $period['application_start_date'],
+            'applicationLastDate'  => $period['application_end_date'],
+            'notificationNumber'   => $period['notification_number'],
+            'notificationDate'     => $period['notification_date'],
+            'periodMessage'        => $period['message'] ?? '',
         ]);
     }
 
@@ -91,11 +177,16 @@ class ApplicationController extends BaseController
             return redirect()->to('/applicant/application/step/' . (int) $draft['current_step']);
         }
 
-        if (! $this->apps->canStartNewApplication($userId)) {
-            $year = ApplicationModel::currentCycleYear();
-
+        // Re-check period at create time (window may have closed after instructions page)
+        $period = DesignationNotificationModel::applicationPeriodInfo();
+        if (empty($period['open'])) {
             return redirect()->to('/applicant/dashboard')
-                ->with('error', 'You may submit only one application for the ' . $year . ' designation cycle.');
+                ->with('error', $period['message'] ?? 'The application submission period is not open.');
+        }
+
+        if (! $this->apps->canStartNewApplication($userId)) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'You may submit only one application for the current notification / cycle.');
         }
 
         $accepted = $this->request->getPost('instructions_accepted');
@@ -112,6 +203,7 @@ class ApplicationController extends BaseController
             'user_id'               => $userId,
             'status'                => ApplicationModel::STATUS_DRAFT,
             'cycle_year'            => $year,
+            'notification_id'       => $period['notification_id'] ?? null,
             'current_step'          => 1,
             'email'                 => $contact['email'],
             'mobile'                => $contact['mobile'],
@@ -123,6 +215,8 @@ class ApplicationController extends BaseController
         model(AuditLogModel::class)->log('application_created', $userId, (int) $id, [
             'instructions_accepted' => true,
             'cycle_year'            => $year,
+            'notification_id'       => $period['notification_id'] ?? null,
+            'notification_number'   => $period['notification_number'] ?? '',
         ]);
         model(ApplicationStatusHistoryModel::class)->record(
             (int) $id,
@@ -148,26 +242,22 @@ class ApplicationController extends BaseController
 
         $app = $this->apps->withDecoded($app);
 
-        $ageAsOn = ApplicationModel::ageAsOnDate();
+        $ageAsOn = ApplicationModel::ageAsOnDate($app);
 
-        // Normalise DOB and always recompute age years/months for display (readonly fields).
+        // Normalise DOB and always recompute age years/months/days for display (readonly fields).
         if ($step === 1 && ! empty($app['date_of_birth'])) {
             $app['date_of_birth'] = substr((string) $app['date_of_birth'], 0, 10);
             $ageParts             = $this->apps->calculateAgePartsAsOn($app['date_of_birth'], $ageAsOn);
             if ($ageParts !== null) {
                 $app['age_years']  = $ageParts['years'];
                 $app['age_months'] = $ageParts['months'];
+                $app['age_days']   = $ageParts['days'];
             }
         }
 
-        // Practice duration from enrolment date (as on 01.01 of cycle year) — readonly on form.
+        // Normalise enrolment date for the form (practice years/months are entered by applicant).
         if ($step === 2 && ! empty($app['enrolment_date'])) {
             $app['enrolment_date'] = substr((string) $app['enrolment_date'], 0, 10);
-            $practiceParts         = $this->apps->calculateAgePartsAsOn($app['enrolment_date'], $ageAsOn);
-            if ($practiceParts !== null) {
-                $app['practice_years']  = $practiceParts['years'];
-                $app['practice_months'] = $practiceParts['months'];
-            }
         }
 
         // Auto-populate enrolment (and related fields) from registration / advocate_db.
@@ -184,6 +274,7 @@ class ApplicationController extends BaseController
             }
 
             // Prefill date / bar council from advocate master when still blank.
+            // Practice duration is NOT auto-filled — applicant enters it manually.
             $lookupNo = trim((string) ($app['enrolment_number'] ?? $enrolmentFromAccount ?? ''));
             if ($lookupNo !== '' && (empty($app['enrolment_date']) || empty($app['bar_council']))) {
                 $adv = model(AdvocateDbModel::class)->findByEnrolment($lookupNo);
@@ -195,25 +286,17 @@ class ApplicationController extends BaseController
                     if (empty($app['bar_council']) && ! empty($prefill['bar'])) {
                         $app['bar_council'] = $prefill['bar'];
                     }
-                    if (! empty($app['enrolment_date'])) {
-                        $practiceParts = $this->apps->calculateAgePartsAsOn(
-                            substr((string) $app['enrolment_date'], 0, 10),
-                            $ageAsOn
-                        );
-                        if ($practiceParts !== null) {
-                            $app['practice_years']  = $practiceParts['years'];
-                            $app['practice_months'] = $practiceParts['months'];
-                        }
-                    }
                 }
             }
         }
 
         $data = [
-            'title' => 'Application – Step ' . $step,
-            'app'   => $app,
-            'step'  => $step,
-            'steps' => sad_step_labels(),
+            'title'        => 'Application – Step ' . $step,
+            'app'          => $app,
+            'step'         => $step,
+            'steps'        => ssa_step_labels(),
+            'ageAsOnDate'  => $ageAsOn,
+            'ageAsOnLabel' => ApplicationModel::ageAsOnLabel($app),
         ];
 
         if ($step === 2) {
@@ -269,35 +352,24 @@ class ApplicationController extends BaseController
 
         $data = $this->mapStepData($step, $post, $app);
 
-        $ageAsOn = ApplicationModel::ageAsOnDate();
+        $ageAsOn = ApplicationModel::ageAsOnDate($app);
 
         if ($step === 1 && ! empty($data['date_of_birth'])) {
             $ageParts = $this->apps->calculateAgePartsAsOn($data['date_of_birth'], $ageAsOn);
             if ($ageParts !== null) {
                 $data['age_years']  = $ageParts['years'];
                 $data['age_months'] = $ageParts['months'];
+                $data['age_days']   = $ageParts['days'];
             } else {
                 $data['age_years']  = null;
                 $data['age_months'] = null;
+                $data['age_days']   = null;
             }
         }
 
-        // Always derive practice years/months from enrolment date (ignore client values).
-        if ($step === 2) {
-            if (! empty($data['enrolment_date'])) {
-                $data['enrolment_date'] = substr((string) $data['enrolment_date'], 0, 10);
-                $practiceParts          = $this->apps->calculateAgePartsAsOn($data['enrolment_date'], $ageAsOn);
-                if ($practiceParts !== null) {
-                    $data['practice_years']  = $practiceParts['years'];
-                    $data['practice_months'] = $practiceParts['months'];
-                } else {
-                    $data['practice_years']  = 0;
-                    $data['practice_months'] = 0;
-                }
-            } else {
-                $data['practice_years']  = 0;
-                $data['practice_months'] = 0;
-            }
+        // Practice years/months are entered manually by the applicant.
+        if ($step === 2 && ! empty($data['enrolment_date'])) {
+            $data['enrolment_date'] = substr((string) $data['enrolment_date'], 0, 10);
         }
 
         $data = $this->apps->encodeListFields($data);
@@ -400,20 +472,18 @@ class ApplicationController extends BaseController
             return redirect()->to('/applicant/dashboard')->with('error', 'Application not found.');
         }
 
-        $pdf = new PdfService();
-        if (empty($app['generated_pdf_path']) || ! is_file(WRITEPATH . 'uploads/' . $app['generated_pdf_path'])) {
-            $path = $pdf->generateApplicationPdf($this->apps->withDecoded($app), [
+        // Always generate at request time from the current template (no disk snapshot).
+        (new PdfService())->streamApplicationPdf(
+            $this->apps->withDecoded($app),
+            [
                 'l1'   => model(FormatL1Model::class)->forApplication($id),
                 'l2'   => model(FormatL2Model::class)->forApplication($id),
                 'l3pb' => model(FormatL3ProBonoModel::class)->forApplication($id),
                 'l3am' => model(FormatL3AmicusModel::class)->forApplication($id),
                 'l4'   => model(FormatL4Model::class)->forApplication($id),
-            ]);
-            $this->apps->update($id, ['generated_pdf_path' => $path]);
-            $app['generated_pdf_path'] = $path;
-        }
-
-        $pdf->stream($app['generated_pdf_path'], ($app['application_no'] ?? 'application') . '.pdf');
+            ],
+            ($app['application_no'] ?? 'application') . '.pdf'
+        );
     }
 
     protected function submitApplication(int $id)
@@ -439,7 +509,7 @@ class ApplicationController extends BaseController
         $cycleYear = (int) ($app['cycle_year'] ?? 0) ?: ApplicationModel::currentCycleYear();
         $appNo     = $app['application_no'];
         if (empty($appNo)) {
-            $appNo = model(ApplicationSequenceModel::class)->nextNumber('MHC/DSA', $cycleYear);
+            $appNo = model(ApplicationSequenceModel::class)->nextNumber('MHC/SSA', $cycleYear);
         }
 
         $from = $app['status'];
@@ -468,8 +538,6 @@ class ApplicationController extends BaseController
                 'declaration_accepted'  => 't',
                 'instructions_accepted' => 't',
                 'declaration_date'      => date('Y-m-d'),
-                // Clear generated PDF so a fresh snapshot is produced after edits
-                'generated_pdf_path'    => null,
                 'updated_at'            => date('Y-m-d H:i:s'),
             ]);
 
@@ -498,20 +566,8 @@ class ApplicationController extends BaseController
             'cycle_year'     => $cycleYear,
         ]);
 
-        // Generate PDF snapshot
+        // PDF is generated dynamically on download — no snapshot stored at submit.
         $fresh = $this->apps->withDecoded($this->apps->find($id));
-        try {
-            $path = (new PdfService())->generateApplicationPdf($fresh, [
-                'l1'   => model(FormatL1Model::class)->forApplication($id),
-                'l2'   => model(FormatL2Model::class)->forApplication($id),
-                'l3pb' => model(FormatL3ProBonoModel::class)->forApplication($id),
-                'l3am' => model(FormatL3AmicusModel::class)->forApplication($id),
-                'l4'   => model(FormatL4Model::class)->forApplication($id),
-            ]);
-            $this->apps->update($id, ['generated_pdf_path' => $path]);
-        } catch (\Throwable $e) {
-            log_message('error', 'PDF generation failed: ' . $e->getMessage());
-        }
 
         // Email + SMS notification
         $user = model(UserModel::class)->find($userId);
@@ -538,15 +594,22 @@ class ApplicationController extends BaseController
             'enrolment_date'    => 'Date of enrolment',
             'enrolment_number'  => 'Enrolment number',
             'bar_council'       => 'Bar Council',
-            'photo_path'        => 'Passport photograph',
-            'signature_path'    => 'Signature',
+            'photo_path'          => 'Passport photograph',
+            'signature_path'      => 'Signature',
             'enrolment_cert_path' => 'Enrolment certificate',
+            'age_proof_path'      => 'Age proof document',
         ];
 
         foreach ($required as $field => $label) {
             if (empty($app[$field])) {
                 $errors[] = $label . ' is required.';
             }
+        }
+
+        // Practice duration is entered manually (0 years / 0 months are valid once set)
+        if ($app['practice_years'] === null || $app['practice_years'] === ''
+            || $app['practice_months'] === null || $app['practice_months'] === '') {
+            $errors[] = 'Years and months of practice are required.';
         }
 
         if (empty($this->request->getPost('declaration_accepted')) && empty($app['declaration_accepted'])) {
@@ -673,12 +736,15 @@ class ApplicationController extends BaseController
                 $postedEnrol = trim((string) ($post['enrolment_number'] ?? ''));
                 $enrolmentNumber = $fromAccount !== '' ? $fromAccount : $postedEnrol;
 
+                $practiceYears  = max(0, min(70, (int) ($post['practice_years'] ?? 0)));
+                $practiceMonths = max(0, min(11, (int) ($post['practice_months'] ?? 0)));
+
                 return [
                     'enrolment_date'            => $post['enrolment_date'] ?: null,
                     'enrolment_number'          => $enrolmentNumber,
                     'bar_council'               => trim($post['bar_council'] ?? ''),
-                    'practice_years'            => (int) ($post['practice_years'] ?? 0),
-                    'practice_months'           => (int) ($post['practice_months'] ?? 0),
+                    'practice_years'            => $practiceYears,
+                    'practice_months'           => $practiceMonths,
                     'net_income_lakhs'          => $post['net_income_lakhs'] !== '' ? $post['net_income_lakhs'] : null,
                     'is_bar_association_member' => $bool($post['is_bar_association_member'] ?? null),
                     'bar_association_name'      => trim($post['bar_association_name'] ?? ''),
@@ -870,13 +936,13 @@ class ApplicationController extends BaseController
         if (! empty($post['l2_case_number']) && is_array($post['l2_case_number'])) {
             foreach ($post['l2_case_number'] as $i => $cn) {
                 $l2Rows[] = [
-                    'court_level'        => $post['l2_court_level'][$i] ?? 'madras_hc',
-                    'court_name'         => $post['l2_court_name'][$i] ?? '',
-                    'case_number'        => $cn,
-                    'citation'           => $post['l2_citation'][$i] ?? '',
-                    'cause_title'        => $post['l2_cause_title'][$i] ?? '',
-                    'decided_on'         => $post['l2_decided_on'][$i] ?: null,
-                    'legal_formulation'  => $post['l2_legal_formulation'][$i] ?? '',
+                    'court_level'       => $post['l2_court_level'][$i] ?? 'madras_hc',
+                    'court_name'        => $post['l2_court_name'][$i] ?? '',
+                    'case_number'       => $cn,
+                    'citation'          => null, // Citation not collected for unreported (L-2) judgments
+                    'cause_title'       => $post['l2_cause_title'][$i] ?? '',
+                    'decided_on'        => $post['l2_decided_on'][$i] ?: null,
+                    'legal_formulation' => $post['l2_legal_formulation'][$i] ?? '',
                 ];
             }
         }
@@ -934,14 +1000,16 @@ class ApplicationController extends BaseController
     {
         $uploader = new UploadService();
         $map      = [
-            'photo'          => 'photo_path',
-            'signature'      => 'signature_path',
-            'enrolment_cert' => 'enrolment_cert_path',
-            'format_l1'      => 'format_l1_path',
-            'format_l2'      => 'format_l2_path',
-            'format_l3i'     => 'format_l3i_path',
-            'format_l3ii'    => 'format_l3ii_path',
-            'format_l4'      => 'format_l4_path',
+            'photo'           => 'photo_path',
+            'signature'       => 'signature_path',
+            'enrolment_cert'  => 'enrolment_cert_path',
+            'age_proof'       => 'age_proof_path',
+            'education_qual'  => 'education_qual_path',
+            'format_l1'       => 'format_l1_path',
+            'format_l2'       => 'format_l2_path',
+            'format_l3i'      => 'format_l3i_path',
+            'format_l3ii'     => 'format_l3ii_path',
+            'format_l4'       => 'format_l4_path',
         ];
 
         $updates = [];

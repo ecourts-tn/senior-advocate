@@ -7,14 +7,14 @@
         <p class="page-subtitle">SMTP / outbound mail settings for portal notifications</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="<?= base_url('admin/settings/application') ?>" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-calendar2-range me-1"></i> Cycle &amp; edit window
-        </a>
-        <a href="<?= base_url('admin/notifications') ?>" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-envelope-paper me-1"></i> Notification templates
+        <a href="<?= base_url('admin/notification-templates') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-envelope-paper me-1"></i> Email / SMS templates
         </a>
         <a href="<?= base_url('admin/settings/sms') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-phone me-1"></i> SMS settings
+        </a>
+        <a href="<?= base_url('admin/notifications') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-megaphone me-1"></i> Notifications
         </a>
     </div>
 </div>

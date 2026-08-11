@@ -17,7 +17,7 @@
 
         <?php
         $yn = static function ($field, $app) {
-            $v = sad_bool_label($app[$field] ?? null);
+            $v = ssa_bool_label($app[$field] ?? null);
             return $v === 'Yes' ? '1' : ($v === 'No' ? '0' : '');
         };
         ?>
@@ -38,7 +38,7 @@
                         <input type="date" name="applied_mhc_date" class="form-control" value="<?= esc($app['applied_mhc_date'] ?? '') ?>">
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label">Current status</label>
+                        <label class="form-label">Details</label>
                         <input type="text" name="applied_mhc_status" class="form-control" value="<?= esc($app['applied_mhc_status'] ?? '') ?>">
                     </div>
                 </div>

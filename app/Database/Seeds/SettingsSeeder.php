@@ -33,7 +33,7 @@ class SettingsSeeder extends Seeder
                 'provider'  => 'log', // writes under writable/sms/
                 'api_url'   => 'https://api.textlocal.in/send/',
                 'api_key'   => 'your-textlocal-api-key',
-                'sender_id' => 'MHCSAD',
+                'sender_id' => 'MHCSSA',
             ],
         ];
 

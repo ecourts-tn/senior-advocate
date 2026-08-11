@@ -21,7 +21,7 @@ class MailTransport
         }
 
         $fromEmail = (string) ($cfg['from_email'] ?? 'noreply@hcmadras.tn.gov.in');
-        $fromName  = (string) ($cfg['from_name'] ?? 'Madras High Court SAD Portal');
+        $fromName  = (string) ($cfg['from_name'] ?? 'Madras High Court SSA Portal');
         $protocol  = strtolower((string) ($cfg['protocol'] ?? 'file'));
         $smtpHost  = trim((string) ($cfg['smtp_host'] ?? ''));
 
@@ -74,7 +74,7 @@ class MailTransport
             return [
                 'enabled'    => '1',
                 'from_email' => (string) env('email.fromEmail', 'noreply@hcmadras.tn.gov.in'),
-                'from_name'  => (string) env('email.fromName', 'Madras High Court SAD Portal'),
+                'from_name'  => (string) env('email.fromName', 'Madras High Court SSA Portal'),
                 'protocol'   => (string) env('email.SMTPHost', '') !== '' ? 'smtp' : 'file',
                 'smtp_host'  => (string) env('email.SMTPHost', ''),
                 'smtp_user'  => (string) env('email.SMTPUser', ''),

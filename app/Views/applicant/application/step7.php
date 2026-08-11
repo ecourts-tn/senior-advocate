@@ -43,7 +43,7 @@
                            data-meta="#photoMeta"
                            data-min-kb="20"
                            data-max-kb="200">
-                    <div class="form-text">JPG/JPEG only · 20–200 KB</div>
+                    <div class="form-text form-help-text">JPG/JPEG only · 20–200 KB</div>
                     <div class="upload-file-meta small" id="photoMeta" aria-live="polite">
                         <?php if (! empty($app['photo_path'])): ?>
                             <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Photo on file — choose a new file to replace</span>
@@ -77,7 +77,7 @@
                            data-meta="#signatureMeta"
                            data-min-kb="20"
                            data-max-kb="200">
-                    <div class="form-text">JPG/JPEG only · 20–200 KB</div>
+                    <div class="form-text form-help-text">JPG/JPEG only · 20–200 KB</div>
                     <div class="upload-file-meta small" id="signatureMeta" aria-live="polite">
                         <?php if (! empty($app['signature_path'])): ?>
                             <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Signature on file — choose a new file to replace</span>
@@ -88,32 +88,54 @@
             <div class="col-md-6">
                 <label class="form-label required">Enrolment Certificate</label>
                 <input type="file" name="enrolment_cert" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['enrolment_cert_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['enrolment_cert_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label required" for="ageProofInput">Age proof</label>
+                <input type="file" name="age_proof" id="ageProofInput" class="form-control" accept=".pdf,application/pdf">
+                <div class="form-text form-help-text">
+                    PDF · less than 5 MB · Mandatory (e.g. birth certificate / SSLC mark sheet)
+                    <?php if (! empty($app['age_proof_path'])): ?>
+                        · <span class="text-success">Uploaded</span>
+                        · <a href="<?= base_url('files/application/' . $app['id'] . '/age_proof') ?>" target="_blank" rel="noopener">View</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" for="educationQualInput">Educational qualifications document</label>
+                <input type="file" name="education_qual" id="educationQualInput" class="form-control" accept=".pdf,application/pdf">
+                <div class="form-text form-help-text">
+                    PDF · less than 5 MB · Optional (supporting certificates / mark sheets)
+                    <?php if (! empty($app['education_qual_path'])): ?>
+                        · <span class="text-success">Uploaded</span>
+                        · <a href="<?= base_url('files/application/' . $app['id'] . '/education_qual') ?>" target="_blank" rel="noopener">View</a>
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-1 (Reported Judgments)</label>
                 <input type="file" name="format_l1" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['format_l1_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l1_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-2 (Unreported Judgments)</label>
                 <input type="file" name="format_l2" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['format_l2_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l2_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-3(i) Pro Bono</label>
                 <input type="file" name="format_l3i" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['format_l3i_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l3i_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-3(ii) Amicus Curiae</label>
                 <input type="file" name="format_l3ii" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['format_l3ii_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l3ii_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-4 Academic</label>
                 <input type="file" name="format_l4" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text">PDF · less than 5 MB <?= ! empty($app['format_l4_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l4_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
             </div>
         </div>
 
@@ -138,12 +160,12 @@
 
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" name="declaration_accepted" value="1" id="decl"
-                <?= sad_bool_label($app['declaration_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
+                <?= ssa_bool_label($app['declaration_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
             <label class="form-check-label" for="decl">I accept the above declaration.</label>
         </div>
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="instructions_accepted" value="1" id="instr"
-                <?= sad_bool_label($app['instructions_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
+                <?= ssa_bool_label($app['instructions_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
             <label class="form-check-label" for="instr">
                 Yes, I have read the instructions carefully and understand that an error in this application cannot be
                 subsequently rectified and may result in rejection of my application.

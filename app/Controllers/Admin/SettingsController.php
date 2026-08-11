@@ -129,7 +129,7 @@ class SettingsController extends BaseController
         $result = (new MailTransport())->send(
             $to,
             'Test recipient',
-            'SAD Portal — test email',
+            'SSA Portal — test email',
             '<p>This is a test email from the Senior Advocate Designation Portal.</p>'
             . '<p>Protocol: ' . esc($cfg['protocol'] ?? '') . '<br>SMTP host: ' . esc($cfg['smtp_host'] ?? '') . '</p>'
             . '<p>Sent at ' . date('Y-m-d H:i:s') . '</p>'
@@ -161,7 +161,7 @@ class SettingsController extends BaseController
 
         $result = (new SmsService())->send(
             $mobile,
-            'MHC SAD Portal test SMS at ' . date('Y-m-d H:i:s')
+            'MHC SSA Portal test SMS at ' . date('Y-m-d H:i:s')
         );
 
         model(AuditLogModel::class)->log('settings_sms_test', (int) session()->get('user_id'), null, [

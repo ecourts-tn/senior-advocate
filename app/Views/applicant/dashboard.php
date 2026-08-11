@@ -23,14 +23,76 @@
     <?php endif; ?>
 </div>
 
+<?php
+$periodInfo = $periodInfo ?? \App\Models\DesignationNotificationModel::applicationPeriodInfo();
+if (! empty($periodInfo['open'])):
+?>
+    <div class="alert alert-success" role="status">
+        <i class="bi bi-calendar-check me-1" aria-hidden="true"></i>
+        <strong>Application period open.</strong>
+        <?= esc($periodInfo['message'] ?? '') ?>
+        <?php if (! empty($periodInfo['notification_number'])): ?>
+            <span class="d-block small mt-1">
+                Notification: <?= esc($periodInfo['notification_number']) ?>
+                · <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($periodInfo['application_start_date'] ?? null)) ?>
+                to
+                <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($periodInfo['application_end_date'] ?? null)) ?>
+            </span>
+        <?php endif; ?>
+    </div>
+<?php elseif (empty($draft) && (empty($editable) || ! \App\Models\ApplicationModel::isEditableByApplicant($editable ?? []))): ?>
+    <div class="alert alert-warning" role="status">
+        <i class="bi bi-calendar-x me-1" aria-hidden="true"></i>
+        <strong>Cannot start a new application.</strong>
+        <?= esc($periodInfo['message'] ?? 'The application submission period is not open.') ?>
+        <?php if (! empty($periodInfo['application_start_date']) || ! empty($periodInfo['application_end_date'])): ?>
+            <span class="d-block small mt-1">
+                Period:
+                <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($periodInfo['application_start_date'] ?? null)) ?>
+                –
+                <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($periodInfo['application_end_date'] ?? null)) ?>
+            </span>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
 <?php if (! empty($editWindow['open'])): ?>
     <div class="alert alert-info" role="status">
         <i class="bi bi-info-circle me-1" aria-hidden="true"></i>
         <strong>Edit window open.</strong>
         <?= esc($editWindow['message'] ?: 'You may correct and resubmit your application during this period.') ?>
         <?php if (! empty($editWindow['to'])): ?>
-            <span class="d-block small mt-1">Closes: <?= esc($editWindow['to']) ?></span>
+            <span class="d-block small mt-1">
+                Closes: <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($editWindow['to'])) ?>
+            </span>
         <?php endif; ?>
+    </div>
+<?php endif; ?>
+
+<?php if (! empty($portalNotifications)): ?>
+    <div class="card card-mhc mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-megaphone me-1" aria-hidden="true"></i> Official notifications</span>
+            <a href="<?= base_url('notifications') ?>" class="btn btn-sm btn-outline-secondary">View all</a>
+        </div>
+        <ul class="list-group list-group-flush">
+            <?php foreach ($portalNotifications as $n): ?>
+                <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="fw-semibold"><?= esc($n['notification_number'] ?? '') ?></span>
+                        <?php if (! empty($n['notification_date'])): ?>
+                            <span class="text-muted small ms-1">
+                                (<?= esc(date('d-m-Y', strtotime($n['notification_date']))) ?>)
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                    <a href="<?= base_url('notifications/document/' . (int) $n['id']) ?>"
+                       class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener">
+                        <i class="bi bi-file-earmark-pdf me-1"></i> View PDF
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 <?php endif; ?>
 
@@ -97,7 +159,7 @@ echo view('partials/table_toolbar', [
                         <tr>
                             <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
                             <td><?= esc(trim(($a['title'] ?? '') . ' ' . ($a['full_name'] ?? ''))) ?></td>
-                            <td><?= sad_status_badge($a['status']) ?></td>
+                            <td><?= ssa_status_badge($a['status']) ?></td>
                             <td>
                                 <span class="text-muted small"><?= (int) $a['current_step'] ?> / 7</span>
                             </td>
@@ -133,21 +195,4 @@ echo view('partials/table_toolbar', [
         <?php endif; ?>
     </div>
 </div>
-
-<div class="row g-3 mt-3">
-    <div class="col-md-6">
-        <div class="card card-mhc h-100">
-            <div class="card-body">
-                <h6 class="section-title mb-2" style="font-size:0.95rem;">Need help?</h6>
-                <p class="small text-muted mb-2">
-                    Review upload limits, paper-book requirements and citation rules before submitting.
-                </p>
-                <a href="<?= base_url('instructions') ?>" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-journal-text me-1"></i> Read Instructions
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <?= $this->endSection() ?>

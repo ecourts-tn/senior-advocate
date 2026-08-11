@@ -54,7 +54,7 @@ class SmsService
                 'provider'  => (string) env('sms.provider', 'log'),
                 'api_url'   => (string) env('sms.apiUrl', ''),
                 'api_key'   => (string) env('sms.apiKey', ''),
-                'sender_id' => (string) env('sms.senderId', 'MHCSAD'),
+                'sender_id' => (string) env('sms.senderId', 'MHCSSA'),
             ];
         }
     }
@@ -78,7 +78,7 @@ class SmsService
     {
         $url      = (string) ($cfg['api_url'] ?? '');
         $apiKey   = (string) ($cfg['api_key'] ?? '');
-        $senderId = (string) ($cfg['sender_id'] ?? 'MHCSAD');
+        $senderId = (string) ($cfg['sender_id'] ?? 'MHCSSA');
 
         if ($url === '') {
             return ['sent' => false, 'method' => 'http', 'response' => 'SMS API URL not set'];

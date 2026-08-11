@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="Portal for Designation of Senior Advocates — High Court of Madras. GIGW 3.0 aligned online application portal.">
-    <meta name="keywords" content="Madras High Court, Senior Advocate, Designation, SAD Portal, GIGW">
+    <meta name="keywords" content="Madras High Court, Senior Advocate, Designation, SSA Portal, GIGW">
     <meta name="theme-color" content="#0f2340">
-    <title><?= esc($title ?? 'SAD Portal') ?> | Madras High Court</title>
+    <title><?= esc($title ?? 'SSA Portal') ?> | Madras High Court</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
     <link href="<?= base_url('assets/css/app.css') ?>?v=<?= @filemtime(FCPATH . 'assets/css/app.css') ?: time() ?>" rel="stylesheet">
     <link rel="icon" href="<?= base_url('assets/img/logo.svg') ?>" type="image/svg+xml">
 </head>
@@ -41,23 +42,17 @@ $site = $site ?? config(\Config\Site::class);
     </div>
 </div>
 
-<!-- Utility strip -->
+<?php if ($u): ?>
+<!-- Utility strip (signed-in user only) -->
 <div class="util-strip no-print">
     <div class="container util-inner">
-        <div>
-            <a href="<?= esc($site->website) ?>" target="_blank" rel="noopener noreferrer">
-                hcmadras.tn.gov.in
-                <span class="visually-hidden">(opens in a new tab)</span>
-            </a>
-        </div>
+        <div></div>
         <div class="util-right">
-            <span class="util-rules">Rules for Designation of Senior Advocates, 2026</span>
-            <?php if ($u): ?>
-                <span class="util-email text-truncate" style="max-width:12rem;display:inline-block;vertical-align:bottom;"><?= esc($u['email']) ?></span>
-            <?php endif; ?>
+            <span class="util-email text-truncate" style="max-width:16rem;display:inline-block;vertical-align:bottom;"><?= esc($u['email']) ?></span>
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Official masthead -->
 <header class="masthead no-print">
@@ -76,7 +71,7 @@ $site = $site ?? config(\Config\Site::class);
     <div class="container">
         <a class="navbar-brand" href="<?= base_url($u ? (is_admin_role() ? 'admin' : 'applicant/dashboard') : 'login') ?>">
             <i class="bi bi-building-fill-check" aria-hidden="true"></i>
-            <span>SAD Portal</span>
+            <span>SSA Portal</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain"
                 aria-controls="navMain" aria-expanded="false" aria-label="Toggle navigation">
@@ -89,15 +84,32 @@ $site = $site ?? config(\Config\Site::class);
                         <li class="nav-item">
                             <a class="nav-link" href="<?= base_url('admin') ?>"><i class="bi bi-speedometer2 me-1" aria-hidden="true"></i>Admin</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="<?= base_url('admin/applications') ?>"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>Applications</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navApplications" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-folder2-open me-1" aria-hidden="true"></i>Applications
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navApplications">
+                                <li>
+                                    <a class="dropdown-item" href="<?= base_url('admin/applications') ?>">
+                                        <i class="bi bi-list-ul me-1"></i> Application list
+                                    </a>
+                                </li>
+                                <?php if ($u['role'] === 'admin'): ?>
+                                    <li>
+                                        <a class="dropdown-item" href="<?= base_url('admin/applications/status') ?>">
+                                            <i class="bi bi-ui-checks me-1"></i> Update status
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+                            </ul>
                         </li>
                         <?php if ($u['role'] === 'admin'): ?>
                             <li class="nav-item">
                                 <a class="nav-link" href="<?= base_url('admin/audit') ?>"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>Audit</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?= base_url('admin/notifications') ?>"><i class="bi bi-envelope-paper me-1" aria-hidden="true"></i>Notifications</a>
+                                <a class="nav-link" href="<?= base_url('admin/notifications') ?>"><i class="bi bi-megaphone me-1" aria-hidden="true"></i>Notifications</a>
                             </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navMasters" role="button"
@@ -120,7 +132,7 @@ $site = $site ?? config(\Config\Site::class);
                                     <i class="bi bi-gear me-1" aria-hidden="true"></i>Settings
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="navSettings">
-                                    <li><a class="dropdown-item" href="<?= base_url('admin/settings/application') ?>">Cycle &amp; edit window</a></li>
+                                    <li><a class="dropdown-item" href="<?= base_url('admin/notification-templates') ?>">Email / SMS templates</a></li>
                                     <li><a class="dropdown-item" href="<?= base_url('admin/settings/email') ?>">Email transport</a></li>
                                     <li><a class="dropdown-item" href="<?= base_url('admin/settings/sms') ?>">SMS gateway</a></li>
                                 </ul>
@@ -129,6 +141,15 @@ $site = $site ?? config(\Config\Site::class);
                     <?php else: ?>
                         <li class="nav-item">
                             <a class="nav-link" href="<?= base_url('applicant/dashboard') ?>"><i class="bi bi-grid me-1" aria-hidden="true"></i>Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('notifications') ?>"><i class="bi bi-megaphone me-1" aria-hidden="true"></i>Notifications</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('rules') ?>"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Rules</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?= base_url('instructions') ?>"><i class="bi bi-journal-bookmark me-1" aria-hidden="true"></i>Instructions</a>
                         </li>
                     <?php endif; ?>
                 <?php endif; ?>
@@ -149,6 +170,12 @@ $site = $site ?? config(\Config\Site::class);
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
+                        <a class="nav-link" href="<?= base_url('notifications') ?>"><i class="bi bi-megaphone me-1" aria-hidden="true"></i>Notifications</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= base_url('rules') ?>"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Rules</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="<?= base_url('login') ?>"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Login</a>
                     </li>
                     <li class="nav-item">
@@ -164,6 +191,12 @@ $site = $site ?? config(\Config\Site::class);
     <?php if (session()->getFlashdata('success')): ?>
         <div class="alert alert-success alert-dismissible fade show alert-inline" role="alert">
             <i class="bi bi-check-circle me-1" aria-hidden="true"></i><?= esc(session()->getFlashdata('success')) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+    <?php if (session()->getFlashdata('info')): ?>
+        <div class="alert alert-info alert-dismissible fade show alert-inline" role="alert">
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i><?= esc(session()->getFlashdata('info')) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
@@ -202,6 +235,7 @@ $site = $site ?? config(\Config\Site::class);
                 <ul class="footer-links">
                     <li><a href="<?= base_url('login') ?>">Login</a></li>
                     <li><a href="<?= base_url('register') ?>">Register</a></li>
+                    <li><a href="<?= base_url('rules') ?>">Rules, 2026</a></li>
                     <li><a href="<?= base_url('instructions') ?>">Instructions</a></li>
                     <li><a href="<?= base_url('policy/help') ?>">Help &amp; Contact</a></li>
                 </ul>
@@ -266,6 +300,7 @@ $site = $site ?? config(\Config\Site::class);
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script src="<?= base_url('assets/js/app.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/app.js') ?: time() ?>"></script>
 <?= $this->renderSection('scripts') ?>
 </body>

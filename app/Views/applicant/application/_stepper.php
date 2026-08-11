@@ -1,4 +1,4 @@
-<?php $steps = $steps ?? sad_step_labels(); ?>
+<?php $steps = $steps ?? ssa_step_labels(); ?>
 <?php if (! empty($isEditWindowEdit) && ! empty($editWindow['open'])): ?>
     <div class="alert alert-info py-2 no-print" role="status">
         <i class="bi bi-pencil-square me-1" aria-hidden="true"></i>

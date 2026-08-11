@@ -4,17 +4,18 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Controllers\Concerns\ListQuery;
-use App\Libraries\NotificationService;
 use App\Libraries\PdfService;
 use App\Libraries\UploadService;
 use App\Models\ApplicationModel;
 use App\Models\ApplicationStatusHistoryModel;
 use App\Models\AuditLogModel;
+use App\Models\DesignationNotificationModel;
 use App\Models\FormatL1Model;
 use App\Models\FormatL2Model;
 use App\Models\FormatL3AmicusModel;
 use App\Models\FormatL3ProBonoModel;
 use App\Models\FormatL4Model;
+use App\Models\MasterRegistry;
 use App\Models\UserModel;
 
 class ApplicationController extends BaseController
@@ -36,31 +37,135 @@ class ApplicationController extends BaseController
         $pager        = $model->pager;
         $pager->setPath('admin/applications');
         $pager->only([
-            'q', 'per_page', 'status',
-            'age_min', 'age_max', 'experience_min',
+            'q', 'per_page', 'status', 'notification_id',
+            'age_min', 'age_max',
+            'practice_years_min', 'practice_years_max', 'experience_min',
             'nature_of_practice', 'field_of_law', 'first_generation',
         ]);
 
+        $masterOptions = $this->masterFilterOptions();
+        $notificationOptions = $this->notificationFilterOptions();
+
         return view('admin/applications/index', [
-            'title'             => 'Applications',
-            'applications'      => $applications,
-            'status'            => $list['status'],
-            'q'                 => $q,
-            'perPage'           => $perPage,
-            'page'              => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
-            'total'             => (int) $pager->getTotal('default'),
-            'allowedPerPage'    => $filters['allowedPerPage'],
-            'pager'             => $pager,
-            'statuses'          => ApplicationModel::STATUSES,
-            'hasActiveFilters'  => $list['hasActiveFilters'],
-            'ageMin'            => $list['ageMin'],
-            'ageMax'            => $list['ageMax'],
-            'experienceMin'     => $list['experienceMin'],
-            'natureOfPractice'  => $list['natureOfPractice'],
-            'fieldOfLaw'        => $list['fieldOfLaw'],
-            'firstGeneration'   => $list['firstGeneration'],
-            'exportQuery'       => $this->exportQueryString($list, $q),
+            'title'               => 'Applications',
+            'applications'        => $applications,
+            'status'              => $list['status'],
+            'q'                   => $q,
+            'perPage'             => $perPage,
+            'page'                => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
+            'total'               => (int) $pager->getTotal('default'),
+            'allowedPerPage'      => $filters['allowedPerPage'],
+            'pager'               => $pager,
+            'statuses'            => ApplicationModel::STATUSES,
+            'filterStatuses'      => $this->filterStatusOptions(),
+            'hasActiveFilters'    => $list['hasActiveFilters'],
+            'ageMin'              => $list['ageMin'],
+            'ageMax'              => $list['ageMax'],
+            'practiceYearsMin'    => $list['practiceYearsMin'],
+            'practiceYearsMax'    => $list['practiceYearsMax'],
+            'natureOfPractice'    => $list['natureOfPractice'],
+            'fieldOfLaw'          => $list['fieldOfLaw'],
+            'firstGeneration'     => $list['firstGeneration'],
+            'notificationId'      => $list['notificationId'],
+            'notificationOptions' => $notificationOptions,
+            'natureOptions'       => $masterOptions['nature_of_practice'],
+            'fieldOptions'        => $masterOptions['field_of_law'],
+            'exportQuery'         => $this->exportQueryString($list, $q),
         ]);
+    }
+
+    /**
+     * Status options for admin filters: Submitted, Select Listed, Wait Listed, Rejected.
+     *
+     * @return array<string, string>
+     */
+    private function filterStatusOptions(): array
+    {
+        return ApplicationModel::ADMIN_PIPELINE_STATUSES;
+    }
+
+    /**
+     * Dedicated page: multi-select applications and set Select Listed / Wait Listed / Rejected.
+     */
+    public function statusPage()
+    {
+        $filters = $this->listQueryParams();
+        $list    = $this->applicationListFilters();
+        $q       = $filters['q'];
+        $perPage = $filters['perPage'];
+
+        $model = $this->buildApplicationListQuery($list);
+        $model->orderBy('applications.submitted_at', 'DESC')
+            ->orderBy('applications.id', 'DESC');
+
+        $applications = $model->paginate($perPage, 'default', $filters['page']);
+        $pager        = $model->pager;
+        $pager->setPath('admin/applications/status');
+        $pager->only([
+            'q', 'per_page', 'status', 'notification_id',
+            'age_min', 'age_max',
+            'practice_years_min', 'practice_years_max', 'experience_min',
+            'nature_of_practice', 'field_of_law', 'first_generation',
+        ]);
+
+        return view('admin/applications/status', [
+            'title'               => 'Update application status',
+            'applications'        => $applications,
+            'status'              => $list['status'],
+            'q'                   => $q,
+            'perPage'             => $perPage,
+            'page'                => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
+            'total'               => (int) $pager->getTotal('default'),
+            'allowedPerPage'      => $filters['allowedPerPage'],
+            'pager'               => $pager,
+            'filterStatuses'      => $this->filterStatusOptions(),
+            'assignableStatuses'  => ApplicationModel::ADMIN_ASSIGNABLE_STATUSES,
+            'hasActiveFilters'    => $list['hasActiveFilters'] || $q !== '',
+            'ageMin'              => $list['ageMin'],
+            'ageMax'              => $list['ageMax'],
+            'practiceYearsMin'    => $list['practiceYearsMin'],
+            'practiceYearsMax'    => $list['practiceYearsMax'],
+            'notificationId'      => $list['notificationId'],
+            'notificationOptions' => $this->notificationFilterOptions(),
+        ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function notificationFilterOptions(): array
+    {
+        try {
+            return model(DesignationNotificationModel::class)->optionsForFilter();
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Active master labels for filter dropdowns.
+     *
+     * @return array{nature_of_practice: list<string>, field_of_law: list<string>}
+     */
+    private function masterFilterOptions(): array
+    {
+        $nature = [];
+        $field  = [];
+        try {
+            $nature = MasterRegistry::model('nature_of_practice')->activeLabels();
+        } catch (\Throwable $e) {
+            log_message('debug', 'Nature of practice master options: ' . $e->getMessage());
+        }
+        try {
+            $field = MasterRegistry::model('field_of_law')->activeLabels();
+        } catch (\Throwable $e) {
+            log_message('debug', 'Field of law master options: ' . $e->getMessage());
+        }
+
+        return [
+            'nature_of_practice' => $nature,
+            'field_of_law'       => $field,
+        ];
     }
 
     /**
@@ -96,11 +201,13 @@ class ApplicationController extends BaseController
             'Application No.',
             'Status',
             'Cycle year',
+            'Notification No.',
             'Title',
             'Full name',
             'Date of birth',
             'Age (years)',
             'Age (months)',
+            'Age (days)',
             'Email',
             'Mobile',
             'Landline',
@@ -172,11 +279,13 @@ class ApplicationController extends BaseController
                 $a['application_no'] ?? '',
                 $statusLabel,
                 $a['cycle_year'] ?? '',
+                $a['notification_number'] ?? '',
                 $a['title'] ?? '',
                 $a['full_name'] ?? '',
                 $this->exportDate($a['date_of_birth'] ?? null),
                 $a['age_years'] ?? '',
                 $a['age_months'] ?? '',
+                $a['age_days'] ?? '',
                 $a['email'] ?? ($a['account_email'] ?? ''),
                 $a['mobile'] ?? '',
                 $a['phone_landline'] ?? '',
@@ -242,7 +351,7 @@ class ApplicationController extends BaseController
 
         $xml .= '</Table></Worksheet></Workbook>';
 
-        $filename = 'SAD_applications_' . date('Ymd_His') . '.xls';
+        $filename = 'DSA_applications_' . date('Ymd_His') . '.xls';
 
         return $this->response
             ->setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
@@ -256,10 +365,12 @@ class ApplicationController extends BaseController
      *   status: string,
      *   ageMin: ?int,
      *   ageMax: ?int,
-     *   experienceMin: ?int,
+     *   practiceYearsMin: ?int,
+     *   practiceYearsMax: ?int,
      *   natureOfPractice: string,
      *   fieldOfLaw: string,
      *   firstGeneration: string,
+     *   notificationId: ?int,
      *   hasActiveFilters: bool
      * }
      */
@@ -268,33 +379,64 @@ class ApplicationController extends BaseController
         $status           = (string) ($this->request->getGet('status') ?? '');
         $ageMin           = $this->nullableIntGet('age_min');
         $ageMax           = $this->nullableIntGet('age_max');
-        $experienceMin    = $this->nullableIntGet('experience_min');
+        // Prefer practice_years_*; keep experience_min as a legacy alias
+        $practiceYearsMin = $this->nullableIntGet('practice_years_min');
+        if ($practiceYearsMin === null) {
+            $practiceYearsMin = $this->nullableIntGet('experience_min');
+        }
+        $practiceYearsMax = $this->nullableIntGet('practice_years_max');
         $natureOfPractice = trim((string) ($this->request->getGet('nature_of_practice') ?? ''));
         $fieldOfLaw       = trim((string) ($this->request->getGet('field_of_law') ?? ''));
         $firstGeneration  = trim((string) ($this->request->getGet('first_generation') ?? ''));
         if (! in_array($firstGeneration, ['1', '0'], true)) {
             $firstGeneration = '';
         }
-        if ($status !== '' && ! array_key_exists($status, ApplicationModel::STATUSES)) {
+        $notificationId = $this->nullableIntGet('notification_id');
+        if ($notificationId !== null && $notificationId <= 0) {
+            $notificationId = null;
+        }
+        // Admin list/status pages only filter by pipeline statuses
+        if ($status !== '' && ! array_key_exists($status, ApplicationModel::ADMIN_PIPELINE_STATUSES)) {
             $status = '';
+        }
+
+        // Only accept values that exist in the active master lists (prevents free-text injection)
+        $masters = $this->masterFilterOptions();
+        if ($natureOfPractice !== '' && ! in_array($natureOfPractice, $masters['nature_of_practice'], true)) {
+            $natureOfPractice = '';
+        }
+        if ($fieldOfLaw !== '' && ! in_array($fieldOfLaw, $masters['field_of_law'], true)) {
+            $fieldOfLaw = '';
+        }
+
+        // Only accept known notification ids
+        if ($notificationId !== null) {
+            $known = $this->notificationFilterOptions();
+            if (! array_key_exists($notificationId, $known)) {
+                $notificationId = null;
+            }
         }
 
         $hasActiveFilters = $status !== ''
             || $ageMin !== null
             || $ageMax !== null
-            || $experienceMin !== null
+            || $practiceYearsMin !== null
+            || $practiceYearsMax !== null
             || $natureOfPractice !== ''
             || $fieldOfLaw !== ''
-            || $firstGeneration !== '';
+            || $firstGeneration !== ''
+            || $notificationId !== null;
 
         return [
             'status'           => $status,
             'ageMin'           => $ageMin,
             'ageMax'           => $ageMax,
-            'experienceMin'    => $experienceMin,
+            'practiceYearsMin' => $practiceYearsMin,
+            'practiceYearsMax' => $practiceYearsMax,
             'natureOfPractice' => $natureOfPractice,
             'fieldOfLaw'       => $fieldOfLaw,
             'firstGeneration'  => $firstGeneration,
+            'notificationId'   => $notificationId,
             'hasActiveFilters' => $hasActiveFilters,
         ];
     }
@@ -304,10 +446,12 @@ class ApplicationController extends BaseController
      *   status: string,
      *   ageMin: ?int,
      *   ageMax: ?int,
-     *   experienceMin: ?int,
+     *   practiceYearsMin: ?int,
+     *   practiceYearsMax: ?int,
      *   natureOfPractice: string,
      *   fieldOfLaw: string,
-     *   firstGeneration: string
+     *   firstGeneration: string,
+     *   notificationId: ?int
      * } $list
      */
     private function buildApplicationListQuery(array $list): ApplicationModel
@@ -315,13 +459,27 @@ class ApplicationController extends BaseController
         $q = trim((string) ($this->request->getGet('q') ?? ''));
 
         $model = model(ApplicationModel::class);
-        $model->select('applications.*, users.name as applicant_account_name, users.email as account_email')
-            ->join('users', 'users.id = applications.user_id', 'left');
+        $model->select(
+            'applications.*, users.name as applicant_account_name, users.email as account_email,'
+            . ' designation_notifications.notification_number,'
+            . ' designation_notifications.notification_date'
+        )
+            ->join('users', 'users.id = applications.user_id', 'left')
+            ->join(
+                'designation_notifications',
+                'designation_notifications.id = applications.notification_id',
+                'left'
+            );
 
-        if ($list['status'] !== '' && array_key_exists($list['status'], ApplicationModel::STATUSES)) {
+        if ($list['status'] !== '' && array_key_exists($list['status'], ApplicationModel::ADMIN_PIPELINE_STATUSES)) {
             $model->where('applications.status', $list['status']);
         } else {
-            $model->where('applications.status !=', ApplicationModel::STATUS_DRAFT);
+            // Default list: pipeline statuses only (hide drafts and legacy workflow rows)
+            $model->whereIn('applications.status', array_keys(ApplicationModel::ADMIN_PIPELINE_STATUSES));
+        }
+
+        if (! empty($list['notificationId'])) {
+            $model->where('applications.notification_id', (int) $list['notificationId']);
         }
 
         if ($q !== '') {
@@ -332,6 +490,7 @@ class ApplicationController extends BaseController
                 ->orLike('applications.email', $q, 'both', null, true)
                 ->orLike('users.email', $q, 'both', null, true)
                 ->orLike('users.name', $q, 'both', null, true)
+                ->orLike('designation_notifications.notification_number', $q, 'both', null, true)
                 ->groupEnd();
         }
 
@@ -341,8 +500,11 @@ class ApplicationController extends BaseController
         if ($list['ageMax'] !== null) {
             $model->where('applications.age_years <=', $list['ageMax']);
         }
-        if ($list['experienceMin'] !== null) {
-            $model->where('applications.practice_years >=', $list['experienceMin']);
+        if ($list['practiceYearsMin'] !== null) {
+            $model->where('applications.practice_years >=', $list['practiceYearsMin']);
+        }
+        if ($list['practiceYearsMax'] !== null) {
+            $model->where('applications.practice_years <=', $list['practiceYearsMax']);
         }
         if ($list['natureOfPractice'] !== '') {
             $model->like('applications.nature_of_practice', $list['natureOfPractice'], 'both', null, true);
@@ -377,9 +539,11 @@ class ApplicationController extends BaseController
         $params = array_filter([
             'q'                  => $q !== '' ? $q : null,
             'status'             => $list['status'] !== '' ? $list['status'] : null,
+            'notification_id'    => ! empty($list['notificationId']) ? $list['notificationId'] : null,
             'age_min'            => $list['ageMin'],
             'age_max'            => $list['ageMax'],
-            'experience_min'     => $list['experienceMin'],
+            'practice_years_min' => $list['practiceYearsMin'],
+            'practice_years_max' => $list['practiceYearsMax'],
             'nature_of_practice' => $list['natureOfPractice'] !== '' ? $list['natureOfPractice'] : null,
             'field_of_law'       => $list['fieldOfLaw'] !== '' ? $list['fieldOfLaw'] : null,
             'first_generation'   => $list['firstGeneration'] !== '' ? $list['firstGeneration'] : null,
@@ -445,21 +609,24 @@ class ApplicationController extends BaseController
         $role = (string) session()->get('role');
 
         return view('admin/applications/show', [
-            'title'    => 'Application ' . ($app['application_no'] ?? '#' . $id),
-            'app'      => model(ApplicationModel::class)->withDecoded($app),
-            'user'     => $user,
-            'history'  => model(ApplicationStatusHistoryModel::class)->forApplication($id),
-            'l1'       => model(FormatL1Model::class)->forApplication($id),
-            'l2'       => model(FormatL2Model::class)->forApplication($id),
-            'l3pb'     => model(FormatL3ProBonoModel::class)->forApplication($id),
-            'l3am'     => model(FormatL3AmicusModel::class)->forApplication($id),
-            'l4'       => model(FormatL4Model::class)->forApplication($id),
-            'statuses' => ApplicationModel::STATUSES,
-            'actions'  => ApplicationModel::availableActions((string) $app['status'], $role),
-            'role'     => $role,
+            'title'              => 'Application ' . ($app['application_no'] ?? '#' . $id),
+            'app'                => model(ApplicationModel::class)->withDecoded($app),
+            'user'               => $user,
+            'history'            => model(ApplicationStatusHistoryModel::class)->forApplication($id),
+            'l1'                 => model(FormatL1Model::class)->forApplication($id),
+            'l2'                 => model(FormatL2Model::class)->forApplication($id),
+            'l3pb'               => model(FormatL3ProBonoModel::class)->forApplication($id),
+            'l3am'               => model(FormatL3AmicusModel::class)->forApplication($id),
+            'l4'                 => model(FormatL4Model::class)->forApplication($id),
+            'statuses'           => ApplicationModel::STATUSES,
+            'assignableStatuses' => ApplicationModel::ADMIN_ASSIGNABLE_STATUSES,
+            'role'               => $role,
         ]);
     }
 
+    /**
+     * Assign classification status on a single application (no email/SMS).
+     */
     public function updateStatus(int $id)
     {
         $app = model(ApplicationModel::class)->find($id);
@@ -467,36 +634,21 @@ class ApplicationController extends BaseController
             return redirect()->to('/admin/applications')->with('error', 'Application not found.');
         }
 
-        $action  = (string) $this->request->getPost('action');
-        $remarks = trim((string) $this->request->getPost('remarks'));
-        $role    = (string) session()->get('role');
-        $meta    = ApplicationModel::resolveAction($action);
-
-        if ($meta === null) {
-            return redirect()->back()->with('error', 'Invalid workflow action.');
+        if ((string) ($app['status'] ?? '') === ApplicationModel::STATUS_DRAFT) {
+            return redirect()->back()->with('error', 'Draft applications cannot be classified.');
         }
 
-        $allowed = ApplicationModel::availableActions((string) $app['status'], $role);
-        if (! isset($allowed[$action])) {
-            $statusLabel = ApplicationModel::STATUSES[$app['status']] ?? $app['status'];
-            $message     = 'You are not authorised to perform "' . $meta['label']
-                . '" on an application in status "' . $statusLabel . '".';
+        $toStatus = (string) $this->request->getPost('status');
+        $remarks  = trim((string) $this->request->getPost('remarks'));
 
-            return redirect()->back()->with('error', $message);
+        if (! ApplicationModel::isAdminAssignableStatus($toStatus)) {
+            return redirect()->back()->with('error', 'Invalid status. Choose Select Listed, Wait Listed, Rejected, or Submitted.');
         }
 
-        if (! empty($meta['remarks_required']) && $remarks === '') {
-            return redirect()->back()->withInput()->with(
-                'error',
-                'Remarks are required for: ' . $meta['label'] . '.'
-            );
-        }
+        $userId = (int) session()->get('user_id');
+        $from   = (string) $app['status'];
 
-        $toStatus = $meta['to'];
-        $userId   = (int) session()->get('user_id');
-        $from     = $app['status'];
-
-        if ($from === $toStatus) {
+        if ($from === $toStatus && $remarks === trim((string) ($app['review_remarks'] ?? ''))) {
             return redirect()->back()->with('error', 'Application is already in that status.');
         }
 
@@ -507,28 +659,96 @@ class ApplicationController extends BaseController
             'review_remarks' => $remarks,
         ]);
 
-        $historyNote = $meta['label'] . ($remarks !== '' ? ': ' . $remarks : '');
+        $toLabel     = ApplicationModel::ADMIN_ASSIGNABLE_STATUSES[$toStatus] ?? $toStatus;
+        $historyNote = 'Status set to ' . $toLabel . ($remarks !== '' ? ': ' . $remarks : '');
         model(ApplicationStatusHistoryModel::class)->record($id, $from, $toStatus, $userId, $historyNote);
         model(AuditLogModel::class)->log('status_changed', $userId, $id, [
-            'action' => $action,
-            'from'   => $from,
-            'to'     => $toStatus,
+            'from' => $from,
+            'to'   => $toStatus,
         ]);
 
-        $fresh = model(ApplicationModel::class)->find($id) ?: $app;
-        $owner = model(UserModel::class)->find((int) $fresh['user_id']);
-        $notify = new NotificationService();
-
-        if ($toStatus === ApplicationModel::STATUS_RETURNED) {
-            $notify->applicationReturned($fresh, $owner ?: null, $remarks);
-        } elseif (in_array($toStatus, [ApplicationModel::STATUS_APPROVED, ApplicationModel::STATUS_REJECTED], true)) {
-            $notify->applicationStatus($fresh, $toStatus, $owner ?: null, $remarks);
-        }
-
-        $toLabel = ApplicationModel::STATUSES[$toStatus] ?? $toStatus;
+        // No email/SMS on classification — notifications are sent only on applicant submit.
 
         return redirect()->to('/admin/applications/' . $id)
-            ->with('success', $meta['label'] . ' — status is now "' . $toLabel . '".');
+            ->with('success', 'Status updated to "' . $toLabel . '".');
+    }
+
+    /**
+     * Bulk-assign Select Listed / Wait Listed / Rejected (or Submitted) on many rows.
+     */
+    public function bulkUpdateStatus()
+    {
+        $ids      = $this->request->getPost('ids');
+        $toStatus = (string) $this->request->getPost('status');
+        $remarks  = trim((string) $this->request->getPost('remarks'));
+
+        if (! is_array($ids)) {
+            $ids = [];
+        }
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0)));
+
+        if ($ids === []) {
+            return redirect()->to('/admin/applications/status')->with('error', 'Select at least one application.');
+        }
+
+        if (! ApplicationModel::isAdminAssignableStatus($toStatus)) {
+            return redirect()->to('/admin/applications/status')
+                ->with('error', 'Choose a valid status: Select Listed, Wait Listed, Rejected, or Submitted.');
+        }
+
+        $userId  = (int) session()->get('user_id');
+        $model   = model(ApplicationModel::class);
+        $history = model(ApplicationStatusHistoryModel::class);
+        $audit   = model(AuditLogModel::class);
+        $toLabel = ApplicationModel::ADMIN_ASSIGNABLE_STATUSES[$toStatus] ?? $toStatus;
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($ids as $id) {
+            $app = $model->find($id);
+            if (! $app || (string) ($app['status'] ?? '') === ApplicationModel::STATUS_DRAFT) {
+                $skipped++;
+                continue;
+            }
+
+            $from = (string) $app['status'];
+            if ($from === $toStatus) {
+                $skipped++;
+                continue;
+            }
+
+            $model->update($id, [
+                'status'         => $toStatus,
+                'reviewed_by'    => $userId,
+                'reviewed_at'    => date('Y-m-d H:i:s'),
+                'review_remarks' => $remarks !== '' ? $remarks : ($app['review_remarks'] ?? null),
+            ]);
+
+            $historyNote = 'Bulk status set to ' . $toLabel . ($remarks !== '' ? ': ' . $remarks : '');
+            $history->record($id, $from, $toStatus, $userId, $historyNote);
+            $audit->log('status_changed', $userId, $id, [
+                'bulk' => true,
+                'from' => $from,
+                'to'   => $toStatus,
+            ]);
+            $updated++;
+        }
+
+        if ($updated < 1) {
+            return redirect()->to('/admin/applications/status')->with(
+                'error',
+                $skipped > 0
+                    ? 'No applications updated (already in that status, or drafts were selected).'
+                    : 'No applications updated.'
+            );
+        }
+
+        $msg = $updated . ' application' . ($updated === 1 ? '' : 's') . ' updated to "' . $toLabel . '".';
+        if ($skipped > 0) {
+            $msg .= ' ' . $skipped . ' skipped.';
+        }
+
+        return redirect()->to('/admin/applications/status')->with('success', $msg);
     }
 
     public function downloadPdf(int $id)
@@ -538,21 +758,20 @@ class ApplicationController extends BaseController
             return redirect()->to('/admin/applications')->with('error', 'Application not found.');
         }
 
-        $pdf = new PdfService();
-        if (empty($app['generated_pdf_path']) || ! is_file(WRITEPATH . 'uploads/' . $app['generated_pdf_path'])) {
-            $path = $pdf->generateApplicationPdf(model(ApplicationModel::class)->withDecoded($app), [
+        model(AuditLogModel::class)->log('pdf_downloaded', (int) session()->get('user_id'), $id);
+
+        // Always generate at request time from the current template (no disk snapshot).
+        (new PdfService())->streamApplicationPdf(
+            model(ApplicationModel::class)->withDecoded($app),
+            [
                 'l1'   => model(FormatL1Model::class)->forApplication($id),
                 'l2'   => model(FormatL2Model::class)->forApplication($id),
                 'l3pb' => model(FormatL3ProBonoModel::class)->forApplication($id),
                 'l3am' => model(FormatL3AmicusModel::class)->forApplication($id),
                 'l4'   => model(FormatL4Model::class)->forApplication($id),
-            ]);
-            model(ApplicationModel::class)->update($id, ['generated_pdf_path' => $path]);
-            $app['generated_pdf_path'] = $path;
-        }
-
-        model(AuditLogModel::class)->log('pdf_downloaded', (int) session()->get('user_id'), $id);
-        $pdf->stream($app['generated_pdf_path'], ($app['application_no'] ?? 'application') . '.pdf');
+            ],
+            ($app['application_no'] ?? 'application') . '.pdf'
+        );
     }
 
     public function file(int $id, string $type)
@@ -563,14 +782,16 @@ class ApplicationController extends BaseController
         }
 
         $map = [
-            'photo'          => 'photo_path',
-            'signature'      => 'signature_path',
-            'enrolment_cert' => 'enrolment_cert_path',
-            'format_l1'      => 'format_l1_path',
-            'format_l2'      => 'format_l2_path',
-            'format_l3i'     => 'format_l3i_path',
-            'format_l3ii'    => 'format_l3ii_path',
-            'format_l4'      => 'format_l4_path',
+            'photo'           => 'photo_path',
+            'signature'       => 'signature_path',
+            'enrolment_cert'  => 'enrolment_cert_path',
+            'age_proof'       => 'age_proof_path',
+            'education_qual'  => 'education_qual_path',
+            'format_l1'       => 'format_l1_path',
+            'format_l2'       => 'format_l2_path',
+            'format_l3i'      => 'format_l3i_path',
+            'format_l3ii'     => 'format_l3ii_path',
+            'format_l4'       => 'format_l4_path',
         ];
 
         if (! isset($map[$type]) || empty($app[$map[$type]])) {

@@ -5,6 +5,7 @@ namespace App\Controllers\Applicant;
 use App\Controllers\BaseController;
 use App\Controllers\Concerns\ListQuery;
 use App\Models\ApplicationModel;
+use App\Models\DesignationNotificationModel;
 
 class DashboardController extends BaseController
 {
@@ -46,25 +47,36 @@ class DashboardController extends BaseController
         $appsModel   = model(ApplicationModel::class);
         $draft       = $appsModel->findDraftForUser($userId);
         $editable    = $appsModel->findEditableForUser($userId);
-        $canStart    = $appsModel->canStartNewApplication($userId);
+        $periodInfo  = DesignationNotificationModel::applicationPeriodInfo();
+        // Only allow "Start new application" when the notification application period is open
+        $canStart    = $appsModel->canStartNewApplicationNow($userId);
         $editWindow  = ApplicationModel::editWindowInfo();
 
+        $portalNotifications = [];
+        try {
+            $portalNotifications = model(DesignationNotificationModel::class)->withDocuments(5);
+        } catch (\Throwable $e) {
+            $portalNotifications = [];
+        }
+
         return view('applicant/dashboard', [
-            'title'            => 'Applicant Dashboard',
-            'applications'     => $applications,
-            'draft'            => $draft,
-            'editable'         => $editable,
-            'canStart'         => $canStart,
-            'editWindow'       => $editWindow,
-            'q'                => $q,
-            'status'           => $status,
-            'statuses'         => ApplicationModel::STATUSES,
-            'perPage'          => $perPage,
-            'page'             => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
-            'total'            => (int) $pager->getTotal('default'),
-            'allowedPerPage'   => $filters['allowedPerPage'],
-            'pager'            => $pager,
-            'hasActiveFilters' => $status !== '',
+            'title'               => 'Applicant Dashboard',
+            'applications'        => $applications,
+            'draft'               => $draft,
+            'editable'            => $editable,
+            'canStart'            => $canStart,
+            'periodInfo'          => $periodInfo,
+            'editWindow'          => $editWindow,
+            'portalNotifications' => $portalNotifications,
+            'q'                   => $q,
+            'status'              => $status,
+            'statuses'            => ApplicationModel::STATUSES,
+            'perPage'             => $perPage,
+            'page'                => (int) ($pager->getCurrentPage('default') ?: $filters['page']),
+            'total'               => (int) $pager->getTotal('default'),
+            'allowedPerPage'      => $filters['allowedPerPage'],
+            'pager'               => $pager,
+            'hasActiveFilters'    => $status !== '',
         ]);
     }
 }

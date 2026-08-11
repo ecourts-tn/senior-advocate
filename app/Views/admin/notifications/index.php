@@ -10,7 +10,7 @@
         <a href="<?= base_url('admin/settings/email') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-gear me-1"></i> Email transport
         </a>
-        <a href="<?= base_url('admin/notifications/new') ?>" class="btn btn-mhc btn-sm">
+        <a href="<?= base_url('admin/notification-templates/new') ?>" class="btn btn-mhc btn-sm">
             <i class="bi bi-plus-lg me-1"></i> Add template
         </a>
         <?php if (empty($templates)): ?>
@@ -24,7 +24,7 @@
     'perPage'        => $perPage,
     'allowedPerPage' => $allowedPerPage,
     'placeholder'    => 'Name / event / subject…',
-    'action'         => base_url('admin/notifications'),
+    'action'         => base_url('admin/notification-templates'),
 ]) ?>
 
 <div class="card card-mhc">
@@ -79,11 +79,11 @@
                             <?php endif; ?>
                         </td>
                         <td class="text-end text-nowrap">
-                            <a href="<?= base_url('admin/notifications/' . (int) $t['id'] . '/edit') ?>"
+                            <a href="<?= base_url('admin/notification-templates/' . (int) $t['id'] . '/edit') ?>"
                                class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-pencil"></i> Edit
                             </a>
-                            <?= form_open('admin/notifications/' . (int) $t['id'] . '/delete', [
+                            <?= form_open('admin/notification-templates/' . (int) $t['id'] . '/delete', [
                                 'class'  => 'd-inline',
                                 'onsubmit' => "return confirm('Delete this notification template?');",
                             ]) ?>

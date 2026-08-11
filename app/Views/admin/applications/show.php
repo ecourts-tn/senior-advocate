@@ -4,7 +4,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <div>
         <h2 class="h4 mb-1"><?= esc($app['application_no'] ?? 'Application #' . $app['id']) ?></h2>
-        <?= sad_status_badge($app['status']) ?>
+        <?= ssa_status_badge($app['status']) ?>
     </div>
     <div class="d-flex gap-2">
         <a href="<?= base_url('admin/applications/' . $app['id'] . '/pdf') ?>" class="btn btn-outline-danger" target="_blank">PDF</a>
@@ -14,26 +14,100 @@
 
 <div class="row g-3">
     <div class="col-lg-8">
+        <?php $ageAsOnLabel = ssa_age_as_on_label($app ?? null); ?>
         <div class="card card-mhc mb-3">
             <div class="card-header">Applicant details</div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-8">
-                        <strong>Name:</strong> <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?><br>
-                        <strong>DOB / Age:</strong> <?= esc($app['date_of_birth'] ?? '—') ?> /
-                        <?= esc($app['age_years'] ?? '—') ?> yrs
-                        <?= esc($app['age_months'] ?? '—') ?> mo<br>
-                        <strong>Email / Mobile:</strong> <?= esc($app['email'] ?? '') ?> / <?= esc($app['mobile'] ?? '') ?><br>
-                        <strong>Enrolment:</strong> <?= esc($app['enrolment_number'] ?? '—') ?> (<?= esc($app['enrolment_date'] ?? '') ?>)<br>
-                        <strong>Bar Council:</strong> <?= esc($app['bar_council'] ?? '—') ?><br>
-                        <strong>Practice:</strong> <?= (int) ($app['practice_years'] ?? 0) ?>y <?= (int) ($app['practice_months'] ?? 0) ?>m · Income ₹<?= esc($app['net_income_lakhs'] ?? '—') ?> L<br>
-                        <strong>Bar Assoc.:</strong> <?= sad_bool_label($app['is_bar_association_member'] ?? null) ?>
-                        <?= ! empty($app['bar_association_name']) ? ' — ' . esc($app['bar_association_name']) : '' ?>
+                        <div class="mb-2">
+                            <strong>1. Name of the Applicant-Advocate</strong><br>
+                            <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?>
+                        </div>
+                        <?php if (! empty($app['notification_id'])): ?>
+                            <?php
+                            $nRow = null;
+                            try {
+                                $nRow = model(\App\Models\DesignationNotificationModel::class)->find((int) $app['notification_id']);
+                            } catch (\Throwable $e) {
+                                $nRow = null;
+                            }
+                            ?>
+                            <div class="mb-2">
+                                <strong>Notification:</strong>
+                                <?php if ($nRow): ?>
+                                    <a href="<?= base_url('admin/applications?notification_id=' . (int) $nRow['id']) ?>">
+                                        <?= esc($nRow['notification_number'] ?? '') ?>
+                                    </a>
+                                    <?php if (! empty($nRow['notification_date'])): ?>
+                                        <span class="text-muted">(<?= esc(date('d-m-Y', strtotime($nRow['notification_date']))) ?>)</span>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    #<?= (int) $app['notification_id'] ?>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+                        <div class="mb-2">
+                            <strong>2. Date of Birth</strong><br>
+                            <?= esc($app['date_of_birth'] ?? '—') ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Age as on <?= esc($ageAsOnLabel) ?></strong><br>
+                            <?= esc($app['age_years'] ?? '—') ?> Years
+                            <?= esc($app['age_months'] ?? '—') ?> Months
+                            <?= esc($app['age_days'] ?? '—') ?> Days
+                        </div>
+                        <div class="mb-2">
+                            <strong>Address in Full — Office</strong><br>
+                            <?= nl2br(esc($app['address_office'] ?? '—')) ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Address in Full — Residence</strong><br>
+                            <?= nl2br(esc($app['address_residence'] ?? '—')) ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Contact Details</strong><br>
+                            Landline: <?= esc($app['phone_landline'] ?? '—') ?><br>
+                            Mobile: <?= esc($app['mobile'] ?? '—') ?><br>
+                            Email: <?= esc($app['email'] ?? '—') ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>5. Educational / Professional Qualifications</strong><br>
+                            <?= nl2br(esc($app['qualifications'] ?? '—')) ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Date, Month and Year of Enrolment as an Advocate</strong><br>
+                            <?= esc($app['enrolment_date'] ?? '—') ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Enrolment Number</strong><br>
+                            <?= esc($app['enrolment_number'] ?? '—') ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Bar Council where registered (Copy of Enrolment Certificate to be attached)</strong><br>
+                            <?= esc($app['bar_council'] ?? '—') ?>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Number of years of practice from the date of enrolment (as on <?= esc($ageAsOnLabel) ?>)</strong><br>
+                            <?= (int) ($app['practice_years'] ?? 0) ?> Years
+                            <?= (int) ($app['practice_months'] ?? 0) ?> Months
+                        </div>
+                        <div class="mb-2">
+                            <strong>Net Professional Income per annum (in Lakhs of Rs) [Only earnings through practice as Advocate]</strong><br>
+                            <?= esc($app['net_income_lakhs'] ?? '—') ?>
+                        </div>
+                        <div class="mb-0">
+                            <strong>Whether the applicant is a member of any bar association attached to a specific court</strong><br>
+                            <?= ssa_bool_label($app['is_bar_association_member'] ?? null) ?>
+                            <?php if (! empty($app['bar_association_name'])): ?>
+                                <br><strong>Name of Bar Association:</strong> <?= esc($app['bar_association_name']) ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="col-md-4">
                         <div class="review-identity">
                             <div class="review-identity-item">
-                                <span class="review-label">Photograph</span>
+                                <span class="review-label">Recent Passport Size Colour Photograph</span>
                                 <?php if (! empty($app['photo_path'])): ?>
                                     <a href="<?= base_url('files/application/' . $app['id'] . '/photo') ?>" target="_blank" rel="noopener">
                                         <img src="<?= base_url('files/application/' . $app['id'] . '/photo') ?>"
@@ -58,46 +132,135 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6"><strong>Office Address:</strong><br><?= nl2br(esc($app['address_office'] ?? '')) ?></div>
-                    <div class="col-md-6"><strong>Residential Address:</strong><br><?= nl2br(esc($app['address_residence'] ?? '')) ?></div>
-                    <div class="col-12"><strong>Qualifications:</strong><br><?= nl2br(esc($app['qualifications'] ?? '')) ?></div>
-                    <div class="col-md-6"><strong>Reported judgments:</strong> SC <?= (int) $app['reported_sc'] ?>, HC <?= (int) $app['reported_hc'] ?>, Dist <?= (int) $app['reported_district'] ?></div>
-                    <div class="col-md-6"><strong>Unreported:</strong> SC <?= (int) $app['unreported_sc'] ?>, HC <?= (int) $app['unreported_hc'] ?>, Dist <?= (int) $app['unreported_district'] ?></div>
-                    <div class="col-md-6"><strong>Pro Bono / Amicus:</strong> <?= (int) $app['pro_bono_total'] ?> / <?= (int) $app['amicus_total'] ?></div>
-                    <div class="col-md-6"><strong>First generation:</strong> <?= sad_bool_label($app['is_first_generation'] ?? null) ?></div>
-                    <div class="col-md-6"><strong>Nature of practice:</strong><br><?= nl2br(esc($app['nature_of_practice'] ?? '—')) ?></div>
-                    <div class="col-md-6"><strong>Field of law:</strong><br><?= nl2br(esc($app['field_of_law'] ?? '—')) ?></div>
-                    <div class="col-md-6"><strong>FIR:</strong> <?= sad_bool_label($app['fir_lodged'] ?? null) ?> <?= esc($app['fir_details'] ?? '') ?></div>
-                    <div class="col-md-6"><strong>Criminal case:</strong> <?= sad_bool_label($app['criminal_case_party'] ?? null) ?> <?= esc($app['criminal_case_details'] ?? '') ?></div>
-                    <div class="col-md-6"><strong>Bar Council proceedings:</strong> <?= sad_bool_label($app['bar_council_proceedings'] ?? null) ?> <?= esc($app['bar_council_details'] ?? '') ?></div>
-                    <div class="col-md-6"><strong>Health:</strong> <?= esc($app['general_health'] ?? '—') ?></div>
+                    <div class="col-md-6">
+                        <strong>9. Number of Reported Judgments (excluding orders that do not lay down any principle of law): Format L-1</strong><br>
+                        Supreme Court: <?= (int) ($app['reported_sc'] ?? 0) ?><br>
+                        High Court: <?= (int) ($app['reported_hc'] ?? 0) ?><br>
+                        District Court / Labour Court and Tribunals: <?= (int) ($app['reported_district'] ?? 0) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>10. Number of Unreported Judgments (excluding orders that do not lay down any principle of law): Format L-2</strong><br>
+                        Supreme Court: <?= (int) ($app['unreported_sc'] ?? 0) ?><br>
+                        High Court: <?= (int) ($app['unreported_hc'] ?? 0) ?><br>
+                        District / Labour Court and Tribunals: <?= (int) ($app['unreported_district'] ?? 0) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>11. Pro Bono / Amicus Curiae work Format L-3(i), Format L-3(ii)</strong><br>
+                        Total Pro Bono cases: <?= (int) ($app['pro_bono_total'] ?? 0) ?><br>
+                        Total Amicus Curiae cases: <?= (int) ($app['amicus_total'] ?? 0) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>12. Whether the applicant is first-generation lawyer</strong><br>
+                        <?= ssa_bool_label($app['is_first_generation'] ?? null) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</strong><br>
+                        <?= nl2br(esc($app['nature_of_practice'] ?? '—')) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>17. Field of Law — domain expertise … in which the applicant has specialization/expertise</strong><br>
+                        <?= nl2br(esc($app['field_of_law'] ?? '—')) ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>20. Whether any FIR has ever been lodged against the applicant; if so, details thereof</strong><br>
+                        <?= ssa_bool_label($app['fir_lodged'] ?? null) ?>
+                        <?php if (! empty($app['fir_details'])): ?><br><?= nl2br(esc($app['fir_details'])) ?><?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>21. Whether the applicant is a party to any criminal case; if so, details thereof</strong><br>
+                        <?= ssa_bool_label($app['criminal_case_party'] ?? null) ?>
+                        <?php if (! empty($app['criminal_case_details'])): ?><br><?= nl2br(esc($app['criminal_case_details'])) ?><?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>22. Whether any proceedings were initiated or are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof</strong><br>
+                        <?= ssa_bool_label($app['bar_council_proceedings'] ?? null) ?>
+                        <?php if (! empty($app['bar_council_details'])): ?><br><?= nl2br(esc($app['bar_council_details'])) ?><?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>23. General State of Health</strong><br>
+                        <?= esc($app['general_health'] ?? '—') ?>
+                    </div>
+                    <?php if (! empty($app['other_information'])): ?>
+                        <div class="col-12">
+                            <strong>24. Any other information</strong><br>
+                            <?= nl2br(esc($app['other_information'])) ?>
+                        </div>
+                    <?php endif; ?>
+                    <div class="col-md-6">
+                        <strong>18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof</strong><br>
+                        <?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
+                        <?php if (! empty($app['applied_mhc_date']) || ! empty($app['applied_mhc_status'])): ?>
+                            <br><?= esc($app['applied_mhc_date'] ?? '') ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof</strong><br>
+                        <?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
+                        <?php if (! empty($app['applied_other_date']) || ! empty($app['applied_other_details'])): ?>
+                            <br><?= esc($app['applied_other_date'] ?? '') ?> <?= esc($app['applied_other_details'] ?? '') ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <?php
+        // Structured format data entered on Steps 3–4 (not PDF uploads).
+        $l1   = $l1 ?? [];
+        $l2   = $l2 ?? [];
+        $l3pb = $l3pb ?? [];
+        $l3am = $l3am ?? [];
+        $l4   = $l4 ?? [];
+        $formatEntryCounts = [
+            'L-1'     => count($l1),
+            'L-2'     => count($l2),
+            'L-3(i)'  => count($l3pb),
+            'L-3(ii)' => count($l3am),
+            'L-4'     => count($l4),
+        ];
+        ?>
+
+        <div class="card card-mhc mb-3">
+            <div class="card-header">Format entries (from application form)</div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Data entered for Formats L-1 to L-4 during the online application (Steps 3–4).</p>
+                <div class="d-flex flex-wrap gap-2">
+                    <?php foreach ($formatEntryCounts as $lab => $cnt): ?>
+                        <?php if ($cnt > 0): ?>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <?= esc($lab) ?>: <?= (int) $cnt ?> entr<?= $cnt === 1 ? 'y' : 'ies' ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge bg-light text-dark border"><?= esc($lab) ?>: none</span>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
 
         <div class="card card-mhc mb-3">
-            <div class="card-header">Attached documents</div>
+            <div class="card-header">Attached PDF documents</div>
             <div class="card-body">
+                <p class="small text-muted mb-2">Optional PDF uploads from Step 7 (separate from the online format entries above).</p>
                 <div class="d-flex flex-wrap gap-2">
                     <?php
                     $docs = [
                         'enrolment_cert' => 'Enrolment Certificate',
-                        'format_l1' => 'L-1',
-                        'format_l2' => 'L-2',
-                        'format_l3i' => 'L-3(i)',
-                        'format_l3ii' => 'L-3(ii)',
-                        'format_l4' => 'L-4',
+                        'age_proof'      => 'Age proof',
+                        'education_qual' => 'Educational qualifications document',
+                        'format_l1'      => 'Format L-1 (Reported Judgments)',
+                        'format_l2'      => 'Format L-2 (Unreported Judgments)',
+                        'format_l3i'     => 'Format L-3(i) Pro Bono',
+                        'format_l3ii'    => 'Format L-3(ii) Amicus Curiae',
+                        'format_l4'      => 'Format L-4 Academic',
                     ];
                     foreach ($docs as $k => $lab):
                         $col = $k . '_path';
-                        if ($k === 'enrolment_cert') {
-                            $col = 'enrolment_cert_path';
-                        }
                     ?>
                         <?php if (! empty($app[$col])): ?>
                             <a class="btn btn-sm btn-outline-secondary" href="<?= base_url('admin/applications/' . $app['id'] . '/file/' . $k) ?>"><?= esc($lab) ?></a>
                         <?php else: ?>
-                            <span class="badge bg-light text-dark border"><?= esc($lab) ?>: missing</span>
+                            <span class="badge bg-light text-dark border"><?= esc($lab) ?>: not uploaded<?= $k === 'education_qual' ? ' (optional)' : '' ?></span>
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </div>
@@ -106,7 +269,7 @@
 
         <?php if (! empty($l1)): ?>
         <div class="card card-mhc mb-3">
-            <div class="card-header">Format L-1 entries</div>
+            <div class="card-header">Format L-1 entries (Reported judgments)</div>
             <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead><tr><th>#</th><th>Court</th><th>Case / Citation</th><th>Cause Title</th><th>Decided</th></tr></thead>
@@ -125,18 +288,105 @@
             </div>
         </div>
         <?php endif; ?>
+
+        <?php if (! empty($l2)): ?>
+        <div class="card card-mhc mb-3">
+            <div class="card-header">Format L-2 entries (Unreported judgments)</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>#</th><th>Court</th><th>Case No.</th><th>Cause Title</th><th>Decided</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($l2 as $r): ?>
+                        <tr>
+                            <td><?= (int) $r['s_no'] ?></td>
+                            <td><?= esc($r['court_name'] ?: $r['court_level']) ?></td>
+                            <td><?= esc($r['case_number']) ?></td>
+                            <td><?= esc($r['cause_title']) ?></td>
+                            <td><?= esc($r['decided_on']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (! empty($l3pb)): ?>
+        <div class="card card-mhc mb-3">
+            <div class="card-header">Format L-3(i) entries (Pro bono)</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>#</th><th>Court / Tribunal</th><th>Case No.</th><th>Cause Title</th><th>Decided</th><th>Society benefit</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($l3pb as $r): ?>
+                        <tr>
+                            <td><?= (int) $r['s_no'] ?></td>
+                            <td><?= esc($r['court_tribunal'] ?? '') ?></td>
+                            <td><?= esc($r['case_number'] ?? '') ?></td>
+                            <td><?= esc($r['cause_title'] ?? '') ?></td>
+                            <td><?= esc($r['decided_on'] ?? '') ?></td>
+                            <td><?= esc($r['society_benefit'] ?? '') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (! empty($l3am)): ?>
+        <div class="card card-mhc mb-3">
+            <div class="card-header">Format L-3(ii) entries (Amicus curiae)</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>#</th><th>Court / Tribunal</th><th>Case No.</th><th>Cause Title</th><th>Decided</th><th>Reportable</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($l3am as $r): ?>
+                        <tr>
+                            <td><?= (int) $r['s_no'] ?></td>
+                            <td><?= esc($r['court_tribunal'] ?? '') ?></td>
+                            <td><?= esc($r['case_number'] ?? '') ?></td>
+                            <td><?= esc($r['cause_title'] ?? '') ?></td>
+                            <td><?= esc($r['decided_on'] ?? '') ?></td>
+                            <td><?= esc($r['reportable'] ?? '') ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (! empty($l4)): ?>
+        <div class="card card-mhc mb-3">
+            <div class="card-header">Format L-4 entries (Academic / teaching)</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>#</th><th>Topic</th><th>Teaching assignment</th><th>Guest lectures</th><th>Other details</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($l4 as $r): ?>
+                        <tr>
+                            <td><?= (int) $r['s_no'] ?></td>
+                            <td><?= esc($r['topic'] ?? '') ?></td>
+                            <td><?= nl2br(esc($r['teaching_assignment'] ?? '')) ?></td>
+                            <td><?= nl2br(esc($r['guest_lectures'] ?? '')) ?></td>
+                            <td><?= nl2br(esc($r['other_details'] ?? '')) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="col-lg-4">
         <div class="card card-mhc mb-3">
-            <div class="card-header">Decision</div>
+            <div class="card-header">Application tatus</div>
             <div class="card-body">
-                <p class="small text-muted mb-3">
-                    <strong>Flow:</strong> Applicant submits → Admin accepts or rejects with remarks.
-                </p>
                 <div class="mb-3">
                     <span class="text-muted small d-block mb-1">Current status</span>
-                    <?= sad_status_badge($app['status']) ?>
+                    <?= ssa_status_badge($app['status']) ?>
                     <?php if (! empty($app['reviewed_at'])): ?>
                         <div class="small text-muted mt-1">Last action: <?= esc($app['reviewed_at']) ?></div>
                     <?php endif; ?>
@@ -149,47 +399,18 @@
                     </div>
                 <?php endif; ?>
 
-                <?php if (empty($actions)): ?>
+                <?php if (($app['status'] ?? '') === 'draft'): ?>
                     <div class="alert alert-secondary small mb-0">
-                        <?php if (in_array($app['status'], ['approved', 'rejected'], true)): ?>
-                            This application is closed. No further actions are available.
-                        <?php elseif ($app['status'] === 'returned'): ?>
-                            Returned to the advocate for correction. Waiting for resubmission.
-                        <?php elseif ($app['status'] === 'draft'): ?>
-                            Draft applications are not in the decision queue.
-                        <?php elseif (($role ?? '') !== 'admin'): ?>
-                            Only an <strong>administrator</strong> can accept or reject applications.
-                        <?php else: ?>
-                            No actions available at this status.
-                        <?php endif; ?>
+                        Draft applications are not in the classification queue.
                     </div>
+                <?php elseif (($role ?? '') === 'admin'): ?>
+                    <a href="<?= base_url('admin/applications/status') ?>" class="btn btn-mhc w-100">
+                        <i class="bi bi-ui-checks me-1"></i> Go to Update status
+                    </a>
                 <?php else: ?>
-                    <?= form_open('admin/applications/' . $app['id'] . '/status') ?>
-                    <div class="mb-3">
-                        <label class="form-label" for="remarks">Remarks <span class="text-danger">*</span></label>
-                        <textarea name="remarks" id="remarks" class="form-control" rows="4" required
-                                  placeholder="Required when accepting or rejecting."><?= esc(old('remarks', '')) ?></textarea>
-                        <div class="form-text">These remarks are recorded and shared with the applicant on decision.</div>
+                    <div class="alert alert-secondary small mb-0">
+                        Only an <strong>administrator</strong> can update application status.
                     </div>
-                    <div class="d-grid gap-2">
-                        <?php
-                        $btnClass = [
-                            'approve' => 'btn-success',
-                            'reject'  => 'btn-danger',
-                        ];
-                        foreach ($actions as $key => $meta):
-                            $class   = $btnClass[$key] ?? 'btn-outline-secondary';
-                            $confirm = "return confirm('Confirm: " . esc($meta['label'], 'js') . "?');";
-                        ?>
-                            <button type="submit" name="action" value="<?= esc($key) ?>"
-                                    class="btn <?= esc($class) ?>"
-                                    onclick="<?= $confirm ?>">
-                                <?= esc($meta['label']) ?>
-                                <span class="small opacity-75">(remarks required)</span>
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
-                    <?= form_close() ?>
                 <?php endif; ?>
             </div>
         </div>

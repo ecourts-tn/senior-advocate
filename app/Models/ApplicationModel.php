@@ -14,8 +14,8 @@ class ApplicationModel extends Model
     protected $protectFields    = true;
 
     protected $allowedFields = [
-        'user_id', 'application_no', 'status', 'cycle_year', 'current_step',
-        'title', 'full_name', 'date_of_birth', 'age_years', 'age_months',
+        'user_id', 'application_no', 'status', 'cycle_year', 'notification_id', 'current_step',
+        'title', 'full_name', 'date_of_birth', 'age_years', 'age_months', 'age_days',
         'address_office', 'address_residence',
         'phone_landline', 'mobile', 'email', 'qualifications',
         'enrolment_date', 'enrolment_number', 'bar_council',
@@ -37,6 +37,7 @@ class ApplicationModel extends Model
         'declaration_name', 'declaration_accepted', 'instructions_accepted',
         'declaration_date',
         'photo_path', 'signature_path', 'enrolment_cert_path',
+        'age_proof_path', 'education_qual_path',
         'format_l1_path', 'format_l2_path', 'format_l3i_path',
         'format_l3ii_path', 'format_l4_path', 'generated_pdf_path',
         'submitted_at', 'reviewed_by', 'reviewed_at', 'review_remarks',
@@ -51,7 +52,9 @@ class ApplicationModel extends Model
     public const STATUS_SUBMITTED        = 'submitted';
     public const STATUS_UNDER_REVIEW     = 'under_review';
     public const STATUS_PENDING_APPROVAL = 'pending_approval';
-    public const STATUS_APPROVED         = 'approved';
+    public const STATUS_APPROVED         = 'approved'; // legacy; prefer STATUS_LISTED
+    public const STATUS_LISTED           = 'listed';
+    public const STATUS_WAITLISTED       = 'waitlisted';
     public const STATUS_REJECTED         = 'rejected';
     public const STATUS_RETURNED         = 'returned';
 
@@ -60,45 +63,34 @@ class ApplicationModel extends Model
         self::STATUS_SUBMITTED        => 'Submitted',
         self::STATUS_UNDER_REVIEW     => 'Under Review',
         self::STATUS_PENDING_APPROVAL => 'Pending Approval',
-        self::STATUS_APPROVED         => 'Accepted',
+        self::STATUS_APPROVED         => 'Accepted (legacy)',
+        self::STATUS_LISTED           => 'Select Listed',
+        self::STATUS_WAITLISTED       => 'Wait Listed',
         self::STATUS_REJECTED         => 'Rejected',
         self::STATUS_RETURNED         => 'Returned for Correction',
     ];
 
     /**
-     * Workflow actions available to staff.
+     * Operational statuses used in admin filters and status updates:
+     * Submitted, Select Listed, Wait Listed, Rejected.
+     * (Draft and other legacy values remain in STATUSES for display only.)
      *
-     * TEMPORARY simplified flow (reviewer / multi-step approver path disabled):
-     *  Applicant submits → submitted
-     *  Admin → approved | rejected (remarks required)
-     *
-     * Intermediate statuses (under_review, pending_approval) remain decidable so
-     * any applications already in the old pipeline are not stuck.
+     * @var array<string, string>
      */
-    public const ACTIONS = [
-        'approve' => [
-            'label'            => 'Accept',
-            'to'               => self::STATUS_APPROVED,
-            'roles'            => ['admin'],
-            'from'             => [
-                self::STATUS_SUBMITTED,
-                self::STATUS_UNDER_REVIEW,
-                self::STATUS_PENDING_APPROVAL,
-            ],
-            'remarks_required' => true,
-        ],
-        'reject' => [
-            'label'            => 'Reject',
-            'to'               => self::STATUS_REJECTED,
-            'roles'            => ['admin'],
-            'from'             => [
-                self::STATUS_SUBMITTED,
-                self::STATUS_UNDER_REVIEW,
-                self::STATUS_PENDING_APPROVAL,
-            ],
-            'remarks_required' => true,
-        ],
+    public const ADMIN_PIPELINE_STATUSES = [
+        self::STATUS_SUBMITTED  => 'Submitted',
+        self::STATUS_LISTED     => 'Select Listed',
+        self::STATUS_WAITLISTED => 'Wait Listed',
+        self::STATUS_REJECTED   => 'Rejected',
     ];
+
+    /**
+     * Statuses admins may assign (same set as pipeline filter).
+     * No approve/reject workflow — classification only (no email/SMS on change).
+     *
+     * @var array<string, string>
+     */
+    public const ADMIN_ASSIGNABLE_STATUSES = self::ADMIN_PIPELINE_STATUSES;
 
     public const TOTAL_STEPS = 7;
 
@@ -117,29 +109,11 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Actions the given role may perform on this application in its current status.
-     *
-     * @return array<string, array<string, mixed>>
+     * Whether admin may assign this status (bulk or single).
      */
-    public static function availableActions(string $currentStatus, string $role): array
+    public static function isAdminAssignableStatus(string $status): bool
     {
-        $out = [];
-        foreach (self::ACTIONS as $key => $meta) {
-            if (! in_array($role, $meta['roles'], true)) {
-                continue;
-            }
-            if (! in_array($currentStatus, $meta['from'], true)) {
-                continue;
-            }
-            $out[$key] = $meta;
-        }
-
-        return $out;
-    }
-
-    public static function resolveAction(string $action): ?array
-    {
-        return self::ACTIONS[$action] ?? null;
+        return array_key_exists($status, self::ADMIN_ASSIGNABLE_STATUSES);
     }
 
     public function findDraftForUser(int $userId): ?array
@@ -165,94 +139,132 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Current designation cycle year from system settings (default: calendar year).
+     * Current designation cycle year from the active (or application-linked) notification date.
      */
-    public static function currentCycleYear(): int
+    public static function currentCycleYear(?array $app = null): int
+    {
+        $asOn = self::ageAsOnDate($app);
+        $year = (int) substr($asOn, 0, 4);
+        if ($year >= 2000 && $year <= 2100) {
+            return $year;
+        }
+
+        return (int) date('Y');
+    }
+
+    /**
+     * Resolve the official notification row used for "as on" calculations.
+     * Prefer the application's linked notification, then the currently active one.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function referenceNotification(?array $app = null): ?array
     {
         try {
-            $year = (int) model(SystemSettingModel::class)->get('application', 'cycle_year', (string) date('Y'));
+            $model = model(DesignationNotificationModel::class);
+            $nid   = (int) ($app['notification_id'] ?? 0);
+            if ($nid > 0) {
+                $row = $model->find($nid);
+                if ($row) {
+                    return $row;
+                }
+            }
+
+            return $model->getActive();
         } catch (\Throwable $e) {
-            $year = (int) date('Y');
+            return null;
+        }
+    }
+
+    /**
+     * Reference date (Y-m-d) for age and practice duration: notification date.
+     * Fallback: 01 January of the calendar year.
+     */
+    public static function ageAsOnDate(?array $app = null): string
+    {
+        $notification = self::referenceNotification($app);
+        if ($notification && ! empty($notification['notification_date'])) {
+            $ts = strtotime((string) $notification['notification_date']);
+            if ($ts !== false) {
+                return date('Y-m-d', $ts);
+            }
         }
 
-        if ($year < 2000 || $year > 2100) {
-            $year = (int) date('Y');
+        return sprintf('%04d-01-01', (int) date('Y'));
+    }
+
+    /**
+     * Display label for the reference date, e.g. "15.08.2026" (from notification date).
+     */
+    public static function ageAsOnLabel(?array $app = null): string
+    {
+        $asOn = self::ageAsOnDate($app);
+        $ts   = strtotime($asOn);
+
+        return $ts !== false ? date('d.m.Y', $ts) : $asOn;
+    }
+
+    /**
+     * Practice duration (years + months) from enrolment date as on the notification date.
+     * Days remainder is folded into months only (practice is stored as years/months).
+     *
+     * @return array{years: int, months: int}|null
+     */
+    public function calculatePracticePartsAsOn(?string $enrolmentDate, ?string $asOn = null): ?array
+    {
+        $parts = $this->calculateAgePartsAsOn($enrolmentDate, $asOn);
+        if ($parts === null) {
+            return null;
         }
 
-        return $year;
+        return [
+            'years'  => (int) $parts['years'],
+            'months' => (int) $parts['months'],
+        ];
     }
 
     /**
-     * Reference date for age / practice duration: 01 January of the cycle year.
-     * Auto-updates when cycle year (or calendar year fallback) changes.
-     */
-    public static function ageAsOnDate(): string
-    {
-        return sprintf('%04d-01-01', self::currentCycleYear());
-    }
-
-    /**
-     * Display label for the age reference date, e.g. "01.01.2026".
-     */
-    public static function ageAsOnLabel(): string
-    {
-        return sprintf('01.01.%04d', self::currentCycleYear());
-    }
-
-    /**
-     * Whether admin has opened the global post-submission edit window (now).
+     * Whether admin has opened the post-submission edit window (now).
+     * Driven only by the active notification's edit window dates.
      */
     public static function isEditWindowOpen(?array $settings = null): bool
     {
         try {
-            $settings ??= model(SystemSettingModel::class)->getGroup('application');
+            $notification = model(DesignationNotificationModel::class)->getActive();
         } catch (\Throwable $e) {
             return false;
         }
 
-        if (empty($settings['edit_window_enabled']) || $settings['edit_window_enabled'] === '0') {
+        if (! $notification) {
             return false;
         }
 
-        $from = trim((string) ($settings['edit_window_from'] ?? ''));
-        $to   = trim((string) ($settings['edit_window_to'] ?? ''));
-        $now  = time();
-
-        if ($from !== '') {
-            $fromTs = strtotime($from);
-            if ($fromTs !== false && $now < $fromTs) {
-                return false;
-            }
-        }
-        if ($to !== '') {
-            $toTs = strtotime($to);
-            if ($toTs !== false && $now > $toTs) {
-                return false;
-            }
-        }
-
-        // Enabled with no dates → open; with only one bound → respect that bound
-        return true;
+        return DesignationNotificationModel::isEditWindowOpen($notification);
     }
 
     /**
-     * @return array{open: bool, from: string, to: string, message: string, cycle_year: int}
+     * @return array{open: bool, from: string, to: string, message: string, cycle_year: int, notification_id: ?int, notification_number: string, enabled: bool}
      */
     public static function editWindowInfo(): array
     {
         try {
-            $s = model(SystemSettingModel::class)->getGroup('application');
+            $notification = model(DesignationNotificationModel::class)->getActive();
         } catch (\Throwable $e) {
-            $s = [];
+            $notification = null;
         }
 
+        $info = DesignationNotificationModel::editWindowInfo($notification);
+        $hasEditDates = $info['from'] !== '' || $info['to'] !== '';
+
         return [
-            'open'       => self::isEditWindowOpen($s),
-            'from'       => (string) ($s['edit_window_from'] ?? ''),
-            'to'         => (string) ($s['edit_window_to'] ?? ''),
-            'message'    => (string) ($s['edit_window_message'] ?? ''),
-            'cycle_year' => self::currentCycleYear(),
-            'enabled'    => ! empty($s['edit_window_enabled']) && $s['edit_window_enabled'] !== '0',
+            'open'                => $info['open'],
+            'from'                => $info['from'],
+            'to'                  => $info['to'],
+            'message'             => $info['message'],
+            'cycle_year'          => self::currentCycleYear(),
+            'notification_id'     => $info['notification_id'],
+            'notification_number' => $info['notification_number'],
+            'enabled'             => $hasEditDates,
         ];
     }
 
@@ -268,6 +280,19 @@ class ApplicationModel extends Model
 
         if (! in_array($status, self::editWindowStatuses(), true)) {
             return false;
+        }
+
+        // Prefer the notification this application belongs to
+        $notificationId = (int) ($app['notification_id'] ?? 0);
+        if ($notificationId > 0) {
+            try {
+                $notification = model(DesignationNotificationModel::class)->find($notificationId);
+                if ($notification) {
+                    return DesignationNotificationModel::isEditWindowOpen($notification);
+                }
+            } catch (\Throwable $e) {
+                // fall through
+            }
         }
 
         if (! self::isEditWindowOpen()) {
@@ -292,6 +317,24 @@ class ApplicationModel extends Model
             return $draft;
         }
 
+        // Notification-scoped edit window first
+        try {
+            $active = model(DesignationNotificationModel::class)->getActive();
+        } catch (\Throwable $e) {
+            $active = null;
+        }
+
+        if ($active && DesignationNotificationModel::isEditWindowOpen($active)) {
+            $byNotification = $this->where('user_id', $userId)
+                ->where('notification_id', (int) $active['id'])
+                ->whereIn('status', self::editWindowStatuses())
+                ->orderBy('id', 'DESC')
+                ->first();
+            if ($byNotification) {
+                return $byNotification;
+            }
+        }
+
         if (! self::isEditWindowOpen()) {
             return null;
         }
@@ -309,11 +352,39 @@ class ApplicationModel extends Model
     }
 
     /**
+     * Existing application for this user under a designation notification.
+     */
+    public function findForUserNotification(int $userId, int $notificationId): ?array
+    {
+        if ($notificationId <= 0) {
+            return null;
+        }
+
+        return $this->where('user_id', $userId)
+            ->where('notification_id', $notificationId)
+            ->orderBy('id', 'DESC')
+            ->first();
+    }
+
+    /**
      * Existing application for this user in the given cycle year (blocks a second start).
      */
     public function findForUserCycle(int $userId, ?int $year = null): ?array
     {
         $year = $year ?? self::currentCycleYear();
+
+        // Prefer active notification scope when available
+        try {
+            $active = model(DesignationNotificationModel::class)->getActive();
+            if ($active) {
+                $byN = $this->findForUserNotification($userId, (int) $active['id']);
+                if ($byN) {
+                    return $byN;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
 
         $byCycle = $this->where('user_id', $userId)
             ->where('cycle_year', $year)
@@ -362,7 +433,8 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Whether the user may start a new application for the current cycle.
+     * Whether the user may start a new application for the current cycle / notification.
+     * Does not check the application period — use canStartNewApplicationNow() for the full gate.
      */
     public function canStartNewApplication(int $userId): bool
     {
@@ -381,8 +453,32 @@ class ApplicationModel extends Model
             return $open === null && $this->findDraftForUser($userId) === null;
         }
 
+        // Prefer one application per currently open (or active) notification
+        try {
+            $period = DesignationNotificationModel::applicationPeriodInfo();
+            $nid    = (int) ($period['notification_id'] ?? 0);
+            if ($nid > 0) {
+                return $this->findForUserNotification($userId, $nid) === null;
+            }
+        } catch (\Throwable $e) {
+            // fall through to cycle-year rule
+        }
+
         // One application per cycle year (any status, including draft)
         return $this->findForUserCycle($userId) === null;
+    }
+
+    /**
+     * Full gate before starting a new application: period must be open and user eligible.
+     */
+    public function canStartNewApplicationNow(int $userId): bool
+    {
+        $period = DesignationNotificationModel::applicationPeriodInfo();
+        if (empty($period['open'])) {
+            return false;
+        }
+
+        return $this->canStartNewApplication($userId);
     }
 
     public function findForUser(int $userId, int $id): ?array
@@ -492,9 +588,9 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Age as years and months on a reference date (default: 01 Jan of cycle year).
+     * Age as years, months and days on a reference date (default: notification date).
      *
-     * @return array{years: int, months: int}|null
+     * @return array{years: int, months: int, days: int}|null
      */
     public function calculateAgePartsAsOn(?string $dob, ?string $asOn = null): ?array
     {
@@ -515,6 +611,7 @@ class ApplicationModel extends Model
             return [
                 'years'  => (int) $diff->y,
                 'months' => (int) $diff->m,
+                'days'   => (int) $diff->d,
             ];
         } catch (\Exception $e) {
             return null;

@@ -15,8 +15,11 @@
             'class'                => 'application-step-form',
         ]) ?>
         <?php
-        $ageAsOnDate  = sad_age_as_on_date();
-        $ageAsOnLabel = sad_age_as_on_label();
+        $ageAsOnDate  = $ageAsOnDate ?? ssa_age_as_on_date($app ?? null);
+        $ageAsOnLabel = $ageAsOnLabel ?? ssa_age_as_on_label($app ?? null);
+        $enrolDate    = old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '');
+        $practiceYears  = old('practice_years', $app['practice_years'] ?? '');
+        $practiceMonths = old('practice_months', $app['practice_months'] ?? '');
         ?>
         <div class="section-title">7. Enrolment Details</div>
         <div class="row g-3">
@@ -24,10 +27,7 @@
                 <label class="form-label required">Date, Month and Year of Enrolment as an Advocate</label>
                 <input type="date" name="enrolment_date" id="enrolment_date" class="form-control" required
                        max="<?= esc($ageAsOnDate) ?>"
-                       value="<?= esc(old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '')) ?>"
-                       data-age-as-on="<?= esc($ageAsOnDate) ?>"
-                       data-age-years-target="practice_years_display"
-                       data-age-months-target="practice_months_display">
+                       value="<?= esc($enrolDate) ?>">
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Enrolment Number</label>
@@ -50,28 +50,41 @@
                 <?php endif; ?>
             </div>
             <div class="col-md-4">
-                <label class="form-label required">Bar Council where registered</label>
+                <label class="form-label required">Bar Council where registered (Copy of Enrolment Certificate to be attached)</label>
                 <input type="text" name="bar_council" class="form-control" required
-                       value="<?= esc(old('bar_council', ''))#= esc(old('bar_council', $app['bar_council'] ?? '')) ?>"
+                       value="<?= esc(old('bar_council', $app['bar_council'] ?? '')) ?>"
                        placeholder="e.g. Bar Council of Tamil Nadu & Puducherry">
             </div>
-            <div class="col-md-3">
-                <label class="form-label" for="practice_years_display">Years of practice from enrolment</label>
-                <input type="number" name="practice_years" id="practice_years_display"
-                       class="form-control" min="0" max="70" readonly
-                       value="<?= esc(old('practice_years', $app['practice_years'] ?? '')) ?>"
-                       title="Calculated automatically from date of enrolment">
-                <div class="form-text">Auto-calculated as on <?= esc($ageAsOnLabel) ?></div>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label" for="practice_months_display">Months</label>
-                <input type="number" name="practice_months" id="practice_months_display"
-                       class="form-control" min="0" max="11" readonly
-                       value="<?= esc(old('practice_months', $app['practice_months'] ?? '')) ?>"
-                       title="Calculated automatically from date of enrolment">
+            <div class="col-md-6">
+                <label class="form-label required" id="practiceAsOnLabel">
+                    Number of years of practice from the date of enrolment (as on <?= esc($ageAsOnLabel) ?>)
+                </label>
+                <div class="row g-2" role="group" aria-labelledby="practiceAsOnLabel">
+                    <div class="col-6">
+                        <div class="input-group">
+                            <input type="number" name="practice_years" id="practice_years"
+                                   class="form-control text-center" min="0" max="70" required
+                                   value="<?= esc($practiceYears !== null && $practiceYears !== '' ? (string) (int) $practiceYears : '') ?>"
+                                   placeholder="0" aria-label="Years">
+                            <span class="input-group-text">Years</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="input-group">
+                            <input type="number" name="practice_months" id="practice_months"
+                                   class="form-control text-center" min="0" max="11" required
+                                   value="<?= esc($practiceMonths !== null && $practiceMonths !== '' ? (string) (int) $practiceMonths : '') ?>"
+                                   placeholder="0" aria-label="Months">
+                            <span class="input-group-text">Months</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- <div class="form-text">
+                    Enter the number of years and months of practice from the date of enrolment as on <?= esc($ageAsOnLabel) ?>.
+                </div> -->
             </div>
             <div class="col-md-6">
-                <label class="form-label">Net Professional Income per annum (₹ Lakhs) [Only earnings through practice as Advocate]</label>
+                <label class="form-label">Net Professional Income per annum (in Lakhs of Rs) [Only earnings through practice as Advocate]</label>
                 <input type="number" step="0.01" name="net_income_lakhs" class="form-control"
                        value="<?= esc(old('net_income_lakhs', $app['net_income_lakhs'] ?? '')) ?>">
                 <div class="form-text">Only earnings through practice as Advocate.</div>
@@ -81,11 +94,11 @@
         <div class="section-title mt-4">8. Bar Association Membership</div>
         <div class="row g-3">
             <div class="col-md-6">
-                <label class="form-label">Whether the applicant is a member of any bar association attached to a specific court</label>
+                <label class="form-label">Whether the applicant is a member of any bar association attached to a specific court (eg. Madras High Court Advocates Association, Madurai High Court Advocates Association, or any district bar association)</label>
                 <select name="is_bar_association_member" class="form-select" data-toggle-detail="#barAssocDetail">
                     <option value="">— Select —</option>
-                    <option value="1" <?= old('is_bar_association_member', sad_bool_label($app['is_bar_association_member'] ?? null) === 'Yes' ? '1' : '') === '1' ? 'selected' : '' ?>>Yes</option>
-                    <option value="0" <?= old('is_bar_association_member', sad_bool_label($app['is_bar_association_member'] ?? null) === 'No' ? '0' : '') === '0' ? 'selected' : '' ?>>No</option>
+                    <option value="1" <?= old('is_bar_association_member', ssa_bool_label($app['is_bar_association_member'] ?? null) === 'Yes' ? '1' : '') === '1' ? 'selected' : '' ?>>Yes</option>
+                    <option value="0" <?= old('is_bar_association_member', ssa_bool_label($app['is_bar_association_member'] ?? null) === 'No' ? '0' : '') === '0' ? 'selected' : '' ?>>No</option>
                 </select>
             </div>
             <div class="col-md-6" id="barAssocDetail">

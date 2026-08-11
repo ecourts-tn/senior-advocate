@@ -15,7 +15,7 @@ $inputName = $inputName ?? 'captcha';
              id="<?= esc($fieldId) ?>Img"
              width="180" height="56"
              decoding="async">
-        <button type="button" class="btn btn-outline-secondary btn-sm captcha-refresh"
+        <button type="button" class="btn btn-outline-secondary captcha-refresh"
                 data-captcha-img="#<?= esc($fieldId) ?>Img"
                 title="Refresh captcha" aria-label="Refresh captcha">
             <i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Refresh

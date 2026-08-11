@@ -68,12 +68,14 @@ $renderJudgmentCard = static function (
                        value="<?= esc($row['case_number'] ?? '') ?>"
                        <?= $disabled ?>>
             </div>
+            <?php if ($prefix === 'l1'): ?>
             <div class="col-12 col-sm-6">
                 <label class="form-label">Citation</label>
-                <input name="<?= esc($prefix) ?>_citation[]" class="form-control form-control-sm"
+                <input name="l1_citation[]" class="form-control form-control-sm"
                        value="<?= esc($row['citation'] ?? '') ?>"
                        <?= $disabled ?>>
             </div>
+            <?php endif; ?>
             <div class="col-12">
                 <label class="form-label">Cause Title and Subject Matter</label>
                 <textarea name="<?= esc($prefix) ?>_cause_title[]" class="form-control form-control-sm" rows="2"
@@ -110,7 +112,7 @@ $renderJudgmentCard = static function (
                 <input type="number" min="0" name="reported_hc" class="form-control" value="<?= (int) old('reported_hc', $app['reported_hc'] ?? 0) ?>">
             </div>
             <div class="col-md-4">
-                <label class="form-label">District Court / Labour Court / Tribunals</label>
+                <label class="form-label">District Court / Labour Court and Tribunals</label>
                 <input type="number" min="0" name="reported_district" class="form-control" value="<?= (int) old('reported_district', $app['reported_district'] ?? 0) ?>">
             </div>
         </div>
@@ -148,7 +150,7 @@ $renderJudgmentCard = static function (
                 <input type="number" min="0" name="unreported_hc" class="form-control" value="<?= (int) old('unreported_hc', $app['unreported_hc'] ?? 0) ?>">
             </div>
             <div class="col-md-4">
-                <label class="form-label">District / Labour Court / Tribunals</label>
+                <label class="form-label">District / Labour Court and Tribunals</label>
                 <input type="number" min="0" name="unreported_district" class="form-control" value="<?= (int) old('unreported_district', $app['unreported_district'] ?? 0) ?>">
             </div>
         </div>

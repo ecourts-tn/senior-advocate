@@ -15,9 +15,9 @@ class ApplicationSequenceModel extends Model
     protected $useTimestamps    = false;
 
     /**
-     * Generate next application number: MHC/DSA/2026/0001
+     * Generate next application number: MHC/SSA/2026/0001
      */
-    public function nextNumber(string $prefix = 'MHC/DSA', ?int $year = null): string
+    public function nextNumber(string $prefix = 'MHC/SSA', ?int $year = null): string
     {
         $year = $year ?? (int) date('Y');
         $db   = db_connect();

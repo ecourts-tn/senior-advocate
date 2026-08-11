@@ -15,7 +15,7 @@ use Config\Database;
  */
 class ImportAdvocateDb extends BaseCommand
 {
-    protected $group       = 'SAD';
+    protected $group       = 'SSA';
     protected $name        = 'advocate:import';
     protected $description = 'Import advocate_db master data from MySQL SQL dump';
     protected $usage       = 'advocate:import <sql-file> [--truncate]';

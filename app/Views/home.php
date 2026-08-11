@@ -8,13 +8,15 @@
             <h1>Designation of Senior Advocates</h1>
             <p class="subtitle">
                 Apply online for designation as Senior Advocate under the
-                <strong>Approved Rules for Designation of Senior Advocates by the High Court of Madras, 2026</strong>.
+                <a href="<?= base_url('rules') ?>" class="text-white text-decoration-underline fw-semibold">
+                    Rules for Designation of Senior Advocates, 2026
+                </a>.
                 Complete the Application-cum-Consent Letter, attach Formats&nbsp;L-1 to&nbsp;L-4, and track review status from one secure account.
             </p>
             <div class="hero-meta">
                 <span class="hero-chip"><i class="bi bi-file-earmark-text" aria-hidden="true"></i> Proforma Sl.&nbsp;No.&nbsp;1–24</span>
                 <span class="hero-chip"><i class="bi bi-files" aria-hidden="true"></i> Formats L-1 to L-4</span>
-                <span class="hero-chip"><i class="bi bi-hash" aria-hidden="true"></i> MHC/DSA/2026/####</span>
+                <span class="hero-chip"><i class="bi bi-hash" aria-hidden="true"></i> MHC/SSA/2026/####</span>
                 <span class="hero-chip"><i class="bi bi-shield-lock" aria-hidden="true"></i> Secure · Audited</span>
             </div>
             <div class="hero-cta">
@@ -125,7 +127,7 @@
                     <div class="feature-icon"><i class="bi bi-shield-check" aria-hidden="true"></i></div>
                     <h3 class="h6 card-title">Secure &amp; audited</h3>
                     <p class="card-text text-muted mb-0 small">
-                        Strict file validation, unique application numbers (MHC/DSA/2026/####), role-based access and full audit logs.
+                        Strict file validation, unique application numbers (MHC/SSA/2026/####), role-based access and full audit logs.
                     </p>
                 </div>
             </div>

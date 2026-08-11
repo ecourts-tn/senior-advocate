@@ -5,8 +5,8 @@
 $t = $template ?? [];
 $isEdit = ! empty($isEdit);
 $formAction = $isEdit
-    ? 'admin/notifications/' . (int) $t['id']
-    : 'admin/notifications';
+    ? 'admin/notification-templates/' . (int) $t['id']
+    : 'admin/notification-templates';
 ?>
 
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -18,7 +18,7 @@ $formAction = $isEdit
                 : 'Create a template for a portal notification event' ?>
         </p>
     </div>
-    <a href="<?= base_url('admin/notifications') ?>" class="btn btn-outline-secondary btn-sm">
+    <a href="<?= base_url('admin/notification-templates') ?>" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-arrow-left me-1"></i> Back to list
     </a>
 </div>
@@ -105,7 +105,7 @@ $formAction = $isEdit
                     <button type="submit" class="btn btn-mhc">
                         <i class="bi bi-save me-1"></i> <?= $isEdit ? 'Save changes' : 'Create template' ?>
                     </button>
-                    <a href="<?= base_url('admin/notifications') ?>" class="btn btn-outline-secondary">Cancel</a>
+                    <a href="<?= base_url('admin/notification-templates') ?>" class="btn btn-outline-secondary">Cancel</a>
                 </div>
                 <?= form_close() ?>
             </div>

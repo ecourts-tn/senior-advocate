@@ -36,7 +36,7 @@ class NotificationTemplateController extends BaseController
 
         $rows  = $model->paginate($perPage, 'default', $filters['page']);
         $pager = $model->pager;
-        $pager->setPath('admin/notifications');
+        $pager->setPath('admin/notification-templates');
         $pager->only(['q', 'per_page']);
 
         return view('admin/notifications/index', [
@@ -58,7 +58,7 @@ class NotificationTemplateController extends BaseController
 
         $available = $this->availableEventKeys($model);
         if ($available === []) {
-            return redirect()->to('/admin/notifications')
+            return redirect()->to('/admin/notification-templates')
                 ->with('error', 'All portal event templates already exist. Edit an existing one, or delete one to recreate it.');
         }
 
@@ -77,7 +77,7 @@ class NotificationTemplateController extends BaseController
 
         $available = $this->availableEventKeys($model);
         if ($available === []) {
-            return redirect()->to('/admin/notifications')
+            return redirect()->to('/admin/notification-templates')
                 ->with('error', 'All portal event templates already exist. Edit an existing one instead.');
         }
 
@@ -102,7 +102,7 @@ class NotificationTemplateController extends BaseController
             (int) $id
         );
 
-        return redirect()->to('/admin/notifications')
+        return redirect()->to('/admin/notification-templates')
             ->with('success', 'Notification template created.');
     }
 
@@ -111,7 +111,7 @@ class NotificationTemplateController extends BaseController
         $model = model(NotificationTemplateModel::class);
         $row   = $model->find($id);
         if (! $row) {
-            return redirect()->to('/admin/notifications')->with('error', 'Template not found.');
+            return redirect()->to('/admin/notification-templates')->with('error', 'Template not found.');
         }
 
         return view('admin/notifications/form', [
@@ -128,7 +128,7 @@ class NotificationTemplateController extends BaseController
         $model = model(NotificationTemplateModel::class);
         $row   = $model->find($id);
         if (! $row) {
-            return redirect()->to('/admin/notifications')->with('error', 'Template not found.');
+            return redirect()->to('/admin/notification-templates')->with('error', 'Template not found.');
         }
 
         $rules = $this->validationRules($id, array_keys(NotificationTemplateModel::EVENTS));
@@ -155,7 +155,7 @@ class NotificationTemplateController extends BaseController
             $id
         );
 
-        return redirect()->to('/admin/notifications')
+        return redirect()->to('/admin/notification-templates')
             ->with('success', 'Notification template updated.');
     }
 
@@ -164,7 +164,7 @@ class NotificationTemplateController extends BaseController
         $model = model(NotificationTemplateModel::class);
         $row   = $model->find($id);
         if (! $row) {
-            return redirect()->to('/admin/notifications')->with('error', 'Template not found.');
+            return redirect()->to('/admin/notification-templates')->with('error', 'Template not found.');
         }
 
         $model->delete($id);
@@ -182,7 +182,7 @@ class NotificationTemplateController extends BaseController
             $id
         );
 
-        return redirect()->to('/admin/notifications')
+        return redirect()->to('/admin/notification-templates')
             ->with('success', 'Template deleted. You can re-create it or re-run the seeder for defaults.');
     }
 

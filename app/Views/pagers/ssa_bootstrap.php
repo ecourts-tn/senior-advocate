@@ -3,7 +3,7 @@
 use CodeIgniter\Pager\PagerRenderer;
 
 /**
- * Bootstrap 5 pagination for SAD portal lists.
+ * Bootstrap 5 pagination for SSA portal lists.
  *
  * @var PagerRenderer $pager
  */

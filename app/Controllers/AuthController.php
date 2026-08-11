@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Libraries\CaptchaService;
+use App\Libraries\LoginSecurityService;
+use App\Libraries\LookupRateLimiter;
 use App\Libraries\NotificationService;
 use App\Models\AdvocateDbModel;
 use App\Models\AuditLogModel;
@@ -12,9 +14,17 @@ class AuthController extends BaseController
 {
     public function login()
     {
+        $portalNotifications = [];
+        try {
+            $portalNotifications = model(\App\Models\DesignationNotificationModel::class)->withDocuments(5);
+        } catch (\Throwable $e) {
+            $portalNotifications = [];
+        }
+
         return view('auth/login', [
-            'title'      => 'Login',
-            'editWindow' => \App\Models\ApplicationModel::editWindowInfo(),
+            'title'               => 'Login',
+            'editWindow'          => \App\Models\ApplicationModel::editWindowInfo(),
+            'portalNotifications' => $portalNotifications,
         ]);
     }
 
@@ -30,26 +40,57 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        if (! $this->verifyCaptcha()) {
-            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
-        }
-
         $email    = strtolower(trim((string) $this->request->getPost('email')));
         $password = (string) $this->request->getPost('password');
+        $security = new LoginSecurityService();
+
+        // Temporary lockout after repeated unauthorized attempts (email / IP).
+        if ($lockMsg = $security->lockoutMessage($email)) {
+            $security->recordFailure($email, 'rate_limited');
+
+            return redirect()->back()->withInput()->with('error', $lockMsg);
+        }
+
+        if (! $this->verifyCaptcha()) {
+            $security->recordFailure($email, 'captcha');
+
+            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
+        }
 
         $userModel = model(UserModel::class);
         $user      = $userModel->findByEmail($email);
 
+        // Same public message for unknown email and wrong password (do not reveal which).
         if (! $user || ! $userModel->verifyPassword($user, $password)) {
+            $security->recordFailure(
+                $email,
+                'invalid_credentials',
+                $user ? (int) $user['id'] : null
+            );
+
             return redirect()->back()->withInput()->with('error', 'Invalid email or password.');
         }
 
         if (! $user['is_active'] && $user['is_active'] !== 't' && $user['is_active'] !== true && $user['is_active'] !== '1') {
+            $security->recordFailure($email, 'inactive', (int) $user['id']);
+
             return redirect()->back()->with('error', 'Your account is inactive. Contact the Registry.');
+        }
+
+        // Registered users must verify their email before they can sign in.
+        if (! $userModel->isEmailVerified($user)) {
+            $security->recordFailure($email, 'unverified', (int) $user['id']);
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Your email address is not verified. Please check your inbox for the verification link, or request a new one.')
+                ->with('unverified_email', $user['email']);
         }
 
         $userModel->update($user['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
 
+        // Mitigate session fixation before granting dashboard access.
+        session()->regenerate(true);
         session()->set([
             'user_id'          => $user['id'],
             'name'             => $user['name'],
@@ -60,7 +101,7 @@ class AuthController extends BaseController
             'isLoggedIn'       => true,
         ]);
 
-        model(AuditLogModel::class)->log('login', (int) $user['id']);
+        $security->recordSuccess((int) $user['id'], (string) $user['email'], (string) $user['role']);
 
         if (in_array($user['role'], ['admin', 'reviewer', 'approver'], true)) {
             return redirect()->to('/admin')->with('success', 'Welcome, ' . $user['name']);
@@ -80,19 +121,71 @@ class AuthController extends BaseController
     }
 
     /**
-     * Search advocate master data by enrolment number (JSON or form post).
+     * Search advocate master data by enrolment number (POST only).
+     *
+     * Protections: CSRF (global), CAPTCHA, IP/session rate limiting.
+     * Returns limited prefill fields for registration — never full advocate rows.
      */
     public function lookupAdvocate()
     {
-        $enrolment = AdvocateDbModel::normaliseEnrolment(
-            (string) ($this->request->getPost('enrolment_number') ?? $this->request->getGet('enrolment_number') ?? '')
-        );
-
         $wantsJson = $this->request->isAJAX()
             || str_contains((string) $this->request->getHeaderLine('Accept'), 'application/json')
+            || $this->request->getPost('format') === 'json'
             || $this->request->getGet('format') === 'json';
 
+        // GET is disabled to reduce scraping of advocate data.
+        if (strtolower($this->request->getMethod()) !== 'post') {
+            if ($wantsJson) {
+                return $this->response->setJSON([
+                    'found'   => false,
+                    'message' => 'Enrolment lookup must be submitted via POST with CAPTCHA.',
+                ])->setStatusCode(405);
+            }
+
+            return redirect()->to('/register')->with('error', 'Please use the Search button on the registration form.');
+        }
+
+        $limiter = new LookupRateLimiter();
+        $gate    = $limiter->check();
+        if (! $gate['allowed']) {
+            $limiter->record('rate_limited');
+
+            if ($wantsJson) {
+                return $this->response
+                    ->setHeader('Retry-After', (string) ($gate['retry_after'] ?? LookupRateLimiter::WINDOW_SECONDS))
+                    ->setJSON([
+                        'found'   => false,
+                        'message' => $gate['message'],
+                    ])->setStatusCode(429);
+            }
+
+            return redirect()->to('/register')->with('error', $gate['message']);
+        }
+
+        $captchaOk = (new CaptchaService())->verify($this->request->getPost('captcha'));
+        if (! $captchaOk) {
+            $limiter->record('captcha_failed');
+
+            if ($wantsJson) {
+                return $this->response->setJSON([
+                    'found'            => false,
+                    'captcha_required' => true,
+                    'message'          => 'Invalid or expired CAPTCHA. Please complete the security check and try again.',
+                ])->setStatusCode(422);
+            }
+
+            return redirect()->to('/register')
+                ->withInput()
+                ->with('error', 'Invalid or expired CAPTCHA. Please complete the security check and try again.');
+        }
+
+        $enrolment = AdvocateDbModel::normaliseEnrolment(
+            (string) ($this->request->getPost('enrolment_number') ?? '')
+        );
+
         if ($enrolment === '') {
+            $limiter->record('empty_enrolment');
+
             if ($wantsJson) {
                 return $this->response->setJSON([
                     'found'   => false,
@@ -107,6 +200,7 @@ class AuthController extends BaseController
         $row   = $model->findByEnrolment($enrolment);
 
         if (! $row) {
+            $limiter->record('not_found', $enrolment);
             $payload = [
                 'found'            => false,
                 'enrolment_number' => $enrolment,
@@ -124,28 +218,38 @@ class AuthController extends BaseController
                 ->with('advocate_prefill', ['enrolment_number' => $enrolment]);
         }
 
-        $prefill = $model->toRegistrationPrefill($row);
-
-        // Block if enrolment already registered
+        // Block if enrolment already registered — do not return advocate PII.
         $existing = model(UserModel::class)->findByEnrolment($enrolment);
         if ($existing) {
+            $limiter->record('already_registered', $enrolment, ['user_id' => (int) $existing['id']]);
             $msg = 'An account already exists for this enrolment number. Please log in or use Forgot Password.';
             if ($wantsJson) {
                 return $this->response->setJSON([
-                    'found'   => true,
+                    'found'              => true,
                     'already_registered' => true,
-                    'message' => $msg,
-                ] + $prefill);
+                    'enrolment_number'   => $enrolment,
+                    'message'            => $msg,
+                ]);
             }
 
             return redirect()->to('/login')->with('error', $msg);
         }
 
+        $prefill = $model->toRegistrationPrefill($row);
+        // Limit JSON to registration-needed fields only (no raw DB dump).
+        $safePrefill = [
+            'found'            => true,
+            'already_registered' => false,
+            'enrolment_number' => $prefill['enrolment_number'] ?? $enrolment,
+            'name'             => $prefill['name'] ?? '',
+            'mobile'           => $prefill['mobile'] ?? '',
+            'message'          => 'Advocate details found. Form fields have been filled.',
+        ];
+
+        $limiter->record('found', $enrolment);
+
         if ($wantsJson) {
-            return $this->response->setJSON($prefill + [
-                'already_registered' => false,
-                'message'            => 'Advocate details found. Form fields have been filled.',
-            ]);
+            return $this->response->setJSON($safePrefill);
         }
 
         return redirect()->to('/register')
@@ -190,19 +294,118 @@ class AuthController extends BaseController
             'password_hash'    => $userModel->hashPassword((string) $this->request->getPost('password')),
             'role'             => 'applicant',
             'is_active'        => true,
+            'email_verified_at'=> null,
         ];
         $id = $userModel->insert($payload);
 
+        $plainToken = $userModel->issueEmailVerificationToken((int) $id);
+        $verifyUrl  = base_url('verify-email/' . $plainToken);
+
         model(AuditLogModel::class)->log('register', (int) $id, null, ['enrolment_number' => $enrolment]);
 
-        (new NotificationService())->registration([
+        (new NotificationService())->emailVerification([
             'id'     => (int) $id,
             'name'   => $payload['name'],
             'email'  => $payload['email'],
             'mobile' => $payload['mobile'],
-        ]);
+        ], $verifyUrl);
 
-        return redirect()->to('/login')->with('success', 'Registration successful. Please log in to continue.');
+        return redirect()->to('/login')
+            ->with('success', 'Registration successful. A verification link has been sent to your email. Please verify your email before logging in.')
+            ->with('unverified_email', $payload['email']);
+    }
+
+    /**
+     * Confirm email via one-time link from registration / resend email.
+     */
+    public function verifyEmail(string $token = '')
+    {
+        $result = model(UserModel::class)->consumeEmailVerificationToken($token);
+
+        if (! empty($result['ok'])) {
+            $user = $result['user'] ?? null;
+            model(AuditLogModel::class)->log(
+                ($result['reason'] ?? '') === 'already' ? 'email_already_verified' : 'email_verified',
+                $user ? (int) $user['id'] : null
+            );
+
+            $msg = ($result['reason'] ?? '') === 'already'
+                ? 'Your email is already verified. You may log in.'
+                : 'Email verified successfully. You may now log in.';
+
+            return redirect()->to('/login')->with('success', $msg);
+        }
+
+        $reason = $result['reason'] ?? 'invalid';
+        if ($reason === 'expired') {
+            return redirect()->to('/resend-verification')
+                ->with('error', 'This verification link has expired. Please request a new verification email.')
+                ->with('unverified_email', $result['user']['email'] ?? null);
+        }
+
+        return redirect()->to('/resend-verification')
+            ->with('error', 'This verification link is invalid or has already been used. Please request a new verification email.');
+    }
+
+    public function resendVerification()
+    {
+        return view('auth/resend_verification', [
+            'title' => 'Resend email verification',
+            'email' => old('email') ?: (session()->getFlashdata('unverified_email') ?? ''),
+        ]);
+    }
+
+    public function sendVerificationLink()
+    {
+        $rules = [
+            'email'   => 'required|valid_email',
+            'captcha' => 'required|min_length[4]|max_length[8]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        if (! $this->verifyCaptcha()) {
+            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
+        }
+
+        $email     = strtolower(trim((string) $this->request->getPost('email')));
+        $userModel = model(UserModel::class);
+        $user      = $userModel->findByEmail($email);
+
+        // Same response whether or not the account exists (do not leak registration status).
+        $generic = 'If an unverified account exists for that email address, a new verification link has been sent. Please check your inbox (and spam folder).';
+
+        if ($user && ! $userModel->isEmailVerified($user)) {
+            if (! $userModel->canResendEmailVerification($user)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Please wait a minute before requesting another verification email.')
+                    ->with('unverified_email', $email);
+            }
+
+            $plainToken = $userModel->issueEmailVerificationToken((int) $user['id']);
+            $verifyUrl  = base_url('verify-email/' . $plainToken);
+
+            (new NotificationService())->emailVerification([
+                'id'     => (int) $user['id'],
+                'name'   => $user['name'],
+                'email'  => $user['email'],
+                'mobile' => $user['mobile'] ?? '',
+            ], $verifyUrl);
+
+            model(AuditLogModel::class)->log('email_verification_resent', (int) $user['id'], null, [
+                'email' => $email,
+            ]);
+        } else {
+            model(AuditLogModel::class)->log('email_verification_resend_skipped', null, null, [
+                'email'  => $email,
+                'reason' => $user ? 'already_verified' : 'unknown_email',
+            ]);
+        }
+
+        return redirect()->to('/login')->with('success', $generic);
     }
 
     public function logout()

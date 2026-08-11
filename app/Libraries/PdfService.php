@@ -7,19 +7,23 @@ use Dompdf\Options;
 
 /**
  * Generate Application-cum-Consent Letter PDF matching official proforma.
+ * PDFs are rendered in memory and streamed — nothing is stored on disk.
  */
 class PdfService
 {
-    public function generateApplicationPdf(array $app, array $extra = []): string
+    /**
+     * Build Dompdf instance for an application (runtime only, no file write).
+     */
+    public function renderApplicationPdf(array $app, array $extra = []): Dompdf
     {
         $html = view('pdf/application_form', [
-            'app'    => $app,
-            'extra'  => $extra,
-            'l1'     => $extra['l1'] ?? [],
-            'l2'     => $extra['l2'] ?? [],
-            'l3pb'   => $extra['l3pb'] ?? [],
-            'l3am'   => $extra['l3am'] ?? [],
-            'l4'     => $extra['l4'] ?? [],
+            'app'  => $app,
+            'extra'=> $extra,
+            'l1'   => $extra['l1'] ?? [],
+            'l2'   => $extra['l2'] ?? [],
+            'l3pb' => $extra['l3pb'] ?? [],
+            'l3am' => $extra['l3am'] ?? [],
+            'l4'   => $extra['l4'] ?? [],
         ]);
 
         $options = new Options();
@@ -32,29 +36,29 @@ class PdfService
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $dir = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'applications' . DIRECTORY_SEPARATOR . $app['id'];
-        if (! is_dir($dir)) {
-            mkdir($dir, 0750, true);
-        }
-
-        $filename = 'SAD_Application_' . ($app['application_no'] ? str_replace('/', '_', $app['application_no']) : $app['id']) . '.pdf';
-        $fullPath = $dir . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($fullPath, $dompdf->output());
-
-        return 'applications/' . $app['id'] . '/' . $filename;
+        return $dompdf;
     }
 
-    public function stream(string $relativePath, string $downloadName = 'application.pdf'): void
+    /**
+     * Render the application PDF and stream it inline to the browser.
+     */
+    public function streamApplicationPdf(array $app, array $extra = [], ?string $downloadName = null): void
     {
-        $abs = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath);
-        if (! is_file($abs)) {
-            throw new \RuntimeException('PDF not found.');
-        }
+        $dompdf = $this->renderApplicationPdf($app, $extra);
+        $binary = $dompdf->output();
+
+        $name = $downloadName
+            ?? (($app['application_no'] ?? '') !== ''
+                ? str_replace('/', '_', (string) $app['application_no']) . '.pdf'
+                : 'application.pdf');
 
         header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="' . $downloadName . '"');
-        header('Content-Length: ' . filesize($abs));
-        readfile($abs);
+        header('Content-Disposition: inline; filename="' . $name . '"');
+        header('Content-Length: ' . strlen($binary));
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        echo $binary;
         exit;
     }
 }

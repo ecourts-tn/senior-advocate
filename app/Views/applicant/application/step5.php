@@ -184,7 +184,7 @@ $periodDate = static function (array $row, string $key): string {
         </div>
         <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
 
-        <div class="section-title mt-4">16. Nature of practice</div>
+        <div class="section-title mt-4">16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</div>
         <?php
         $natureMulti = $app['_multi']['nature_of_practice'] ?? null;
         if ($natureMulti === null) {
@@ -205,7 +205,7 @@ $periodDate = static function (array $row, string $key): string {
         ]);
         ?>
 
-        <div class="section-title mt-4">17. Field of Law — domain expertise</div>
+        <div class="section-title mt-4">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise</div>
         <?php
         $fieldMulti = $app['_multi']['field_of_law'] ?? null;
         if ($fieldMulti === null) {

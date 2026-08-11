@@ -28,7 +28,7 @@ class CreateApplicationsTable extends Migration
                 'type'       => 'VARCHAR',
                 'constraint' => 30,
                 'null'       => true,
-                'comment'    => 'e.g. MHC/DSA/2026/0001',
+                'comment'    => 'e.g. MHC/SSA/2026/0001',
             ],
             'status' => [
                 'type'       => 'VARCHAR',
@@ -69,7 +69,13 @@ class CreateApplicationsTable extends Migration
                 'type'       => 'SMALLINT',
                 'constraint' => 2,
                 'null'       => true,
-                'comment'    => 'Age months component as on 01.01.2026',
+                'comment'    => 'Age months component as on 01.01 of cycle year',
+            ],
+            'age_days' => [
+                'type'       => 'SMALLINT',
+                'constraint' => 2,
+                'null'       => true,
+                'comment'    => 'Age days remainder component as on 01.01 of cycle year',
             ],
 
             // Sl.3 Address

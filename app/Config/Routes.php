@@ -8,6 +8,12 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'AuthController::login', ['filter' => 'guest']);
 // $routes->get('home', 'Home::index'); // temporarily disabled
 $routes->get('instructions', 'Home::instructions');
+$routes->get('rules', 'Home::rules');
+$routes->get('rules/view', 'Home::rulesView');
+$routes->get('rules/download', 'Home::rulesDownload');
+// Official notification PDFs published on the portal (when uploaded by admin)
+$routes->get('notifications', 'Home::notifications');
+$routes->get('notifications/document/(:num)', 'Home::notificationDocument/$1');
 
 // GIGW policy & information pages
 $routes->get('policy/(:segment)', 'Home::policy/$1');
@@ -18,13 +24,20 @@ $routes->group('', ['filter' => 'guest'], static function ($routes) {
     $routes->post('login', 'AuthController::attemptLogin');
     $routes->get('register', 'AuthController::register');
     $routes->post('register', 'AuthController::attemptRegister');
-    $routes->get('register/lookup', 'AuthController::lookupAdvocate');
+    // Enrolment lookup: POST only (CAPTCHA + rate limit enforced in controller)
     $routes->post('register/lookup', 'AuthController::lookupAdvocate');
+    $routes->get('register/lookup', static function () {
+        return redirect()->to('/register')->with('error', 'Please use the Search button on the registration form.');
+    });
+    $routes->get('resend-verification', 'AuthController::resendVerification');
+    $routes->post('resend-verification', 'AuthController::sendVerificationLink');
     $routes->get('forgot-password', 'PasswordController::forgot');
     $routes->post('forgot-password', 'PasswordController::sendResetLink');
     $routes->get('reset-password/(:segment)', 'PasswordController::reset/$1');
     $routes->post('reset-password/(:segment)', 'PasswordController::processReset/$1');
 });
+// Email verification link (public; not limited to guest so the link always works)
+$routes->get('verify-email/(:segment)', 'AuthController::verifyEmail/$1');
 // CAPTCHA image (session-backed; available without auth)
 $routes->get('captcha/image', 'CaptchaController::image');
 $routes->get('logout', 'AuthController::logout');
@@ -46,15 +59,17 @@ $routes->group('applicant', ['filter' => 'auth:applicant'], static function ($ro
 
 // Secure file access (any authenticated user with rights checked in controller)
 $routes->get('files/application/(:num)/(:segment)', 'FileController::application/$1/$2', ['filter' => 'auth']);
+$routes->get('files/designation-notification/(:num)', 'FileController::designationNotification/$1', ['filter' => 'auth']);
 
-// Admin staff area (reviewer / multi-step approver workflow temporarily disabled;
-// status decisions are admin-only — see ApplicationModel::ACTIONS)
+// Admin staff area — status classification (listed / waitlisted / rejected) is admin-only
 $routes->group('admin', ['filter' => 'auth:admin,reviewer,approver'], static function ($routes) {
     $routes->get('/', 'Admin\DashboardController::index');
     $routes->get('applications', 'Admin\ApplicationController::index');
     $routes->get('applications/export', 'Admin\ApplicationController::exportExcel');
+    // Dedicated classification / bulk status page (must be before :num)
+    $routes->get('applications/status', 'Admin\ApplicationController::statusPage', ['filter' => 'auth:admin']);
+    $routes->post('applications/bulk-status', 'Admin\ApplicationController::bulkUpdateStatus', ['filter' => 'auth:admin']);
     $routes->get('applications/(:num)', 'Admin\ApplicationController::show/$1');
-    // Accept / reject — admin only while reviewer/approver path is disabled
     $routes->post('applications/(:num)/status', 'Admin\ApplicationController::updateStatus/$1', ['filter' => 'auth:admin']);
     $routes->get('applications/(:num)/pdf', 'Admin\ApplicationController::downloadPdf/$1');
     $routes->get('applications/(:num)/file/(:segment)', 'Admin\ApplicationController::file/$1/$2');
@@ -68,12 +83,45 @@ $routes->group('admin', ['filter' => 'auth:admin,reviewer,approver'], static fun
         $routes->get('sms', 'Admin\SettingsController::sms');
         $routes->post('sms', 'Admin\SettingsController::saveSms');
         $routes->post('sms/test', 'Admin\SettingsController::testSms');
-        $routes->get('application', 'Admin\SettingsController::application');
-        $routes->post('application', 'Admin\SettingsController::saveApplication');
+        // Legacy cycle / edit-window settings → notifications (configured on each notification)
+        $routes->get('application', static function () {
+            return redirect()->to('/admin/notifications')
+                ->with('info', 'Application period and edit window are configured on each notification.');
+        });
+        $routes->post('application', static function () {
+            return redirect()->to('/admin/notifications');
+        });
     });
 
-    // Notification templates CRUD (admin only)
+    // Legacy application submission period → notifications
+    $routes->get('application-settings', static function () {
+        return redirect()->to('/admin/notifications')
+            ->with('info', 'Application submission period is configured on each notification.');
+    }, ['filter' => 'auth:admin']);
+    $routes->post('application-settings/save', static function () {
+        return redirect()->to('/admin/notifications');
+    }, ['filter' => 'auth:admin']);
+
+    // Official notifications (application cycles + edit windows) — admin only
     $routes->group('notifications', ['filter' => 'auth:admin'], static function ($routes) {
+        $routes->get('/', 'Admin\DesignationNotificationController::index');
+        $routes->get('new', 'Admin\DesignationNotificationController::create');
+        $routes->post('/', 'Admin\DesignationNotificationController::store');
+        $routes->get('(:num)/edit', 'Admin\DesignationNotificationController::edit/$1');
+        $routes->post('(:num)', 'Admin\DesignationNotificationController::update/$1');
+        $routes->post('(:num)/delete', 'Admin\DesignationNotificationController::delete/$1');
+    });
+
+    // Legacy designation-notifications URLs → /admin/notifications
+    $routes->get('designation-notifications', static function () {
+        return redirect()->to('/admin/notifications');
+    }, ['filter' => 'auth:admin']);
+    $routes->get('designation-notifications/(:any)', static function ($any) {
+        return redirect()->to('/admin/notifications/' . $any);
+    }, ['filter' => 'auth:admin']);
+
+    // Email/SMS event templates (admin only)
+    $routes->group('notification-templates', ['filter' => 'auth:admin'], static function ($routes) {
         $routes->get('/', 'Admin\NotificationTemplateController::index');
         $routes->get('new', 'Admin\NotificationTemplateController::create');
         $routes->post('/', 'Admin\NotificationTemplateController::store');

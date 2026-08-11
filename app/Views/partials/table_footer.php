@@ -27,7 +27,7 @@ $to      = min($total, $page * $perPage);
     </div>
     <?php if ($total > $perPage && isset($pager)): ?>
         <div class="table-pager">
-            <?= $pager->links($group, 'sad_bootstrap') ?>
+            <?= $pager->links($group, 'ssa_bootstrap') ?>
         </div>
     <?php endif; ?>
 </div>

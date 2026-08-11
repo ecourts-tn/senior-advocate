@@ -1331,7 +1331,8 @@ body.contrast-high .password-toggle-group .password-toggle-btn[aria-pressed="tru
 .captcha-field .captcha-image {
   background: #fff;
   max-width: 100%;
-  height: auto;
+  /* height: auto; */
+  height:40px;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -1939,4 +1940,157 @@ tr.dynamic-row[data-row-template] {
   main.site-main {
     padding: 0;
   }
+}
+
+/* ---------- Flatpickr (consistent date/time UI) ---------- */
+.flatpickr-calendar {
+  font-family: var(--font-body);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--mhc-border);
+  border-radius: var(--radius);
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.flatpickr-day.today {
+  border-color: var(--brass);
+}
+
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+span.flatpickr-weekday {
+  color: var(--ink);
+  fill: var(--ink);
+}
+
+.flatpickr-time input:hover,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:focus {
+  background: var(--paper);
+}
+
+input.flatpickr-input[readonly],
+input.form-control.flatpickr-input,
+.flatpickr-input.form-control,
+.input-group .flatpickr-input {
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.flatpickr-alt-input.form-control,
+input.form-control.flatpickr-alt-input {
+  background-color: #fff;
+  cursor: pointer;
+}
+
+/* ---------- Rules PDF viewer (full remaining viewport height) ---------- */
+.rules-page {
+  display: flex;
+  flex-direction: column;
+  /* Use most of the viewport under site chrome (a11y + util + masthead + nav + footer) */
+  min-height: calc(100dvh - 14rem);
+}
+
+.rules-page .rules-toolbar {
+  flex: 0 0 auto;
+}
+
+.rules-viewer-card {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rules-viewer-card > .card-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 !important;
+}
+
+.rules-pdf-frame-wrap {
+  flex: 1 1 auto;
+  position: relative;
+  width: 100%;
+  /* Tall viewer so all pages are reachable by scrolling inside the PDF UI */
+  height: calc(100dvh - 15.5rem);
+  min-height: 32rem;
+  max-height: none;
+  background: #3c4043;
+  overflow: hidden;
+}
+
+.rules-pdf-object,
+.rules-pdf-frame {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #3c4043;
+}
+
+.rules-pdf-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper, #f5f2ea);
+  color: var(--ink, #0f2340);
+}
+
+a.util-rules {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.util-rules:hover,
+a.util-rules:focus {
+  color: var(--brass-light, #c99a47);
+  text-decoration: underline;
+}
+
+@media (max-width: 767.98px) {
+  .rules-pdf-frame-wrap {
+    height: calc(100dvh - 12rem);
+    min-height: 24rem;
+  }
+
+  /* Show util rules link as icon-only area is hidden; keep page usable */
+  .rules-page .page-title {
+    font-size: 1.15rem;
+  }
+}
+
+@media print {
+  .rules-toolbar .btn,
+  .rules-page > .d-flex {
+    display: none !important;
+  }
+
+  .rules-pdf-frame-wrap {
+    height: auto;
+    min-height: 0;
+    position: static;
+  }
+}
+
+.form-help-text{
+  color:#9F0712;
+  font-weight:600;
 }

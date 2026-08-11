@@ -26,7 +26,7 @@
                 ? 'Resubmit this corrected application to the Registry?'
                 : 'Submit this application? Errors cannot be rectified later.';
             ?>
-            <button type="submit" name="action" value="submit" class="btn btn-gold"
+            <button type="submit" name="action" value="submit" class="btn btn-success"
                     onclick="return confirm(<?= json_encode($submitConfirm) ?>);">
                 <i class="bi bi-send-check"></i> <?= esc($submitLabel) ?>
             </button>

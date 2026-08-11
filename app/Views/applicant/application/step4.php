@@ -187,18 +187,18 @@
             </div>
         </div>
 
-        <div class="section-title">12. Whether the applicant is First-generation lawyer</div>
+        <div class="section-title">12. Whether the applicant is first-generation lawyer</div>
         <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <select name="is_first_generation" class="form-select">
                     <option value="">— Select —</option>
-                    <option value="1" <?= sad_bool_label($app['is_first_generation'] ?? null) === 'Yes' ? 'selected' : '' ?>>Yes</option>
-                    <option value="0" <?= sad_bool_label($app['is_first_generation'] ?? null) === 'No' ? 'selected' : '' ?>>No</option>
+                    <option value="1" <?= ssa_bool_label($app['is_first_generation'] ?? null) === 'Yes' ? 'selected' : '' ?>>Yes</option>
+                    <option value="0" <?= ssa_bool_label($app['is_first_generation'] ?? null) === 'No' ? 'selected' : '' ?>>No</option>
                 </select>
             </div>
         </div>
 
-        <div class="section-title">13. Aqademic Articles/Books published, experience of Teaching Assignments in the field of law, Guest Lectures delivered in law schools or professional institutions connected with law: Format L-4</div>
+        <div class="section-title">13. Academic Articles/Books published, experience of Teaching Assignments in the field of law, Guest Lectures delivered in law schools or professional institutions connected with law: Format L-4</div>
         <div class="row g-3 mb-3">
             <div class="col-6 col-md-3">
                 <label class="form-label">No. of Academic Articles</label>

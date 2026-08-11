@@ -33,15 +33,16 @@ $lookupMsg = $lookupMsg ?? null;
 
             <?= form_open('register', ['id' => 'registerForm']) ?>
 
-            <!-- Step 1: Enrolment lookup -->
+            <!-- Step 1: Enrolment lookup (CAPTCHA + rate-limited POST) -->
             <div class="border rounded p-3 mb-4 bg-light">
                 <h3 class="h6 mb-2">
                     <i class="bi bi-search me-1"></i>
                     Search advocate details by enrolment number
                 </h3>
                 <p class="small text-muted mb-3">
-                    Enter your Bar Council enrolment number. If a match is found in the advocate database,
-                    your name and other available details will be filled automatically. Otherwise you may enter them manually.
+                    Enter your Bar Council enrolment number and complete the security check, then search.
+                    If a match is found, your name and mobile (when available) will be filled automatically.
+                    Otherwise you may enter details manually. Lookups are rate-limited to protect advocate data.
                 </p>
                 <div class="row g-2 align-items-end">
                     <div class="col-md-7">
@@ -96,7 +97,11 @@ $lookupMsg = $lookupMsg ?? null;
                            required autocomplete="new-password" placeholder="Re-enter password">
                 </div>
             </div>
-            <?= view('partials/captcha_field', ['fieldId' => 'registerCaptcha']) ?>
+            <p class="small text-muted mb-2">
+                CAPTCHA is required to search the advocate database and again to create your account
+                (each code can be used only once).
+            </p>
+            <?= view('partials/captcha_field', ['fieldId' => 'registerCaptcha', 'inputName' => 'captcha']) ?>
             <button type="submit" class="btn btn-mhc w-100 py-2">
                 <i class="bi bi-check2-circle me-1"></i> Create Account
             </button>
@@ -114,17 +119,42 @@ $lookupMsg = $lookupMsg ?? null;
 <?= $this->section('scripts') ?>
 <script>
 (function () {
+  var form = document.getElementById('registerForm');
   var lookupBtn = document.getElementById('btnLookupAdvocate');
   var enrolInput = document.getElementById('enrolment_number');
   var statusEl = document.getElementById('lookupStatus');
   var nameEl = document.getElementById('name');
   var mobileEl = document.getElementById('mobile');
+  var captchaInput = document.getElementById('registerCaptcha') || document.querySelector('input[name="captcha"]');
   var lookupUrl = <?= json_encode(base_url('register/lookup')) ?>;
+  var captchaImageBase = <?= json_encode(base_url('captcha/image')) ?>;
+  var csrfName = <?= json_encode(csrf_token()) ?>;
+  var csrfHash = <?= json_encode(csrf_hash()) ?>;
 
   function setStatus(msg, ok) {
     if (!statusEl) return;
     statusEl.textContent = msg || '';
     statusEl.className = 'mt-2 small ' + (ok === true ? 'text-success' : (ok === false ? 'text-danger' : 'text-muted'));
+  }
+
+  function refreshCaptchaImages() {
+    // Captcha is one-time; refresh image after lookup so user can submit registration.
+    var bust = captchaImageBase + '?t=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
+    document.querySelectorAll('.captcha-image').forEach(function (img) {
+      img.src = bust;
+    });
+    document.querySelectorAll('input[name="captcha"]').forEach(function (inp) {
+      inp.value = '';
+    });
+  }
+
+  function currentCsrf() {
+    // Prefer live form hidden field (stays in sync if token ever rotates).
+    if (form) {
+      var el = form.querySelector('input[name="' + csrfName + '"]');
+      if (el && el.value) return el.value;
+    }
+    return csrfHash;
   }
 
   // Show flash from server-side lookup redirect
@@ -139,21 +169,52 @@ $lookupMsg = $lookupMsg ?? null;
       enrolInput.focus();
       return;
     }
+    var captchaVal = captchaInput ? (captchaInput.value || '').trim() : '';
+    if (!captchaVal || captchaVal.length < 4) {
+      setStatus('Please complete the CAPTCHA security check before searching.', false);
+      if (captchaInput) captchaInput.focus();
+      return;
+    }
+
     setStatus('Searching…', null);
     lookupBtn.disabled = true;
 
-    var url = lookupUrl + '?format=json&enrolment_number=' + encodeURIComponent(en);
-    fetch(url, {
-      method: 'GET',
+    var body = new FormData();
+    body.append('enrolment_number', en);
+    body.append('captcha', captchaVal);
+    body.append('format', 'json');
+    body.append(csrfName, currentCsrf());
+
+    fetch(lookupUrl, {
+      method: 'POST',
       headers: {
         'Accept': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': currentCsrf()
       },
+      body: body,
       credentials: 'same-origin'
     })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, data: j }; }); })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          return { ok: r.ok, status: r.status, data: j };
+        }).catch(function () {
+          return { ok: r.ok, status: r.status, data: {} };
+        });
+      })
       .then(function (res) {
         var d = res.data || {};
+        // Captcha is always one-time — refresh after every attempt.
+        refreshCaptchaImages();
+
+        if (res.status === 429) {
+          setStatus(d.message || 'Too many lookups. Please wait and try again.', false);
+          return;
+        }
+        if (d.captcha_required || res.status === 422 && (d.message || '').toLowerCase().indexOf('captcha') !== -1) {
+          setStatus(d.message || 'Invalid CAPTCHA. Please try again.', false);
+          return;
+        }
         if (d.already_registered) {
           setStatus(d.message || 'Already registered. Please log in.', false);
           return;
@@ -170,6 +231,7 @@ $lookupMsg = $lookupMsg ?? null;
         }
       })
       .catch(function () {
+        refreshCaptchaImages();
         setStatus('Lookup failed. You may still register by entering details manually.', false);
       })
       .finally(function () {

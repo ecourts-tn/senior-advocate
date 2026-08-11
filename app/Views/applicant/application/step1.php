@@ -29,18 +29,19 @@
                 <label class="form-label required">Name of the Applicant-Advocate</label>
                 <input type="text" name="full_name" class="form-control" required
                        value="<?= esc(old('full_name', $app['full_name'] ?? '')) ?>">
-                <div class="form-text">Name of the applicant should tally with his/her name as mentioned in
+                <div class="form-text form-help-text">Name of the applicant should tally with his/her name as mentioned in
 his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
             </div>
             <?php
-            $ageAsOnDate  = sad_age_as_on_date();
-            $ageAsOnLabel = sad_age_as_on_label();
+            $ageAsOnDate  = $ageAsOnDate ?? ssa_age_as_on_date($app ?? null);
+            $ageAsOnLabel = $ageAsOnLabel ?? ssa_age_as_on_label($app ?? null);
             $dobValue     = old('date_of_birth', $app['date_of_birth'] ?? '');
             if (is_string($dobValue) && $dobValue !== '') {
                 $dobValue = substr($dobValue, 0, 10);
             }
             $ageYears  = $app['age_years'] ?? null;
             $ageMonths = $app['age_months'] ?? null;
+            $ageDays   = $app['age_days'] ?? null;
             // Always recompute from DOB so fields show the correct values immediately.
             if ($dobValue !== '') {
                 try {
@@ -50,42 +51,73 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
                         $diff      = $birth->diff($ref);
                         $ageYears  = (int) $diff->y;
                         $ageMonths = (int) $diff->m;
+                        $ageDays   = (int) $diff->d;
                     }
                 } catch (\Exception $e) {
                     // keep existing values
                 }
             }
             ?>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label class="form-label required" for="date_of_birth">Date of Birth</label>
                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required
                        value="<?= esc($dobValue) ?>"
                        max="<?= esc($ageAsOnDate) ?>"
                        data-age-as-on="<?= esc($ageAsOnDate) ?>"
                        data-age-years-target="age_years_display"
-                       data-age-months-target="age_months_display">
+                       data-age-months-target="age_months_display"
+                       data-age-days-target="age_days_display">
             </div>
-            <div class="col-md-4">
-                <label class="form-label" for="age_years_display">Age — Years (as on <?= esc($ageAsOnLabel) ?>)</label>
-                <input type="text" id="age_years_display" class="form-control bg-light"
-                       value="<?= $ageYears !== null && $ageYears !== '' ? esc((string) (int) $ageYears) : '' ?>"
-                       placeholder="Auto-calculated" readonly tabindex="-1" autocomplete="off">
-                <div class="form-text">Auto-calculated from date of birth as on <?= esc($ageAsOnLabel) ?> (read-only).</div>
+            <div class="col-md-9">
+                <label class="form-label" id="ageAsOnLabel">
+                    Age as on <?= esc($ageAsOnLabel) ?>
+                </label>
+                <div class="row g-2" role="group" aria-labelledby="ageAsOnLabel">
+                    <div class="col-4">
+                        <div class="input-group">
+                            <input type="text" id="age_years_display" class="form-control bg-light text-center"
+                                   value="<?= $ageYears !== null && $ageYears !== '' ? esc((string) (int) $ageYears) : '' ?>"
+                                   placeholder="—" readonly tabindex="-1" autocomplete="off"
+                                   aria-label="Years">
+                            <span class="input-group-text">Years</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="input-group">
+                            <input type="text" id="age_months_display" class="form-control bg-light text-center"
+                                   value="<?= $ageMonths !== null && $ageMonths !== '' ? esc((string) (int) $ageMonths) : '' ?>"
+                                   placeholder="—" readonly tabindex="-1" autocomplete="off"
+                                   aria-label="Months">
+                            <span class="input-group-text">Months</span>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="input-group">
+                            <input type="text" id="age_days_display" class="form-control bg-light text-center"
+                                   value="<?= $ageDays !== null && $ageDays !== '' ? esc((string) (int) $ageDays) : '' ?>"
+                                   placeholder="—" readonly tabindex="-1" autocomplete="off"
+                                   aria-label="Days">
+                            <span class="input-group-text">Days</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text">
+                    Auto-calculated from date of birth as on the notification date (read-only).
+                </div>
             </div>
-            <div class="col-md-4">
-                <label class="form-label" for="age_months_display">Age — Months (as on <?= esc($ageAsOnLabel) ?>)</label>
-                <input type="text" id="age_months_display" class="form-control bg-light"
-                       value="<?= $ageMonths !== null && $ageMonths !== '' ? esc((string) (int) $ageMonths) : '' ?>"
-                       placeholder="Auto-calculated" readonly tabindex="-1" autocomplete="off">
-                <div class="form-text">Auto-calculated remainder months as on <?= esc($ageAsOnLabel) ?> (read-only).</div>
+            <div class="col-md-12">
+                <p class="border-bottom pb-0 mb-0 form-label">Address in Full:</p>
             </div>
             <div class="col-md-6">
-                <label class="form-label required">Office Address</label>
+                <label class="form-label required">Office</label>
                 <textarea name="address_office" class="form-control" rows="3" required><?= esc(old('address_office', $app['address_office'] ?? '')) ?></textarea>
             </div>
             <div class="col-md-6">
-                <label class="form-label required">Residential Address</label>
+                <label class="form-label required">Residence</label>
                 <textarea name="address_residence" class="form-control" rows="3" required><?= esc(old('address_residence', $app['address_residence'] ?? '')) ?></textarea>
+            </div>
+            <div class="col-md-12">
+                <p class="border-bottom pb-0 mb-0 form-label">Contact Details</p>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Landline</label>

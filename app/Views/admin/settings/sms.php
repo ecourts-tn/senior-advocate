@@ -10,6 +10,9 @@
         <a href="<?= base_url('admin/settings/email') ?>" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-envelope me-1"></i> Email settings
         </a>
+        <a href="<?= base_url('admin/notification-templates') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-envelope-paper me-1"></i> Email / SMS templates
+        </a>
     </div>
 </div>
 
@@ -40,7 +43,7 @@
                     <div class="col-md-6">
                         <label class="form-label" for="sender_id">Sender ID</label>
                         <input type="text" name="sender_id" id="sender_id" class="form-control" maxlength="20"
-                               value="<?= esc(old('sender_id', $settings['sender_id'] ?? 'MHCSAD')) ?>">
+                               value="<?= esc(old('sender_id', $settings['sender_id'] ?? 'MHCSSA')) ?>">
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="api_url">API URL</label>

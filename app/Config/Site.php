@@ -27,6 +27,14 @@ class Site extends BaseConfig
 
     public string $website = 'https://www.hcmadras.tn.gov.in/';
 
+    /**
+     * Official rules document (public path under FCPATH / public).
+     * Rules for Designation of Senior Advocates, 2026.
+     */
+    public string $rulesPdfPath = 'assets/docs/rules-for-designation-of-senior-advocates-2026.pdf';
+
+    public string $rulesTitle = 'Rules for Designation of Senior Advocates, 2026';
+
     /** Content ownership / stewardship line for footer. */
     public string $contentOwnedBy = 'High Court of Madras';
 

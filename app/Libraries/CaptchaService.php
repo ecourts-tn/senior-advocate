@@ -7,8 +7,8 @@ namespace App\Libraries;
  */
 class CaptchaService
 {
-    public const SESSION_KEY = 'sad_captcha_hash';
-    public const SESSION_EXP = 'sad_captcha_exp';
+    public const SESSION_KEY = 'ssa_captcha_hash';
+    public const SESSION_EXP = 'ssa_captcha_exp';
 
     /** Captcha lifetime in seconds. */
     private int $ttl = 600;

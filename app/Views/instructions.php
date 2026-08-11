@@ -1,12 +1,62 @@
 <?= $this->extend('layouts/main') ?>
 <?= $this->section('content') ?>
 
-<div class="page-header">
-    <h1 class="page-title">Instructions for Advocates</h1>
-    <p class="page-subtitle">
-        Follow these instructions carefully while applying for Designation of Senior Advocate
-    </p>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1 class="page-title">Instructions for Advocates</h1>
+        <p class="page-subtitle mb-0">
+            Follow these instructions carefully while applying for Designation of Senior Advocate
+        </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="<?= base_url('notifications') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-megaphone me-1" aria-hidden="true"></i> Notifications
+        </a>
+        <a href="<?= base_url('rules') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i> Rules, 2026 (PDF)
+        </a>
+    </div>
 </div>
+
+<div class="alert alert-light border mb-3">
+    <i class="bi bi-book me-1" aria-hidden="true"></i>
+    Applications are governed by the
+    <a href="<?= base_url('rules') ?>" class="fw-semibold">Rules for Designation of Senior Advocates, 2026</a>.
+    Please read the Rules carefully before submitting an application.
+    <a href="<?= base_url('rules/download') ?>" class="ms-1">Download PDF</a>.
+</div>
+
+<?php if (! empty($portalNotifications)): ?>
+    <div class="card card-mhc mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-megaphone me-1" aria-hidden="true"></i> Official notifications</span>
+            <a href="<?= base_url('notifications') ?>" class="btn btn-sm btn-outline-secondary">View all</a>
+        </div>
+        <div class="card-body p-0">
+            <ul class="list-group list-group-flush">
+                <?php foreach ($portalNotifications as $n): ?>
+                    <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <div class="fw-semibold"><?= esc($n['notification_number'] ?? '') ?></div>
+                            <div class="small text-muted">
+                                <?php if (! empty($n['notification_date'])): ?>
+                                    Dated <?= esc(date('d-m-Y', strtotime($n['notification_date']))) ?>
+                                <?php endif; ?>
+                                <?php if (! empty($n['title'])): ?>
+                                    · <?= esc($n['title']) ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <a href="<?= base_url('notifications/document/' . (int) $n['id']) ?>"
+                           class="btn btn-outline-danger btn-sm" target="_blank" rel="noopener">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> View PDF
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="card card-mhc">
     <div class="card-header">

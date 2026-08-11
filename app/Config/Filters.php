@@ -35,6 +35,8 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'auth'          => \App\Filters\AuthFilter::class,
         'guest'         => \App\Filters\GuestFilter::class,
+        // Blocks <?= and PostgreSQL :: / || injection patterns ModSecurity may allow
+        'inputthreat'   => \App\Filters\InputThreatFilter::class,
     ];
 
     /**
@@ -75,7 +77,10 @@ class Filters extends BaseFilters
         'before' => [
             // 'honeypot',
             'csrf' => ['except' => []],
-            // 'invalidchars',
+            // UTF-8 / control-character checks
+            'invalidchars',
+            // App-layer WAF: PHP short tags + PostgreSQL operators ModSecurity misses
+            'inputthreat',
         ],
         'after' => [
             // 'honeypot',

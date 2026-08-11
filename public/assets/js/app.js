@@ -33,8 +33,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // ---------- GIGW accessibility controls ----------
   var root = document.documentElement;
   var body = document.body;
-  var FONT_KEY = 'sad_font_scale';
-  var CONTRAST_KEY = 'sad_contrast';
+  var FONT_KEY = 'ssa_font_scale';
+  var CONTRAST_KEY = 'ssa_contrast';
   var minScale = 90;
   var maxScale = 140;
   var step = 10;
@@ -162,11 +162,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function clearFields(root) {
     root.querySelectorAll('input, select, textarea').forEach(function (el) {
+      // Skip Flatpickr alt display fields (cleared via instance on original)
+      if (el.classList.contains('flatpickr-alt-input')) return;
       // Always re-enable after cloning a disabled template
       el.disabled = false;
       el.removeAttribute('disabled');
       el.readOnly = false;
       el.removeAttribute('readonly');
+      if (el._flatpickr) {
+        el._flatpickr.clear();
+        return;
+      }
       if (el.type === 'checkbox' || el.type === 'radio') {
         el.checked = false;
       } else if (el.tagName === 'SELECT') {
@@ -220,8 +226,22 @@ document.addEventListener('DOMContentLoaded', function () {
       clone.querySelectorAll('[data-others-group]').forEach(function (g) {
         delete g.dataset.othersBound;
       });
+      // Fresh date inputs on clone must re-init Flatpickr
+      clone.querySelectorAll('[data-fp-ready]').forEach(function (inp) {
+        inp.removeAttribute('data-fp-ready');
+        if (inp.classList.contains('flatpickr-input')) {
+          inp.classList.remove('flatpickr-input');
+        }
+        // Restore native types if clone still has text after previous enhancement
+        if (inp.getAttribute('name') && !inp.getAttribute('type')) {
+          inp.setAttribute('type', 'date');
+        }
+      });
       container.appendChild(clone);
       renumberEntryLabels(container);
+      if (typeof window.ssaInitFlatpickr === 'function') {
+        window.ssaInitFlatpickr(clone);
+      }
     });
   });
 
@@ -249,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // Age / practice duration (years + months) as on a reference date
+  // Age / practice duration (years + months + days) as on a reference date
   function normalizeDateStr(value) {
     if (!value) return '';
     // Accept YYYY-MM-DD or YYYY-MM-DD HH:MM:SS / ISO
@@ -259,8 +279,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function defaultAgeAsOnDate() {
-    // Fallback when data-age-as-on is missing: 01 Jan of the current calendar year
+    // Fallback when data-age-as-on is missing (should normally come from notification date)
     return new Date().getFullYear() + '-01-01';
+  }
+
+  function daysInMonth(year, month) {
+    // month is 1–12; Date day 0 of next month = last day of this month
+    return new Date(year, month, 0).getDate();
   }
 
   function calcAgeParts(dobStr, asOnStr) {
@@ -313,6 +338,14 @@ document.addEventListener('DOMContentLoaded', function () {
     var days = d2 - d1;
     if (days < 0) {
       months -= 1;
+      // Borrow days from the previous calendar month of the as-on date
+      var prevMonth = m2 - 1;
+      var prevYear = y2;
+      if (prevMonth < 1) {
+        prevMonth = 12;
+        prevYear -= 1;
+      }
+      days += daysInMonth(prevYear, prevMonth);
     }
     if (months < 0) {
       years -= 1;
@@ -321,7 +354,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (years < 0) return null;
 
     // months is always 0–11 after borrow; keep integer
-    return { years: years, months: months };
+    return { years: years, months: months, days: days };
   }
 
   /**
@@ -377,15 +410,17 @@ document.addEventListener('DOMContentLoaded', function () {
     var asOn = input.getAttribute('data-age-as-on') || defaultAgeAsOnDate();
     var yearsEl = resolveAgeTarget(input, 'data-age-years-target');
     var monthsEl = resolveAgeTarget(input, 'data-age-months-target');
-    if (!yearsEl && !monthsEl) return;
+    var daysEl = resolveAgeTarget(input, 'data-age-days-target');
+    if (!yearsEl && !monthsEl && !daysEl) return;
 
     // Prefer live value; fall back to attribute if the picker has not committed yet
     var raw = input.value || input.getAttribute('value') || '';
     var parts = calcAgeParts(raw, asOn);
 
-    // Always write both fields in one pass (months was lagging on first change)
+    // Always write all fields in one pass (months/days were lagging on first change)
     setReadonlyDisplayValue(yearsEl, parts ? parts.years : '');
     setReadonlyDisplayValue(monthsEl, parts ? parts.months : '');
+    setReadonlyDisplayValue(daysEl, parts ? parts.days : '');
   }
 
   function scheduleAgeUpdate(input) {
@@ -399,8 +434,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 0);
   }
 
-  function bindAgeAutoCalc() {
-    document.querySelectorAll('input[data-age-as-on]').forEach(function (input) {
+  function bindAgeAutoCalc(root) {
+    root = root || document;
+    root.querySelectorAll('input[data-age-as-on]').forEach(function (input) {
       if (input.dataset.ageBound === '1') return;
       input.dataset.ageBound = '1';
 
@@ -410,12 +446,171 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       });
 
-      // Initial fill when DOB / enrolment date is already present
+      // Initial fill when DOB is already present
       scheduleAgeUpdate(input);
     });
   }
 
   bindAgeAutoCalc();
+
+  // ---------- Flatpickr: consistent date / datetime UI across browsers ----------
+  function parseDateValue(value) {
+    if (!value) return null;
+    var s = String(value).trim();
+    if (!s) return null;
+    // YYYY-MM-DD or YYYY-MM-DDTHH:MM[:SS] or YYYY-MM-DD HH:MM[:SS]
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (!m) return null;
+    var y = parseInt(m[1], 10);
+    var mo = parseInt(m[2], 10) - 1;
+    var d = parseInt(m[3], 10);
+    var h = m[4] != null ? parseInt(m[4], 10) : 0;
+    var mi = m[5] != null ? parseInt(m[5], 10) : 0;
+    var se = m[6] != null ? parseInt(m[6], 10) : 0;
+    var dt = new Date(y, mo, d, h, mi, se);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function initFlatpickrIn(root) {
+    if (typeof flatpickr !== 'function') return;
+    root = root || document;
+
+    root.querySelectorAll('input[type="date"]:not([data-fp-ready])').forEach(function (el) {
+      if (el.disabled) return;
+      el.setAttribute('data-fp-ready', '1');
+      // Avoid dual native + Flatpickr pickers on mobile / Safari
+      try {
+        el.type = 'text';
+      } catch (e) {}
+      el.setAttribute('inputmode', 'numeric');
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('placeholder', el.getAttribute('placeholder') || 'dd/mm/yyyy');
+
+      var wasRequired = el.required;
+      var opts = {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd/m/Y',
+        allowInput: true,
+        disableMobile: true,
+        defaultDate: parseDateValue(el.value) || undefined,
+        onChange: function (selectedDates, dateStr, instance) {
+          scheduleAgeUpdate(el);
+          if (instance.altInput && wasRequired) {
+            instance.altInput.setCustomValidity(dateStr ? '' : 'Please select a date.');
+          }
+        },
+        onReady: function (selectedDates, dateStr, instance) {
+          // Move HTML5 required onto the visible alt input
+          if (instance.altInput) {
+            instance.altInput.classList.add('form-control');
+            if (el.classList.contains('form-control-sm')) {
+              instance.altInput.classList.add('form-control-sm');
+            }
+            if (wasRequired) {
+              el.required = false;
+              instance.altInput.required = true;
+              instance.altInput.setCustomValidity(dateStr || el.value ? '' : 'Please select a date.');
+            }
+          }
+          scheduleAgeUpdate(el);
+        },
+      };
+      if (el.getAttribute('min')) opts.minDate = el.getAttribute('min');
+      if (el.getAttribute('max')) opts.maxDate = el.getAttribute('max');
+
+      flatpickr(el, opts);
+    });
+
+    root.querySelectorAll('input[type="datetime-local"]:not([data-fp-ready])').forEach(function (el) {
+      if (el.disabled) return;
+      el.setAttribute('data-fp-ready', '1');
+      try {
+        el.type = 'text';
+      } catch (e) {}
+      el.setAttribute('inputmode', 'numeric');
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('placeholder', el.getAttribute('placeholder') || 'dd/mm/yyyy hh:mm');
+
+      // Normalise value for Flatpickr (datetime-local uses T separator)
+      var raw = (el.value || '').replace('T', ' ');
+      if (raw.length >= 19) {
+        raw = raw.substring(0, 16);
+      }
+      if (raw && el.value !== raw) {
+        el.value = raw;
+      }
+
+      var wasRequired = el.required;
+      var opts = {
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d H:i',
+        altInput: true,
+        altFormat: 'd/m/Y H:i',
+        allowInput: true,
+        disableMobile: true,
+        defaultDate: parseDateValue(el.value) || undefined,
+        onChange: function (selectedDates, dateStr, instance) {
+          if (instance.altInput && wasRequired) {
+            instance.altInput.setCustomValidity(dateStr ? '' : 'Please select date and time.');
+          }
+        },
+        onReady: function (selectedDates, dateStr, instance) {
+          if (instance.altInput) {
+            instance.altInput.classList.add('form-control');
+            if (wasRequired) {
+              el.required = false;
+              instance.altInput.required = true;
+              instance.altInput.setCustomValidity(dateStr || el.value ? '' : 'Please select date and time.');
+            }
+          }
+        },
+      };
+      if (el.getAttribute('min')) opts.minDate = el.getAttribute('min');
+      if (el.getAttribute('max')) opts.maxDate = el.getAttribute('max');
+
+      flatpickr(el, opts);
+    });
+
+    root.querySelectorAll('input[type="time"]:not([data-fp-ready])').forEach(function (el) {
+      if (el.disabled) return;
+      el.setAttribute('data-fp-ready', '1');
+      try {
+        el.type = 'text';
+      } catch (e) {}
+      el.setAttribute('inputmode', 'numeric');
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('placeholder', el.getAttribute('placeholder') || 'hh:mm');
+
+      var wasRequired = el.required;
+      flatpickr(el, {
+        enableTime: true,
+        noCalendar: true,
+        time_24hr: true,
+        dateFormat: 'H:i',
+        altInput: true,
+        altFormat: 'H:i',
+        allowInput: true,
+        disableMobile: true,
+        defaultDate: el.value || undefined,
+        onReady: function (selectedDates, dateStr, instance) {
+          if (instance.altInput) {
+            instance.altInput.classList.add('form-control');
+            if (wasRequired) {
+              el.required = false;
+              instance.altInput.required = true;
+            }
+          }
+        },
+      });
+    });
+  }
+
+  initFlatpickrIn(document);
+
+  // Expose for dynamic row clones
+  window.ssaInitFlatpickr = initFlatpickrIn;
 
   // CAPTCHA refresh
   document.querySelectorAll('.captcha-refresh').forEach(function (btn) {

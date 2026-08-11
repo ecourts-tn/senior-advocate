@@ -1,7 +1,7 @@
 <?php
 
-if (! function_exists('sad_status_badge')) {
-    function sad_status_badge(?string $status): string
+if (! function_exists('ssa_status_badge')) {
+    function ssa_status_badge(?string $status): string
     {
         $map = [
             'draft'            => 'secondary',
@@ -9,6 +9,8 @@ if (! function_exists('sad_status_badge')) {
             'under_review'     => 'info',
             'pending_approval' => 'dark',
             'approved'         => 'success',
+            'listed'           => 'success',
+            'waitlisted'       => 'warning',
             'rejected'         => 'danger',
             'returned'         => 'warning',
         ];
@@ -19,8 +21,8 @@ if (! function_exists('sad_status_badge')) {
     }
 }
 
-if (! function_exists('sad_bool_label')) {
-    function sad_bool_label($value): string
+if (! function_exists('ssa_bool_label')) {
+    function ssa_bool_label($value): string
     {
         if ($value === null || $value === '') {
             return '—';
@@ -37,8 +39,8 @@ if (! function_exists('sad_bool_label')) {
     }
 }
 
-if (! function_exists('sad_step_labels')) {
-    function sad_step_labels(): array
+if (! function_exists('ssa_step_labels')) {
+    function ssa_step_labels(): array
     {
         return [
             1 => 'Personal Details',
@@ -52,23 +54,27 @@ if (! function_exists('sad_step_labels')) {
     }
 }
 
-if (! function_exists('sad_age_as_on_date')) {
+if (! function_exists('ssa_age_as_on_date')) {
     /**
-     * ISO date used for age / practice calc: 01 January of the cycle year.
+     * ISO date used for age / practice calc: notification date (Y-m-d).
+     *
+     * @param array<string, mixed>|null $app Optional application (uses its notification when set)
      */
-    function sad_age_as_on_date(): string
+    function ssa_age_as_on_date(?array $app = null): string
     {
-        return \App\Models\ApplicationModel::ageAsOnDate();
+        return \App\Models\ApplicationModel::ageAsOnDate($app);
     }
 }
 
-if (! function_exists('sad_age_as_on_label')) {
+if (! function_exists('ssa_age_as_on_label')) {
     /**
-     * Human label for age reference date, e.g. "01.01.2026".
+     * Human label for the notification reference date, e.g. "15.08.2026".
+     *
+     * @param array<string, mixed>|null $app Optional application (uses its notification when set)
      */
-    function sad_age_as_on_label(): string
+    function ssa_age_as_on_label(?array $app = null): string
     {
-        return \App\Models\ApplicationModel::ageAsOnLabel();
+        return \App\Models\ApplicationModel::ageAsOnLabel($app);
     }
 }
 

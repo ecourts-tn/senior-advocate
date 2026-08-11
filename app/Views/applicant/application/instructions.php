@@ -8,6 +8,48 @@
     </p>
 </div> -->
 
+<div class="alert alert-light border mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <i class="bi bi-book me-1" aria-hidden="true"></i>
+            Please read the
+            <a href="<?= base_url('rules') ?>" class="fw-semibold" target="_blank" rel="noopener">
+                Rules for Designation of Senior Advocates, 2026
+            </a>
+            before proceeding.
+        </div>
+        <a href="<?= base_url('rules/download') ?>" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-download me-1" aria-hidden="true"></i> Download Rules PDF
+        </a>
+    </div>
+</div>
+
+<?php if (! empty($notificationNumber) || ! empty($applicationStartDate)): ?>
+    <div class="alert alert-primary border mb-3">
+        <div class="small">
+            <?php if (! empty($notificationNumber)): ?>
+                <div>
+                    <strong>Notification:</strong> <?= esc($notificationNumber) ?>
+                    <?php if (! empty($notificationDate)): ?>
+                        dated <?= esc(date('d-m-Y', strtotime($notificationDate))) ?>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+            <?php if (! empty($applicationStartDate) && ! empty($applicationLastDate)): ?>
+                <div>
+                    <strong>Application period:</strong>
+                    <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($applicationStartDate)) ?>
+                    to
+                    <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($applicationLastDate)) ?>
+                </div>
+            <?php endif; ?>
+            <?php if (! empty($cycleYear)): ?>
+                <div><strong>Cycle year:</strong> <?= (int) $cycleYear ?></div>
+            <?php endif; ?>
+        </div>
+    </div>
+<?php endif; ?>
+
 <div class="card card-mhc">
     <div class="card-header">
         <i class="bi bi-journal-bookmark me-1"></i>

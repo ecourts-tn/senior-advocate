@@ -34,6 +34,7 @@ class NotificationTemplateModel extends Model
     /** @var array<string, string> */
     public const EVENTS = [
         'registration'           => 'Advocate registration',
+        'email_verification'     => 'Email verification link',
         'application_submitted'  => 'Application submitted',
         'application_accepted'   => 'Application accepted',
         'application_rejected'   => 'Application rejected',
@@ -60,7 +61,7 @@ class NotificationTemplateModel extends Model
         return [
             'registration' => [
                 'name'          => self::EVENTS['registration'],
-                'description'   => 'Sent after a successful advocate registration.',
+                'description'   => 'Optional welcome after registration (verification email is primary).',
                 'email_enabled' => true,
                 'sms_enabled'   => true,
                 'email_subject' => 'Registration successful — {{portal_name}}',
@@ -73,7 +74,7 @@ class NotificationTemplateModel extends Model
 </p>
 <p>Registered email: <strong>{{email}}</strong></p>
 <p>
-    You may now sign in and begin the Application-cum-Consent Letter for designation as Senior Advocate.
+    Please verify your email using the verification link sent to you, then sign in to begin the application.
 </p>
 <p style="text-align:center;margin:28px 0;">
     <a href="{{login_url}}"
@@ -85,7 +86,38 @@ class NotificationTemplateModel extends Model
     Please read the Instructions carefully before submitting. Errors cannot be rectified after submission.
 </p>
 HTML,
-                'sms_body' => 'MHC SAD Portal: Registration successful for {{name}}. Login at {{login_url}} to start your application.',
+                'sms_body' => 'MHC SSA Portal: Registration successful for {{name}}. Verify your email, then login at {{login_url}}.',
+            ],
+            'email_verification' => [
+                'name'          => self::EVENTS['email_verification'],
+                'description'   => 'Sent on registration and when a user requests a new verification link. Required before login.',
+                'email_enabled' => true,
+                'sms_enabled'   => true,
+                'email_subject' => 'Verify your email — {{portal_name}}',
+                'email_body'    => <<<'HTML'
+<h1 style="font-size:1.2rem;color:#0f2340;margin:0 0 12px;">Verify your email address</h1>
+<p>Dear {{name}},</p>
+<p>
+    Your account has been created on the
+    <strong>{{portal_name}}</strong> portal of the {{organisation}}.
+</p>
+<p>Registered email: <strong>{{email}}</strong></p>
+<p>
+    Please verify your email address to activate your account. You cannot sign in until verification is complete.
+    This link is valid for <strong>{{expires}}</strong>.
+</p>
+<p style="text-align:center;margin:28px 0;">
+    <a href="{{verify_url}}"
+       style="display:inline-block;background:#0f2340;color:#fff;text-decoration:none;padding:12px 22px;border-radius:4px;font-weight:600;">
+        Verify email address
+    </a>
+</p>
+<p style="font-size:0.9rem;color:#6b6558;">
+    If the button does not work, copy and paste this URL into your browser:<br>
+    <a href="{{verify_url}}" style="color:#1a3558;word-break:break-all;">{{verify_url}}</a>
+</p>
+HTML,
+                'sms_body' => 'MHC SSA Portal: Verify your email to activate your account. Open the verification link sent to your registered email.',
             ],
             'application_submitted' => [
                 'name'          => self::EVENTS['application_submitted'],
@@ -121,7 +153,7 @@ HTML,
     </a>
 </p>
 HTML,
-                'sms_body' => 'MHC SAD Portal: Application {{application_no}} submitted successfully. Keep your Application No. for reference.',
+                'sms_body' => 'MHC SSA Portal: Application {{application_no}} submitted successfully. Keep your Application No. for reference.',
             ],
             'application_accepted' => [
                 'name'          => self::EVENTS['application_accepted'],
@@ -143,7 +175,7 @@ HTML,
 <p style="margin:16px 0 8px;font-weight:600;">Remarks</p>
 <div style="background:#faf8f3;border:1px solid #d9d2c5;border-radius:4px;padding:12px;white-space:pre-wrap;">{{remarks}}</div>
 HTML,
-                'sms_body' => 'MHC SAD Portal: Application {{application_no}} has been ACCEPTED.{{remarks_sms}}',
+                'sms_body' => 'MHC SSA Portal: Application {{application_no}} has been ACCEPTED.{{remarks_sms}}',
             ],
             'application_rejected' => [
                 'name'          => self::EVENTS['application_rejected'],
@@ -165,7 +197,7 @@ HTML,
 <p style="margin:16px 0 8px;font-weight:600;">Remarks</p>
 <div style="background:#faf8f3;border:1px solid #d9d2c5;border-radius:4px;padding:12px;white-space:pre-wrap;">{{remarks}}</div>
 HTML,
-                'sms_body' => 'MHC SAD Portal: Application {{application_no}} has been REJECTED.{{remarks_sms}}',
+                'sms_body' => 'MHC SSA Portal: Application {{application_no}} has been REJECTED.{{remarks_sms}}',
             ],
             'application_returned' => [
                 'name'          => self::EVENTS['application_returned'],
@@ -195,7 +227,7 @@ HTML,
     </a>
 </p>
 HTML,
-                'sms_body' => 'MHC SAD Portal: Application {{application_no}} returned for correction. Login to update and resubmit.{{remarks_sms}}',
+                'sms_body' => 'MHC SSA Portal: Application {{application_no}} returned for correction. Login to update and resubmit.{{remarks_sms}}',
             ],
             'password_reset' => [
                 'name'          => self::EVENTS['password_reset'],

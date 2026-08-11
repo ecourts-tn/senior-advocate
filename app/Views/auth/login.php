@@ -14,10 +14,14 @@ if (! empty($editWindow['open'])):
                 <?php if (! empty($editWindow['from']) || ! empty($editWindow['to'])): ?>
                     <div class="small mt-2">
                         <?php if (! empty($editWindow['from'])): ?>
-                            <span class="me-3"><strong>Opens:</strong> <?= esc($editWindow['from']) ?></span>
+                            <span class="me-3"><strong>Opens:</strong>
+                                <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($editWindow['from'])) ?>
+                            </span>
                         <?php endif; ?>
                         <?php if (! empty($editWindow['to'])): ?>
-                            <span><strong>Closes:</strong> <?= esc($editWindow['to']) ?></span>
+                            <span><strong>Closes:</strong>
+                                <?= esc(\App\Models\DesignationNotificationModel::formatDateTime($editWindow['to'])) ?>
+                            </span>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
@@ -27,6 +31,30 @@ if (! empty($editWindow['open'])):
             </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (! empty($portalNotifications)): ?>
+    <div class="alert alert-light border mb-4" role="region" aria-label="Official notifications">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+            <strong><i class="bi bi-megaphone me-1" aria-hidden="true"></i> Official notifications</strong>
+            <a href="<?= base_url('notifications') ?>" class="small">View all</a>
+        </div>
+        <ul class="mb-0 ps-3">
+            <?php foreach ($portalNotifications as $n): ?>
+                <li class="mb-1">
+                    <a href="<?= base_url('notifications/document/' . (int) $n['id']) ?>"
+                       target="_blank" rel="noopener">
+                        <?= esc($n['notification_number'] ?? 'Notification') ?>
+                    </a>
+                    <?php if (! empty($n['notification_date'])): ?>
+                        <span class="text-muted small">
+                            (<?= esc(date('d-m-Y', strtotime($n['notification_date']))) ?>)
+                        </span>
+                    <?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 <?php endif; ?>
 
@@ -63,13 +91,21 @@ if (! empty($editWindow['open'])):
                 </div>
             </div>
             <?= view('partials/captcha_field', ['fieldId' => 'loginCaptcha']) ?>
-            <div class="d-flex justify-content-end mb-3">
+            <div class="d-flex justify-content-between mb-3">
+                <a href="<?= base_url('resend-verification') ?>" class="small">Resend verification email</a>
                 <a href="<?= base_url('forgot-password') ?>" class="small">Forgot password?</a>
             </div>
             <button type="submit" class="btn btn-mhc w-100 py-2">
                 <i class="bi bi-box-arrow-in-right me-1"></i> Login
             </button>
             <?= form_close() ?>
+
+            <?php if (session()->getFlashdata('unverified_email')): ?>
+                <div class="alert alert-warning mt-3 mb-0 small" role="alert">
+                    Email not verified?
+                    <a href="<?= base_url('resend-verification') ?>" class="fw-semibold">Resend verification link</a>
+                </div>
+            <?php endif; ?>
 
             <p class="mt-3 mb-0 small text-center text-muted">
                 New advocate?
@@ -78,7 +114,9 @@ if (! empty($editWindow['open'])):
         </div>
     </div>
     <p class="text-center small text-muted mt-3 mb-0">
-        <a href="<?= base_url('instructions') ?>">Read instructions</a>
+        <a href="<?= base_url('rules') ?>">Rules, 2026</a>
+        ·
+        <a href="<?= base_url('instructions') ?>">Instructions</a>
         before submitting an application.
     </p>
 </div>

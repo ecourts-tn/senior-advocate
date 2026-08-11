@@ -29,7 +29,7 @@ class NotificationService
     }
 
     /**
-     * After successful advocate registration.
+     * After successful advocate registration (legacy welcome; prefer emailVerification).
      *
      * @param array{id?:int,name:string,email:string,mobile?:string|null} $user
      */
@@ -48,15 +48,67 @@ class NotificationService
 
         $fallbackSubject = 'Registration successful — ' . $this->site->portalName;
         $fallbackBody    = view('emails/notify_registration', [
-            'name'     => $name,
-            'email'    => $email,
-            'loginUrl' => $login,
-            'site'     => $this->site,
+            'name'      => $name,
+            'email'     => $email,
+            'loginUrl'  => $login,
+            'verifyUrl' => '',
+            'site'      => $this->site,
         ]);
-        $fallbackSms = "MHC SAD Portal: Registration successful for {$name}. Login at {$login} to start your application.";
+        $fallbackSms = "MHC SSA Portal: Registration successful for {$name}. Login at {$login} to start your application.";
 
         $this->sendEvent(
             'registration',
+            $vars,
+            $email,
+            $name,
+            $mobile,
+            $fallbackSubject,
+            $fallbackBody,
+            $fallbackSms,
+            (int) ($user['id'] ?? 0),
+            0
+        );
+    }
+
+    /**
+     * Send email verification link (registration + resend). User cannot log in until verified.
+     *
+     * @param array{id?:int,name:string,email:string,mobile?:string|null} $user
+     */
+    public function emailVerification(array $user, string $verifyUrl): void
+    {
+        try {
+            $this->templates->ensureDefaults();
+        } catch (\Throwable $e) {
+            // Fallback view still used if templates table is unavailable.
+        }
+
+        $name   = $user['name'] ?? 'Advocate';
+        $email  = $user['email'] ?? '';
+        $mobile = $user['mobile'] ?? '';
+        $login  = base_url('login');
+
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'       => $name,
+            'email'      => $email,
+            'login_url'  => $login,
+            'verify_url' => $verifyUrl,
+            'expires'    => '48 hours',
+        ]);
+
+        $fallbackSubject = 'Verify your email — ' . $this->site->portalName;
+        $fallbackBody    = view('emails/notify_email_verification', [
+            'name'      => $name,
+            'email'     => $email,
+            'verifyUrl' => $verifyUrl,
+            'loginUrl'  => $login,
+            'expires'   => '48 hours',
+            'site'      => $this->site,
+        ]);
+        $fallbackSms = "MHC SSA Portal: Verify your email to activate your account. Open the link sent to your registered email.";
+
+        $this->sendEvent(
+            'email_verification',
             $vars,
             $email,
             $name,
@@ -96,7 +148,7 @@ class NotificationService
             'viewUrl'       => $url,
             'site'          => $this->site,
         ]);
-        $fallbackSms = "MHC SAD Portal: Application {$appNo} submitted successfully. Keep your Application No. for reference.";
+        $fallbackSms = "MHC SSA Portal: Application {$appNo} submitted successfully. Keep your Application No. for reference.";
 
         $this->sendEvent(
             'application_submitted',
@@ -140,7 +192,7 @@ class NotificationService
             'remarks'       => $remarks,
             'site'          => $this->site,
         ]);
-        $fallbackSms = "MHC SAD Portal: Application {$appNo} has been ACCEPTED."
+        $fallbackSms = "MHC SSA Portal: Application {$appNo} has been ACCEPTED."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 80) : '');
 
         $this->sendEvent(
@@ -185,7 +237,7 @@ class NotificationService
             'remarks'       => $remarks,
             'site'          => $this->site,
         ]);
-        $fallbackSms = "MHC SAD Portal: Application {$appNo} has been REJECTED."
+        $fallbackSms = "MHC SSA Portal: Application {$appNo} has been REJECTED."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 80) : '');
 
         $this->sendEvent(
@@ -229,7 +281,7 @@ class NotificationService
             'viewUrl'       => $url,
             'site'          => $this->site,
         ]);
-        $fallbackSms = "MHC SAD Portal: Application {$appNo} returned for correction. Login to update and resubmit."
+        $fallbackSms = "MHC SSA Portal: Application {$appNo} returned for correction. Login to update and resubmit."
             . ($remarks !== '' ? ' Remarks: ' . $this->truncate($remarks, 60) : '');
 
         $this->sendEvent(
