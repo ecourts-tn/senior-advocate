@@ -62,13 +62,25 @@ ob_start();
     <label class="form-label" for="practiceYearsMin">Practice min</label>
     <input type="number" name="practice_years_min" id="practiceYearsMin" class="form-control" min="0" max="70"
            value="<?= esc(isset($practiceYearsMin) && $practiceYearsMin !== null ? (string) $practiceYearsMin : '') ?>"
-           placeholder="Yrs" title="Minimum years of practice (practice_years)">
+           placeholder="Yrs" title="Minimum years of practice from enrolment">
 </div>
 <div class="col-6 col-md-2 col-lg-1">
     <label class="form-label" for="practiceYearsMax">Practice max</label>
     <input type="number" name="practice_years_max" id="practiceYearsMax" class="form-control" min="0" max="70"
            value="<?= esc(isset($practiceYearsMax) && $practiceYearsMax !== null ? (string) $practiceYearsMax : '') ?>"
-           placeholder="Yrs" title="Maximum years of practice (practice_years)">
+           placeholder="Yrs" title="Maximum years of practice from enrolment">
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="cumulativeExpMin">Cum. exp min</label>
+    <input type="number" name="cumulative_exp_min" id="cumulativeExpMin" class="form-control" min="0" max="70"
+           value="<?= esc(isset($cumulativeExpMin) && $cumulativeExpMin !== null ? (string) $cumulativeExpMin : '') ?>"
+           placeholder="Yrs" title="Minimum cumulative experience from courts practiced (Sl. No. 14)">
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="cumulativeExpMax">Cum. exp max</label>
+    <input type="number" name="cumulative_exp_max" id="cumulativeExpMax" class="form-control" min="0" max="70"
+           value="<?= esc(isset($cumulativeExpMax) && $cumulativeExpMax !== null ? (string) $cumulativeExpMax : '') ?>"
+           placeholder="Yrs" title="Maximum cumulative experience from courts practiced (Sl. No. 14)">
 </div>
 <div class="col-md-3 col-lg-2">
     <label class="form-label" for="natureOfPractice">Nature of practice</label>
@@ -128,7 +140,8 @@ echo view('partials/table_toolbar', [
                     <th>Applicant</th>
                     <th>Enrolment</th>
                     <th>Age</th>
-                    <th>Experience</th>
+                    <th>Practice</th>
+                    <th>Cum. exp</th>
                     <th>Nature / Field</th>
                     <th>1st-gen</th>
                     <th>Status</th>
@@ -138,7 +151,7 @@ echo view('partials/table_toolbar', [
                 </thead>
                 <tbody>
                 <?php if (empty($applications)): ?>
-                    <tr><td colspan="11" class="p-3 text-muted">No records found.</td></tr>
+                    <tr><td colspan="12" class="p-3 text-muted">No records found.</td></tr>
                 <?php else: foreach ($applications as $a): ?>
                     <tr>
                         <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
@@ -149,7 +162,7 @@ echo view('partials/table_toolbar', [
                                     <?= esc($a['notification_number']) ?>
                                 </a>
                                 <?php if (! empty($a['notification_date'])): ?>
-                                    <div class="text-muted"><?= esc(date('d-m-Y', strtotime($a['notification_date']))) ?></div>
+                                    <div class="text-muted"><?= esc(ssa_format_date($a['notification_date'])) ?></div>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <span class="text-muted">—</span>
@@ -173,6 +186,14 @@ echo view('partials/table_toolbar', [
                             <?= (int) ($a['practice_years'] ?? 0) ?>y
                             <?= (int) ($a['practice_months'] ?? 0) ?>m
                         </td>
+                        <td class="small" title="Cumulative experience from courts practiced (Sl. No. 14)">
+                            <?php if (isset($a['cumulative_exp_years']) && $a['cumulative_exp_years'] !== null && $a['cumulative_exp_years'] !== ''): ?>
+                                <?= (int) $a['cumulative_exp_years'] ?>y
+                                <?= (int) ($a['cumulative_exp_months'] ?? 0) ?>m
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
                         <td class="small">
                             <?php
                             $nature = trim((string) ($a['nature_of_practice'] ?? ''));
@@ -193,7 +214,7 @@ echo view('partials/table_toolbar', [
                         </td>
                         <td class="small"><?= ssa_bool_label($a['is_first_generation'] ?? null) ?></td>
                         <td><?= ssa_status_badge($a['status']) ?></td>
-                        <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
+                        <td class="small text-muted"><?= esc(ssa_format_datetime($a['submitted_at'] ?? null)) ?></td>
                         <td class="text-end">
                             <a href="<?= base_url('admin/applications/' . $a['id']) ?>" class="btn btn-sm btn-outline-primary">
                                 Open

@@ -51,26 +51,32 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
-                <strong>Name of the Applicant-Advocate</strong><br>
+                <strong>1. Name of the Applicant-Advocate</strong><br>
                 <?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?>
             </div>
             <div class="col-md-3">
-                <strong>Date of Birth</strong><br>
-                <?= esc($app['date_of_birth'] ?? '—') ?>
+                <strong>2. Date of Birth</strong><br>
+                <?= esc(ssa_format_date($app['date_of_birth'] ?? null)) ?>
             </div>
             <div class="col-md-3">
-                <strong>Age as on <?= esc($ageAsOnLabel) ?></strong><br>
+                <strong>3. Age as on <?= esc($ageAsOnLabel) ?></strong><br>
                 <?= esc($app['age_years'] ?? '—') ?> Years
                 <?= esc($app['age_months'] ?? '—') ?> Months
                 <?= esc($app['age_days'] ?? '—') ?> Days
             </div>
+            <div class="col-md-12">
+                <strong>4. Address in Full</strong><br>
+            </div>
             <div class="col-md-6">
-                <strong>Address in Full — Office</strong><br>
+                <strong>Office</strong><br>
                 <?= nl2br(esc($app['address_office'] ?? '—')) ?>
             </div>
             <div class="col-md-6">
-                <strong>Address in Full — Residence</strong><br>
+                <strong>Residence</strong><br>
                 <?= nl2br(esc($app['address_residence'] ?? '—')) ?>
+            </div>
+            <div class="col-md-12">
+                <strong>5. Contact Details</strong><br>
             </div>
             <div class="col-md-4">
                 <strong>Landline</strong><br>
@@ -85,7 +91,7 @@
                 <?= esc($app['email'] ?? '—') ?>
             </div>
             <div class="col-12">
-                <strong>Educational / Professional Qualifications</strong><br>
+                <strong>6. Educational / Professional Qualifications</strong><br>
                 <?= nl2br(esc($app['qualifications'] ?? '—')) ?>
             </div>
         </div>
@@ -97,28 +103,28 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-4">
-                <strong>Date, Month and Year of Enrolment as an Advocate</strong><br>
-                <?= esc($app['enrolment_date'] ?? '—') ?>
+                <strong>(i). Date, Month and Year of Enrolment as an Advocate</strong><br>
+                <?= esc(ssa_format_date($app['enrolment_date'] ?? null)) ?>
             </div>
             <div class="col-md-4">
-                <strong>Enrolment Number</strong><br>
+                <strong>(ii). Enrolment Number</strong><br>
                 <?= esc($app['enrolment_number'] ?? '—') ?>
             </div>
             <div class="col-md-4">
-                <strong>Bar Council where registered (Copy of Enrolment Certificate to be attached)</strong><br>
+                <strong>(iii). Bar Council where registered (Copy of Enrolment Certificate to be attached)</strong><br>
                 <?= esc($app['bar_council'] ?? '—') ?>
             </div>
             <div class="col-md-6">
-                <strong>Number of years of practice from the date of enrolment (as on <?= esc($ageAsOnLabel) ?>)</strong><br>
+                <strong>(iv). Number of years of practice from the date of enrolment (as on <?= esc($ageAsOnLabel) ?>)</strong><br>
                 <?= (int) ($app['practice_years'] ?? 0) ?> Years
                 <?= (int) ($app['practice_months'] ?? 0) ?> Months
             </div>
             <div class="col-md-6">
-                <strong>Net Professional Income per annum (in Lakhs of Rs) [Only earnings through practice as Advocate]</strong><br>
+                <strong>(v). Net Professional Income per annum (in Lakhs of Rs) [Only earnings through practice as Advocate]</strong><br>
                 <?= esc($app['net_income_lakhs'] ?? '—') ?>
             </div>
             <div class="col-md-6">
-                <strong>Whether the applicant is a member of any bar association attached to a specific court</strong><br>
+                <strong>8. Whether the applicant is a member of any bar association attached to a specific court</strong><br>
                 <?= ssa_bool_label($app['is_bar_association_member'] ?? null) ?>
             </div>
             <div class="col-md-6">
@@ -130,7 +136,7 @@
 </div>
 
 <div class="card card-mhc mb-3">
-    <div class="card-header">9–13. Judgments / Pro Bono / Academic</div>
+    <div class="card-header">9–17. Judgments / Pro Bono / Academic / Practice domain</div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
@@ -156,10 +162,57 @@
             </div>
             <div class="col-12">
                 <strong>13. Academic Articles/Books published, experience of Teaching Assignments in the field of law, Guest Lectures delivered in law schools or professional institutions connected with law: Format L-4</strong><br>
-                No. of Academic Articles: <?= (int) ($app['academic_articles_count'] ?? 0) ?> ·
-                No. of Academic Books: <?= (int) ($app['academic_books_count'] ?? 0) ?> ·
-                No. of Teaching Assignments: <?= (int) ($app['teaching_assignments_count'] ?? 0) ?> ·
+                No. of Academic Articles: <?= (int) ($app['academic_articles_count'] ?? 0) ?><br/>
+                No. of Academic Books: <?= (int) ($app['academic_books_count'] ?? 0) ?><br/>
+                No. of Teaching Assignments: <?= (int) ($app['teaching_assignments_count'] ?? 0) ?><br/>
                 No. of Guest Lectures: <?= (int) ($app['guest_lectures_count'] ?? 0) ?>
+            </div>
+            <div class="col-12">
+                <strong>14. Courts where the applicant is practicing / has practiced</strong><br>
+                <?php
+                $courts = $app['courts_practiced'] ?? [];
+                if (is_string($courts)) {
+                    $courts = json_decode($courts, true) ?: [];
+                }
+                if (empty($courts)):
+                ?>
+                    <span class="text-muted">—</span>
+                <?php else: ?>
+                    <ul class="mb-1 ps-3">
+                        <?php foreach ($courts as $c): ?>
+                            <li>
+                                <?= esc($c['court'] ?? '—') ?>
+                                <span class="text-muted">(<?= esc(ssa_format_period(is_array($c) ? $c : [])) ?>)</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+                <div class="mt-1">
+                    <strong>Cumulative experience (from courts practiced):</strong>
+                    <?= (int) ($app['cumulative_exp_years'] ?? 0) ?> Years
+                    <?= (int) ($app['cumulative_exp_months'] ?? 0) ?> Months
+                </div>
+            </div>
+            <div class="col-12">
+                <strong>15. Tribunals, where the applicant has specialized practice</strong><br>
+                <?php
+                $tribunals = $app['tribunals_practiced'] ?? [];
+                if (is_string($tribunals)) {
+                    $tribunals = json_decode($tribunals, true) ?: [];
+                }
+                if (empty($tribunals)):
+                ?>
+                    <span class="text-muted">—</span>
+                <?php else: ?>
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($tribunals as $t): ?>
+                            <li>
+                                <?= esc($t['tribunal'] ?? '—') ?>
+                                <span class="text-muted">(<?= esc(ssa_format_period(is_array($t) ? $t : [])) ?>)</span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <strong>16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</strong><br>
@@ -181,14 +234,14 @@
                 <strong>18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof</strong><br>
                 <?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
                 <?php if (! empty($app['applied_mhc_date']) || ! empty($app['applied_mhc_status'])): ?>
-                    <br><?= esc($app['applied_mhc_date'] ?? '') ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
+                    <br><?= esc(ssa_format_date($app['applied_mhc_date'] ?? null)) ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
                 <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <strong>19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof</strong><br>
                 <?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
                 <?php if (! empty($app['applied_other_date']) || ! empty($app['applied_other_details'])): ?>
-                    <br><?= esc($app['applied_other_date'] ?? '') ?> <?= esc($app['applied_other_details'] ?? '') ?>
+                    <br><?= esc(ssa_format_date($app['applied_other_date'] ?? null)) ?> <?= esc($app['applied_other_details'] ?? '') ?>
                 <?php endif; ?>
             </div>
             <div class="col-md-6">
@@ -287,7 +340,7 @@
                 <tr><td colspan="4" class="text-muted">No history yet.</td></tr>
             <?php else: foreach ($history as $h): ?>
                 <tr>
-                    <td><?= esc($h['created_at']) ?></td>
+                    <td><?= esc(ssa_format_datetime($h['created_at'] ?? null)) ?></td>
                     <td><?= esc($h['from_status'] ?? '—') ?></td>
                     <td><?= esc($h['to_status']) ?></td>
                     <td><?= esc($h['remarks'] ?? '') ?></td>

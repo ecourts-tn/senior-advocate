@@ -68,13 +68,80 @@ if (! function_exists('ssa_age_as_on_date')) {
 
 if (! function_exists('ssa_age_as_on_label')) {
     /**
-     * Human label for the notification reference date, e.g. "15.08.2026".
+     * Human label for the notification reference date, e.g. "15-08-2026".
      *
      * @param array<string, mixed>|null $app Optional application (uses its notification when set)
      */
     function ssa_age_as_on_label(?array $app = null): string
     {
         return \App\Models\ApplicationModel::ageAsOnLabel($app);
+    }
+}
+
+if (! function_exists('ssa_format_date')) {
+    /**
+     * Display a date/datetime value as dd-mm-YYYY (optional time).
+     * Accepts Y-m-d, Y-m-d H:i:s, timestamps, or already-formatted strings.
+     */
+    function ssa_format_date(mixed $value, bool $withTime = false): string
+    {
+        if ($value === null || $value === '') {
+            return '—';
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $withTime
+                ? $value->format('d-m-Y h:i A')
+                : $value->format('d-m-Y');
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '' || $raw === '—') {
+            return '—';
+        }
+
+        // Already dd-mm-YYYY (optionally with time)
+        if (preg_match('/^\d{2}-\d{2}-\d{4}/', $raw)) {
+            if (! $withTime) {
+                return substr($raw, 0, 10);
+            }
+
+            return $raw;
+        }
+
+        $ts = strtotime($raw);
+        if ($ts === false) {
+            return $raw;
+        }
+
+        return $withTime ? date('d-m-Y h:i A', $ts) : date('d-m-Y', $ts);
+    }
+}
+
+if (! function_exists('ssa_format_datetime')) {
+    /**
+     * Display a datetime value as dd-mm-YYYY h:i A.
+     */
+    function ssa_format_datetime(mixed $value): string
+    {
+        return ssa_format_date($value, true);
+    }
+}
+
+if (! function_exists('ssa_format_period')) {
+    /**
+     * Practice period label: "dd-mm-YYYY – dd-mm-YYYY" or "… – present".
+     *
+     * @param array<string, mixed> $row
+     */
+    function ssa_format_period(array $row): string
+    {
+        $from = $row['from_date'] ?? $row['from'] ?? '';
+        $to   = $row['to_date'] ?? $row['to'] ?? '';
+        $fromLabel = ($from !== '' && $from !== null) ? ssa_format_date($from) : '—';
+        $toLabel   = ($to !== '' && $to !== null) ? ssa_format_date($to) : 'present';
+
+        return $fromLabel . ' – ' . $toLabel;
     }
 }
 

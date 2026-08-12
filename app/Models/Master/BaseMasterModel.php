@@ -28,11 +28,11 @@ abstract class BaseMasterModel extends Model
      */
     public function ensureDefaults(): void
     {
-        $order = 10;
+        $order = 1;
         foreach (static::defaultLabels() as $label) {
             $exists = $this->where('label', $label)->first();
             if ($exists) {
-                $order += 10;
+                $order += 1;
                 continue;
             }
             $this->insert([
@@ -40,7 +40,7 @@ abstract class BaseMasterModel extends Model
                 'sort_order' => $order,
                 'is_active'  => true,
             ]);
-            $order += 10;
+            $order += 1;
         }
     }
 

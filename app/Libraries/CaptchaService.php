@@ -4,11 +4,23 @@ namespace App\Libraries;
 
 /**
  * Session-backed image CAPTCHA (no third-party keys required).
+ *
+ * Supports independent scopes so multiple captchas can coexist on one page
+ * (e.g. registration search vs. account submit).
  */
 class CaptchaService
 {
     public const SESSION_KEY = 'ssa_captcha_hash';
     public const SESSION_EXP = 'ssa_captcha_exp';
+
+    /** Default scope used by login and other single-captcha forms. */
+    public const SCOPE_DEFAULT = 'default';
+
+    /** Registration enrolment lookup. */
+    public const SCOPE_LOOKUP = 'lookup';
+
+    /** Registration account creation. */
+    public const SCOPE_REGISTER = 'register';
 
     /** Captcha lifetime in seconds. */
     private int $ttl = 600;
@@ -19,35 +31,75 @@ class CaptchaService
     private int $length = 5;
 
     /**
-     * Create a new captcha answer and store a hash in session.
+     * Normalise a scope name for session keys.
      */
-    public function regenerate(): string
+    public static function normaliseScope(?string $scope): string
     {
-        $code = '';
-        $max  = strlen($this->alphabet) - 1;
+        $scope = strtolower(trim((string) $scope));
+        if ($scope === '' || $scope === 'default' || $scope === 'main') {
+            return self::SCOPE_DEFAULT;
+        }
+        // Allow only simple identifiers (prevents session-key pollution)
+        if (! preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $scope)) {
+            return self::SCOPE_DEFAULT;
+        }
+
+        return $scope;
+    }
+
+    private function hashKey(string $scope): string
+    {
+        $scope = self::normaliseScope($scope);
+
+        return $scope === self::SCOPE_DEFAULT
+            ? self::SESSION_KEY
+            : self::SESSION_KEY . '_' . $scope;
+    }
+
+    private function expKey(string $scope): string
+    {
+        $scope = self::normaliseScope($scope);
+
+        return $scope === self::SCOPE_DEFAULT
+            ? self::SESSION_EXP
+            : self::SESSION_EXP . '_' . $scope;
+    }
+
+    /**
+     * Create a new captcha answer and store a hash in session for the given scope.
+     */
+    public function regenerate(?string $scope = null): string
+    {
+        $scope = self::normaliseScope($scope);
+        $code  = '';
+        $max   = strlen($this->alphabet) - 1;
         for ($i = 0; $i < $this->length; $i++) {
             $code .= $this->alphabet[random_int(0, $max)];
         }
 
         $session = session();
-        $session->set(self::SESSION_KEY, password_hash(strtoupper($code), PASSWORD_DEFAULT));
-        $session->set(self::SESSION_EXP, time() + $this->ttl);
+        $session->set($this->hashKey($scope), password_hash(strtoupper($code), PASSWORD_DEFAULT));
+        $session->set($this->expKey($scope), time() + $this->ttl);
 
         return $code;
     }
 
     /**
-     * Validate user input against the session captcha (one-time use).
+     * Validate user input against the session captcha for a scope (one-time use).
+     * Only that scope is cleared — other scopes remain valid.
      */
-    public function verify(?string $input): bool
+    public function verify(?string $input, ?string $scope = null): bool
     {
+        $scope   = self::normaliseScope($scope);
         $session = session();
-        $hash    = $session->get(self::SESSION_KEY);
-        $exp     = (int) $session->get(self::SESSION_EXP);
+        $hashKey = $this->hashKey($scope);
+        $expKey  = $this->expKey($scope);
+        $hash    = $session->get($hashKey);
+        $exp     = (int) $session->get($expKey);
 
-        // Always clear after a verification attempt
-        $session->remove(self::SESSION_KEY);
-        $session->remove(self::SESSION_EXP);
+        // Always clear after a verification attempt (one-time for this scope)
+        $session->remove($hashKey);
+        $session->remove($expKey);
 
         if ($hash === null || $exp < time()) {
             return false;
@@ -99,7 +151,6 @@ class CaptchaService
 
         for ($i = 0; $i < $len; $i++) {
             $char = $code[$i];
-            $size = 5; // built-in font scale via imagestring uses 1–5
             $x    = 12 + ($i * $slotW) + random_int(0, 4);
             $y    = random_int(14, 22);
             // Use larger built-in font (5)
@@ -122,17 +173,18 @@ class CaptchaService
     /**
      * Ensure a captcha exists (regenerate if missing/expired). Returns plain code for image only.
      */
-    public function ensure(): string
+    public function ensure(?string $scope = null): string
     {
+        $scope   = self::normaliseScope($scope);
         $session = session();
-        $hash    = $session->get(self::SESSION_KEY);
-        $exp     = (int) $session->get(self::SESSION_EXP);
+        $hash    = $session->get($this->hashKey($scope));
+        $exp     = (int) $session->get($this->expKey($scope));
 
         if ($hash === null || $exp < time()) {
-            return $this->regenerate();
+            return $this->regenerate($scope);
         }
 
         // Cannot recover plain text from hash — always regenerate for display
-        return $this->regenerate();
+        return $this->regenerate($scope);
     }
 }

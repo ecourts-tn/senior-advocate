@@ -12,8 +12,8 @@ class FormatL4Model extends Model
     protected $returnType       = 'array';
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'application_id', 's_no', 'topic', 'teaching_assignment',
-        'guest_lectures', 'other_details',
+        'application_id', 's_no', 'topic', 'articles', 'books',
+        'teaching_assignment', 'guest_lectures', 'other_details',
     ];
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
@@ -24,7 +24,19 @@ class FormatL4Model extends Model
         $this->where('application_id', $applicationId)->delete();
         $s = 1;
         foreach ($rows as $row) {
-            if (empty(array_filter($row))) {
+            $articles = trim((string) ($row['articles'] ?? ''));
+            $books    = trim((string) ($row['books'] ?? ''));
+            // Legacy combined column kept for older exports / fallbacks.
+            if ($articles !== '' || $books !== '') {
+                $row['topic'] = trim($articles . ($articles !== '' && $books !== '' ? "\n" : '') . $books);
+            } elseif (! empty($row['topic'])) {
+                // Older posts that only sent topic → treat as articles.
+                $row['articles'] = (string) $row['topic'];
+            }
+
+            $check = $row;
+            unset($check['application_id'], $check['s_no']);
+            if (empty(array_filter($check, static fn ($v) => trim((string) $v) !== ''))) {
                 continue;
             }
             $row['application_id'] = $applicationId;

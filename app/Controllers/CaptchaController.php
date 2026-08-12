@@ -9,11 +9,15 @@ class CaptchaController extends BaseController
     /**
      * Serve a fresh captcha image (PNG).
      * Always regenerates so each request gets a new challenge.
+     *
+     * Optional query: ?scope=lookup|register|default
+     * Independent scopes allow multiple captchas on one page.
      */
     public function image()
     {
+        $scope   = CaptchaService::normaliseScope($this->request->getGet('scope'));
         $captcha = new CaptchaService();
-        $code    = $captcha->regenerate();
+        $code    = $captcha->regenerate($scope);
         $png     = $captcha->renderImage($code);
 
         return $this->response

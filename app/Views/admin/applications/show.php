@@ -49,7 +49,7 @@
                         <?php endif; ?>
                         <div class="mb-2">
                             <strong>2. Date of Birth</strong><br>
-                            <?= esc($app['date_of_birth'] ?? '—') ?>
+                            <?= esc(ssa_format_date($app['date_of_birth'] ?? null)) ?>
                         </div>
                         <div class="mb-2">
                             <strong>Age as on <?= esc($ageAsOnLabel) ?></strong><br>
@@ -77,7 +77,7 @@
                         </div>
                         <div class="mb-2">
                             <strong>Date, Month and Year of Enrolment as an Advocate</strong><br>
-                            <?= esc($app['enrolment_date'] ?? '—') ?>
+                            <?= esc(ssa_format_date($app['enrolment_date'] ?? null)) ?>
                         </div>
                         <div class="mb-2">
                             <strong>Enrolment Number</strong><br>
@@ -153,6 +153,60 @@
                         <strong>12. Whether the applicant is first-generation lawyer</strong><br>
                         <?= ssa_bool_label($app['is_first_generation'] ?? null) ?>
                     </div>
+                    <div class="col-12">
+                        <strong>13. Academic Articles/Books published, experience of Teaching Assignments in the field of law, Guest Lectures delivered in law schools or professional institutions connected with law: Format L-4</strong><br>
+                        No. of Academic Articles: <?= (int) ($app['academic_articles_count'] ?? 0) ?><br>
+                        No. of Academic Books: <?= (int) ($app['academic_books_count'] ?? 0) ?><br>
+                        No. of Teaching Assignments: <?= (int) ($app['teaching_assignments_count'] ?? 0) ?><br>
+                        No. of Guest Lectures: <?= (int) ($app['guest_lectures_count'] ?? 0) ?>
+                    </div>
+                    <div class="col-12">
+                        <strong>14. Courts where the applicant is practicing / has practiced</strong><br>
+                        <?php
+                        $courts = $app['courts_practiced'] ?? [];
+                        if (is_string($courts)) {
+                            $courts = json_decode($courts, true) ?: [];
+                        }
+                        if (empty($courts)):
+                        ?>
+                            <span class="text-muted">—</span>
+                        <?php else: ?>
+                            <ul class="mb-1 ps-3">
+                                <?php foreach ($courts as $c): ?>
+                                    <li>
+                                        <?= esc($c['court'] ?? '—') ?>
+                                        <span class="text-muted">(<?= esc(ssa_format_period(is_array($c) ? $c : [])) ?>)</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                        <div class="mt-1">
+                            <strong>Cumulative experience (from courts practiced):</strong>
+                            <?= (int) ($app['cumulative_exp_years'] ?? 0) ?> Years
+                            <?= (int) ($app['cumulative_exp_months'] ?? 0) ?> Months
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <strong>15. Tribunals, where the applicant has specialized practice</strong><br>
+                        <?php
+                        $tribunals = $app['tribunals_practiced'] ?? [];
+                        if (is_string($tribunals)) {
+                            $tribunals = json_decode($tribunals, true) ?: [];
+                        }
+                        if (empty($tribunals)):
+                        ?>
+                            <span class="text-muted">—</span>
+                        <?php else: ?>
+                            <ul class="mb-0 ps-3">
+                                <?php foreach ($tribunals as $t): ?>
+                                    <li>
+                                        <?= esc($t['tribunal'] ?? '—') ?>
+                                        <span class="text-muted">(<?= esc(ssa_format_period(is_array($t) ? $t : [])) ?>)</span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
                     <div class="col-md-6">
                         <strong>16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</strong><br>
                         <?= nl2br(esc($app['nature_of_practice'] ?? '—')) ?>
@@ -190,14 +244,14 @@
                         <strong>18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof</strong><br>
                         <?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
                         <?php if (! empty($app['applied_mhc_date']) || ! empty($app['applied_mhc_status'])): ?>
-                            <br><?= esc($app['applied_mhc_date'] ?? '') ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
+                            <br><?= esc(ssa_format_date($app['applied_mhc_date'] ?? null)) ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
                         <?php endif; ?>
                     </div>
                     <div class="col-md-6">
                         <strong>19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof</strong><br>
                         <?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
                         <?php if (! empty($app['applied_other_date']) || ! empty($app['applied_other_details'])): ?>
-                            <br><?= esc($app['applied_other_date'] ?? '') ?> <?= esc($app['applied_other_details'] ?? '') ?>
+                            <br><?= esc(ssa_format_date($app['applied_other_date'] ?? null)) ?> <?= esc($app['applied_other_details'] ?? '') ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -280,7 +334,7 @@
                             <td><?= esc($r['court_name'] ?: $r['court_level']) ?></td>
                             <td><?= esc($r['case_number']) ?><br><small><?= esc($r['citation']) ?></small></td>
                             <td><?= esc($r['cause_title']) ?></td>
-                            <td><?= esc($r['decided_on']) ?></td>
+                            <td><?= esc(ssa_format_date($r['decided_on'] ?? null)) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -302,7 +356,7 @@
                             <td><?= esc($r['court_name'] ?: $r['court_level']) ?></td>
                             <td><?= esc($r['case_number']) ?></td>
                             <td><?= esc($r['cause_title']) ?></td>
-                            <td><?= esc($r['decided_on']) ?></td>
+                            <td><?= esc(ssa_format_date($r['decided_on'] ?? null)) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -324,7 +378,7 @@
                             <td><?= esc($r['court_tribunal'] ?? '') ?></td>
                             <td><?= esc($r['case_number'] ?? '') ?></td>
                             <td><?= esc($r['cause_title'] ?? '') ?></td>
-                            <td><?= esc($r['decided_on'] ?? '') ?></td>
+                            <td><?= esc(ssa_format_date($r['decided_on'] ?? null)) ?></td>
                             <td><?= esc($r['society_benefit'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -347,7 +401,7 @@
                             <td><?= esc($r['court_tribunal'] ?? '') ?></td>
                             <td><?= esc($r['case_number'] ?? '') ?></td>
                             <td><?= esc($r['cause_title'] ?? '') ?></td>
-                            <td><?= esc($r['decided_on'] ?? '') ?></td>
+                            <td><?= esc(ssa_format_date($r['decided_on'] ?? null)) ?></td>
                             <td><?= esc($r['reportable'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -359,15 +413,35 @@
 
         <?php if (! empty($l4)): ?>
         <div class="card card-mhc mb-3">
-            <div class="card-header">Format L-4 entries (Academic / teaching)</div>
+            <div class="card-header">Format L-4 entries (Academic articles/books &amp; experience)</div>
             <div class="table-responsive">
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>#</th><th>Topic</th><th>Teaching assignment</th><th>Guest lectures</th><th>Other details</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="align-middle">#</th>
+                            <th colspan="2" class="text-center">Topic of published academic articles/books</th>
+                            <th colspan="2" class="text-center">Experience details in law schools or professional institutions (with names) connected with law</th>
+                            <th rowspan="2" class="align-middle">Any other relevant details</th>
+                        </tr>
+                        <tr>
+                            <th>Articles</th>
+                            <th>Books</th>
+                            <th>Teaching Assignment(s)</th>
+                            <th>Guest Lectures</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                    <?php foreach ($l4 as $r): ?>
+                    <?php foreach ($l4 as $r):
+                        $articles = trim((string) ($r['articles'] ?? ''));
+                        $books    = trim((string) ($r['books'] ?? ''));
+                        if ($articles === '' && $books === '' && ! empty($r['topic'])) {
+                            $articles = (string) $r['topic'];
+                        }
+                    ?>
                         <tr>
                             <td><?= (int) $r['s_no'] ?></td>
-                            <td><?= esc($r['topic'] ?? '') ?></td>
+                            <td><?= nl2br(esc($articles)) ?></td>
+                            <td><?= nl2br(esc($books)) ?></td>
                             <td><?= nl2br(esc($r['teaching_assignment'] ?? '')) ?></td>
                             <td><?= nl2br(esc($r['guest_lectures'] ?? '')) ?></td>
                             <td><?= nl2br(esc($r['other_details'] ?? '')) ?></td>
@@ -388,7 +462,7 @@
                     <span class="text-muted small d-block mb-1">Current status</span>
                     <?= ssa_status_badge($app['status']) ?>
                     <?php if (! empty($app['reviewed_at'])): ?>
-                        <div class="small text-muted mt-1">Last action: <?= esc($app['reviewed_at']) ?></div>
+                        <div class="small text-muted mt-1">Last action: <?= esc(ssa_format_datetime($app['reviewed_at'])) ?></div>
                     <?php endif; ?>
                 </div>
 
@@ -422,7 +496,7 @@
                     <li class="list-group-item text-muted">No history</li>
                 <?php else: foreach ($history as $h): ?>
                     <li class="list-group-item">
-                        <div class="small text-muted"><?= esc($h['created_at']) ?></div>
+                        <div class="small text-muted"><?= esc(ssa_format_datetime($h['created_at'] ?? null)) ?></div>
                         <div>
                             <strong><?= esc($statuses[$h['from_status']] ?? ($h['from_status'] ?? '—')) ?></strong>
                             →

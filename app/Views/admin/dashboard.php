@@ -76,7 +76,7 @@
                                 <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
                                 <td><?= esc(trim(($a['title'] ?? '') . ' ' . ($a['full_name'] ?? ''))) ?></td>
                                 <td><?= ssa_status_badge($a['status']) ?></td>
-                                <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
+                                <td class="small text-muted"><?= esc(ssa_format_datetime($a['submitted_at'] ?? null)) ?></td>
                                 <td class="text-end">
                                     <a href="<?= base_url('admin/applications/' . $a['id']) ?>" class="btn btn-sm btn-outline-primary">
                                         Open

@@ -15,7 +15,7 @@
             'class'                => 'application-step-form',
         ]) ?>
 
-        <div class="section-title">11. Pro Bono / Amicus Curiae work Format L-3(i), FonnatL-3(ii)</div>
+        <div class="section-title">11. Pro Bono / Amicus Curiae work <u>Format L-3(i) Format L-3(ii)</u></div>
         <div class="row g-3 mb-4">
             <div class="col-md-6">
                 <label class="form-label">Total Pro Bono cases</label>
@@ -29,8 +29,14 @@
 
         <!-- Format L-3(i) Pro Bono -->
         <div class="entry-block mb-4">
-            <div class="entry-block-head">
-                <strong>Format L-3(i) — Pro Bono</strong>
+            <div class="annexure-heading-right">
+                <p>Format L-3 (i)</p>
+                <p>(See Sl. No.11 of the application)</p>
+            </div>
+            <div class="annexure-heading-center">
+                <p>LIST OF MATTERS IN WHICH APPEARED AS PRO-BONO</p>
+            </div>
+            <div class="entry-block-head justify-content-end">
                 <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#pbRows">
                     <i class="bi bi-plus-lg"></i> Add
                 </button>
@@ -48,23 +54,23 @@
                         </button>
                     </div>
                     <div class="row g-2">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Court(s) / Tribunal(s)</label>
                             <input name="pb_court[]" class="form-control form-control-sm" disabled>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Citation / Case Number</label>
                             <input name="pb_case_number[]" class="form-control form-control-sm" disabled>
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label">Cause Title</label>
-                            <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="1" disabled></textarea>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Decided on</label>
                             <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" disabled>
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-6">
+                            <label class="form-label">Cause Title</label>
+                            <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="1" disabled></textarea>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Describe Manner in which society was sought to be benefited by the litigation</label>
                             <textarea name="pb_society_benefit[]" class="form-control form-control-sm" rows="2" disabled></textarea>
                         </div>
@@ -79,23 +85,23 @@
                             </button>
                         </div>
                         <div class="row g-2">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Court(s) / Tribunal(s)</label>
                                 <input name="pb_court[]" class="form-control form-control-sm" value="<?= esc($row['court_tribunal'] ?? '') ?>">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label">Citation / Case Number</label>
                                 <input name="pb_case_number[]" class="form-control form-control-sm" value="<?= esc($row['case_number'] ?? '') ?>">
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label">Cause Title</label>
-                                <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="1"><?= esc($row['cause_title'] ?? '') ?></textarea>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Decided on</label>
                                 <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>">
                             </div>
-                            <div class="col-12">
+                            <div class="col-md-6">
+                                <label class="form-label">Cause Title</label>
+                                <textarea name="pb_cause_title[]" class="form-control form-control-sm" rows="2"><?= esc($row['cause_title'] ?? '') ?></textarea>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Describe Manner in which society was sought to be benefited by the litigation</label>
                                 <textarea name="pb_society_benefit[]" class="form-control form-control-sm" rows="2"><?= esc($row['society_benefit'] ?? '') ?></textarea>
                             </div>
@@ -107,8 +113,14 @@
 
         <!-- Format L-3(ii) Amicus Curiae -->
         <div class="entry-block mb-4">
-            <div class="entry-block-head">
-                <strong>Format L-3(ii) — Amicus Curiae</strong>
+            <div class="annexure-heading-right">
+                <p>Format L-3 (ii)</p>
+                <p>(See Sl. No.11 of the application)</p>
+            </div>
+            <div class="annexure-heading-center">
+                <p>LIST OF MATTERS IN WHICH APPEARED AS AMICUS CURIAE</p>
+            </div>
+            <div class="entry-block-head justify-content-end">
                 <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#amRows">
                     <i class="bi bi-plus-lg"></i> Add
                 </button>
@@ -219,67 +231,98 @@
         </div>
 
         <div class="entry-block">
-            <div class="entry-block-head">
-                <strong>Format L-4 details</strong>
+            <div class="annexure-heading-right">
+                <p>Format L-4</p>
+                <p>(See Sl. No.13 of the application)</p>
+            </div>
+            <div class="annexure-heading-center">
+                <p>Details of academic articles/books published, experience of teaching assignments in the field of law,<br>guest lectures delivered in law schools or professional institutions connected with law</p>
+            </div>
+            <div class="entry-block-head justify-content-end">
                 <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#l4Rows">
                     <i class="bi bi-plus-lg"></i> Add
                 </button>
             </div>
             <div id="l4Rows" class="entry-list" data-rows>
-                <div class="entry-card dynamic-row d-none" data-row-template>
-                    <div class="entry-card-top">
-                        <span class="entry-card-label">Academic entry</span>
-                        <button type="button" class="btn btn-sm btn-outline-danger entry-remove" data-remove-row aria-label="Remove">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="form-label">Topic of published academic articles</label>
-                            <textarea name="l4_topic[]" class="form-control form-control-sm" rows="2" disabled></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Teaching Assignment(s)</label>
-                            <textarea name="l4_teaching[]" class="form-control form-control-sm" rows="2" disabled></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Guest Lectures</label>
-                            <textarea name="l4_guest[]" class="form-control form-control-sm" rows="2" disabled></textarea>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Other relevant details</label>
-                            <textarea name="l4_other[]" class="form-control form-control-sm" rows="2" disabled></textarea>
-                        </div>
-                    </div>
-                </div>
-                <?php $l4 = $l4 ?: [[]]; foreach ($l4 as $row): ?>
-                    <div class="entry-card dynamic-row">
+                <?php
+                /**
+                 * Render one Format L-4 entry card matching prescribed columns:
+                 * Topic of published academic Articles | Books |
+                 * Experience details (Teaching Assignment(s) | Guest Lectures) |
+                 * Any other relevant details
+                 */
+                $renderL4Card = static function (array $row, bool $isTemplate): void {
+                    $disabled = $isTemplate ? ' disabled' : '';
+                    $classes  = 'entry-card dynamic-row' . ($isTemplate ? ' d-none' : '');
+                    $attrs    = $isTemplate ? ' data-row-template hidden aria-hidden="true"' : '';
+                    // Fallback: older rows stored only the combined "topic" column.
+                    $articles = (string) ($row['articles'] ?? '');
+                    $books    = (string) ($row['books'] ?? '');
+                    if ($articles === '' && $books === '' && ! empty($row['topic'])) {
+                        $articles = (string) $row['topic'];
+                    }
+                    ?>
+                    <div class="<?= esc($classes, 'attr') ?>"<?= $attrs ?>>
                         <div class="entry-card-top">
-                            <span class="entry-card-label">Academic entry</span>
+                            <span class="entry-card-label">Format L-4 entry</span>
                             <button type="button" class="btn btn-sm btn-outline-danger entry-remove" data-remove-row aria-label="Remove">
                                 <i class="bi bi-x-lg"></i>
                             </button>
                         </div>
                         <div class="row g-2">
-                            <div class="col-md-6">
-                                <label class="form-label">Topic of published academic articles</label>
-                                <textarea name="l4_topic[]" class="form-control form-control-sm" rows="2"><?= esc($row['topic'] ?? '') ?></textarea>
+                            <div class="col-12">
+                                <div class="border rounded p-2 bg-light-subtle">
+                                    <div class="small fw-semibold text-muted mb-2">
+                                        Topic of published academic Articles / Books
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Articles</label>
+                                            <textarea name="l4_articles[]" class="form-control form-control-sm" rows="2"
+                                                      placeholder="Title / topic of published academic article(s)"<?= $disabled ?>><?= esc($articles) ?></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Books</label>
+                                            <textarea name="l4_books[]" class="form-control form-control-sm" rows="2"
+                                                      placeholder="Title / topic of published academic book(s)"<?= $disabled ?>><?= esc($books) ?></textarea>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Teaching Assignment(s)</label>
-                                <textarea name="l4_teaching[]" class="form-control form-control-sm" rows="2"><?= esc($row['teaching_assignment'] ?? '') ?></textarea>
+                            <div class="col-12">
+                                <div class="border rounded p-2 bg-light-subtle">
+                                    <div class="small fw-semibold text-muted mb-2">
+                                        Experience details in law schools or professional institutions (with names) connected with law
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Teaching Assignment(s)</label>
+                                            <textarea name="l4_teaching[]" class="form-control form-control-sm" rows="2"
+                                                      placeholder="Institution name, subject, period, etc."<?= $disabled ?>><?= esc($row['teaching_assignment'] ?? '') ?></textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Guest Lectures</label>
+                                            <textarea name="l4_guest[]" class="form-control form-control-sm" rows="2"
+                                                      placeholder="Institution name, topic, date, etc."<?= $disabled ?>><?= esc($row['guest_lectures'] ?? '') ?></textarea>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Guest Lectures</label>
-                                <textarea name="l4_guest[]" class="form-control form-control-sm" rows="2"><?= esc($row['guest_lectures'] ?? '') ?></textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Other relevant details</label>
-                                <textarea name="l4_other[]" class="form-control form-control-sm" rows="2"><?= esc($row['other_details'] ?? '') ?></textarea>
+                            <div class="col-12">
+                                <label class="form-label">Any other relevant details</label>
+                                <textarea name="l4_other[]" class="form-control form-control-sm" rows="2"<?= $disabled ?>><?= esc($row['other_details'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
-                <?php endforeach; ?>
+                    <?php
+                };
+
+                $renderL4Card([], true);
+                $l4 = $l4 ?: [[]];
+                foreach ($l4 as $row) {
+                    $renderL4Card($row, false);
+                }
+                ?>
             </div>
         </div>
 

@@ -33,14 +33,14 @@ $lookupMsg = $lookupMsg ?? null;
 
             <?= form_open('register', ['id' => 'registerForm']) ?>
 
-            <!-- Step 1: Enrolment lookup (CAPTCHA + rate-limited POST) -->
+            <!-- Step 1: Enrolment lookup (own CAPTCHA + rate-limited POST) -->
             <div class="border rounded p-3 mb-4 bg-light">
                 <h3 class="h6 mb-2">
                     <i class="bi bi-search me-1"></i>
                     Search advocate details by enrolment number
                 </h3>
                 <p class="small text-muted mb-3">
-                    Enter your Bar Council enrolment number and complete the security check, then search.
+                    Enter your Bar Council enrolment number and complete the <strong>search</strong> security check, then search.
                     If a match is found, your name and mobile (when available) will be filled automatically.
                     Otherwise you may enter details manually. Lookups are rate-limited to protect advocate data.
                 </p>
@@ -57,6 +57,16 @@ $lookupMsg = $lookupMsg ?? null;
                             <i class="bi bi-search me-1"></i> Search Database
                         </button>
                     </div>
+                </div>
+                <div class="mt-3">
+                    <?= view('partials/captcha_field', [
+                        'fieldId'   => 'lookupCaptcha',
+                        'inputName' => 'lookup_captcha',
+                        'scope'     => \App\Libraries\CaptchaService::SCOPE_LOOKUP,
+                        'label'     => 'Search security check (CAPTCHA)',
+                        'help'      => 'Required only for searching the advocate database. Independent of the registration CAPTCHA below.',
+                        'required'  => false, // validated on Search click; not needed for Create Account
+                    ]) ?>
                 </div>
                 <div id="lookupStatus" class="mt-2 small" role="status" aria-live="polite"
                      <?php if ($lookupMsg): ?>
@@ -97,11 +107,21 @@ $lookupMsg = $lookupMsg ?? null;
                            required autocomplete="new-password" placeholder="Re-enter password">
                 </div>
             </div>
-            <p class="small text-muted mb-2">
-                CAPTCHA is required to search the advocate database and again to create your account
-                (each code can be used only once).
-            </p>
-            <?= view('partials/captcha_field', ['fieldId' => 'registerCaptcha', 'inputName' => 'captcha']) ?>
+
+            <div class="border rounded p-3 mb-3">
+                <p class="small text-muted mb-2 mb-md-3">
+                    Complete this <strong>registration</strong> CAPTCHA to create your account.
+                    It is separate from the search CAPTCHA above — searching does not invalidate it.
+                </p>
+                <?= view('partials/captcha_field', [
+                    'fieldId'   => 'registerCaptcha',
+                    'inputName' => 'captcha',
+                    'scope'     => \App\Libraries\CaptchaService::SCOPE_REGISTER,
+                    'label'     => 'Registration security check (CAPTCHA)',
+                    'help'      => 'Required to create your account. Case-insensitive. Click Refresh if the image is hard to read.',
+                ]) ?>
+            </div>
+
             <button type="submit" class="btn btn-mhc w-100 py-2">
                 <i class="bi bi-check2-circle me-1"></i> Create Account
             </button>
@@ -125,7 +145,8 @@ $lookupMsg = $lookupMsg ?? null;
   var statusEl = document.getElementById('lookupStatus');
   var nameEl = document.getElementById('name');
   var mobileEl = document.getElementById('mobile');
-  var captchaInput = document.getElementById('registerCaptcha') || document.querySelector('input[name="captcha"]');
+  var lookupCaptchaInput = document.getElementById('lookupCaptcha');
+  var lookupCaptchaImg = document.getElementById('lookupCaptchaImg');
   var lookupUrl = <?= json_encode(base_url('register/lookup')) ?>;
   var captchaImageBase = <?= json_encode(base_url('captcha/image')) ?>;
   var csrfName = <?= json_encode(csrf_token()) ?>;
@@ -137,15 +158,15 @@ $lookupMsg = $lookupMsg ?? null;
     statusEl.className = 'mt-2 small ' + (ok === true ? 'text-success' : (ok === false ? 'text-danger' : 'text-muted'));
   }
 
-  function refreshCaptchaImages() {
-    // Captcha is one-time; refresh image after lookup so user can submit registration.
-    var bust = captchaImageBase + '?t=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
-    document.querySelectorAll('.captcha-image').forEach(function (img) {
-      img.src = bust;
-    });
-    document.querySelectorAll('input[name="captcha"]').forEach(function (inp) {
-      inp.value = '';
-    });
+  /** Refresh only the search CAPTCHA (does not touch registration CAPTCHA). */
+  function refreshLookupCaptcha() {
+    if (lookupCaptchaImg) {
+      var bust = captchaImageBase + '?scope=lookup&t=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
+      lookupCaptchaImg.src = bust;
+    }
+    if (lookupCaptchaInput) {
+      lookupCaptchaInput.value = '';
+    }
   }
 
   function currentCsrf() {
@@ -169,10 +190,10 @@ $lookupMsg = $lookupMsg ?? null;
       enrolInput.focus();
       return;
     }
-    var captchaVal = captchaInput ? (captchaInput.value || '').trim() : '';
+    var captchaVal = lookupCaptchaInput ? (lookupCaptchaInput.value || '').trim() : '';
     if (!captchaVal || captchaVal.length < 4) {
-      setStatus('Please complete the CAPTCHA security check before searching.', false);
-      if (captchaInput) captchaInput.focus();
+      setStatus('Please complete the search CAPTCHA before searching.', false);
+      if (lookupCaptchaInput) lookupCaptchaInput.focus();
       return;
     }
 
@@ -181,7 +202,7 @@ $lookupMsg = $lookupMsg ?? null;
 
     var body = new FormData();
     body.append('enrolment_number', en);
-    body.append('captcha', captchaVal);
+    body.append('lookup_captcha', captchaVal);
     body.append('format', 'json');
     body.append(csrfName, currentCsrf());
 
@@ -204,15 +225,15 @@ $lookupMsg = $lookupMsg ?? null;
       })
       .then(function (res) {
         var d = res.data || {};
-        // Captcha is always one-time — refresh after every attempt.
-        refreshCaptchaImages();
+        // Search captcha is one-time — refresh only the lookup challenge.
+        refreshLookupCaptcha();
 
         if (res.status === 429) {
           setStatus(d.message || 'Too many lookups. Please wait and try again.', false);
           return;
         }
         if (d.captcha_required || res.status === 422 && (d.message || '').toLowerCase().indexOf('captcha') !== -1) {
-          setStatus(d.message || 'Invalid CAPTCHA. Please try again.', false);
+          setStatus(d.message || 'Invalid search CAPTCHA. Please try again.', false);
           return;
         }
         if (d.already_registered) {
@@ -231,7 +252,7 @@ $lookupMsg = $lookupMsg ?? null;
         }
       })
       .catch(function () {
-        refreshCaptchaImages();
+        refreshLookupCaptcha();
         setStatus('Lookup failed. You may still register by entering details manually.', false);
       })
       .finally(function () {

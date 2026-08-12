@@ -2094,3 +2094,19 @@ a.util-rules:focus {
   color:#9F0712;
   font-weight:600;
 }
+.annexure-heading-right{
+  text-align:right;
+}
+.annexure-heading-right p{
+  color:#484747;
+  font-weight:600;
+  margin-bottom:0;
+}
+.annexure-heading-center{
+  text-align:center;
+}
+.annexure-heading-center p{
+  font-weight:600;
+  margin-bottom:0;
+  text-decoration:underline;
+}

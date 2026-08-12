@@ -41,17 +41,29 @@ ob_start();
         <?php endforeach; ?>
     </select>
 </div>
-<div class="col-6 col-md-2 col-lg-2">
+<div class="col-6 col-md-2 col-lg-1">
     <label class="form-label" for="practiceYearsMin">Practice min</label>
     <input type="number" name="practice_years_min" id="practiceYearsMin" class="form-control" min="0" max="70"
            value="<?= esc(isset($practiceYearsMin) && $practiceYearsMin !== null ? (string) $practiceYearsMin : '') ?>"
            placeholder="Yrs">
 </div>
-<div class="col-6 col-md-2 col-lg-2">
+<div class="col-6 col-md-2 col-lg-1">
     <label class="form-label" for="practiceYearsMax">Practice max</label>
     <input type="number" name="practice_years_max" id="practiceYearsMax" class="form-control" min="0" max="70"
            value="<?= esc(isset($practiceYearsMax) && $practiceYearsMax !== null ? (string) $practiceYearsMax : '') ?>"
            placeholder="Yrs">
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="cumulativeExpMin">Cum. exp min</label>
+    <input type="number" name="cumulative_exp_min" id="cumulativeExpMin" class="form-control" min="0" max="70"
+           value="<?= esc(isset($cumulativeExpMin) && $cumulativeExpMin !== null ? (string) $cumulativeExpMin : '') ?>"
+           placeholder="Yrs" title="Minimum cumulative experience from courts practiced">
+</div>
+<div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label" for="cumulativeExpMax">Cum. exp max</label>
+    <input type="number" name="cumulative_exp_max" id="cumulativeExpMax" class="form-control" min="0" max="70"
+           value="<?= esc(isset($cumulativeExpMax) && $cumulativeExpMax !== null ? (string) $cumulativeExpMax : '') ?>"
+           placeholder="Yrs" title="Maximum cumulative experience from courts practiced">
 </div>
 <div class="col-6 col-md-2 col-lg-1">
     <label class="form-label" for="ageMin">Age min</label>
@@ -123,6 +135,7 @@ echo view('partials/table_toolbar', [
                     <th>Enrolment</th>
                     <th>Age</th>
                     <th>Practice</th>
+                    <th>Cum. exp</th>
                     <th>Status</th>
                     <th>Submitted</th>
                     <th></th>
@@ -130,7 +143,7 @@ echo view('partials/table_toolbar', [
                 </thead>
                 <tbody>
                 <?php if (empty($applications)): ?>
-                    <tr><td colspan="9" class="p-3 text-muted">No records found. Adjust filters or search.</td></tr>
+                    <tr><td colspan="10" class="p-3 text-muted">No records found. Adjust filters or search.</td></tr>
                 <?php else: foreach ($applications as $a): ?>
                     <tr>
                         <td class="text-center">
@@ -155,8 +168,16 @@ echo view('partials/table_toolbar', [
                             <?= (int) ($a['practice_years'] ?? 0) ?>y
                             <?= (int) ($a['practice_months'] ?? 0) ?>m
                         </td>
+                        <td class="small" title="Cumulative experience from courts practiced">
+                            <?php if (isset($a['cumulative_exp_years']) && $a['cumulative_exp_years'] !== null && $a['cumulative_exp_years'] !== ''): ?>
+                                <?= (int) $a['cumulative_exp_years'] ?>y
+                                <?= (int) ($a['cumulative_exp_months'] ?? 0) ?>m
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
+                        </td>
                         <td><?= ssa_status_badge($a['status']) ?></td>
-                        <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
+                        <td class="small text-muted"><?= esc(ssa_format_datetime($a['submitted_at'] ?? null)) ?></td>
                         <td class="text-end">
                             <a href="<?= base_url('admin/applications/' . $a['id']) ?>"
                                class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">

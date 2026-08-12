@@ -612,15 +612,28 @@ document.addEventListener('DOMContentLoaded', function () {
   // Expose for dynamic row clones
   window.ssaInitFlatpickr = initFlatpickrIn;
 
-  // CAPTCHA refresh
+  // CAPTCHA refresh (scope-aware: only refreshes the paired image/input)
   document.querySelectorAll('.captcha-refresh').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var sel = btn.getAttribute('data-captcha-img');
       var img = sel ? document.querySelector(sel) : null;
       if (!img) return;
-      var base = img.getAttribute('src').split('?')[0];
-      img.setAttribute('src', base + '?t=' + Date.now());
-      var input = document.querySelector('input[name="captcha"]');
+      var base = (img.getAttribute('src') || '').split('?')[0];
+      var scope = btn.getAttribute('data-captcha-scope')
+        || img.getAttribute('data-captcha-scope')
+        || 'default';
+      var qs = 't=' + Date.now() + '&r=' + Math.random().toString(36).slice(2);
+      if (scope && scope !== 'default') {
+        qs += '&scope=' + encodeURIComponent(scope);
+      }
+      img.setAttribute('src', base + '?' + qs);
+
+      var inputSel = btn.getAttribute('data-captcha-input');
+      var input = inputSel
+        ? document.querySelector(inputSel)
+        : (img.closest('.captcha-field')
+            ? img.closest('.captcha-field').querySelector('input.captcha-input, input[name="captcha"], input[name="lookup_captcha"]')
+            : document.querySelector('input[name="captcha"]'));
       if (input) {
         input.value = '';
         input.focus();

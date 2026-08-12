@@ -372,6 +372,10 @@ class ApplicationController extends BaseController
             $data['enrolment_date'] = substr((string) $data['enrolment_date'], 0, 10);
         }
 
+        // Pass notification context so cumulative court experience uses the correct "as on" date
+        if ($step === 5) {
+            $data['notification_id'] = $app['notification_id'] ?? null;
+        }
         $data = $this->apps->encodeListFields($data);
         $data['current_step'] = max((int) $app['current_step'], $step);
 
@@ -979,16 +983,38 @@ class ApplicationController extends BaseController
         }
         model(FormatL3AmicusModel::class)->replaceForApplication($appId, $am);
 
+        // Format L-4: Topic (Articles | Books) |
+        // Experience (Teaching Assignment(s) | Guest Lectures) | Any other relevant details
         $l4 = [];
-        if (! empty($post['l4_topic']) && is_array($post['l4_topic'])) {
-            foreach ($post['l4_topic'] as $i => $topic) {
-                $l4[] = [
-                    'topic'               => $topic,
-                    'teaching_assignment' => $post['l4_teaching'][$i] ?? '',
-                    'guest_lectures'      => $post['l4_guest'][$i] ?? '',
-                    'other_details'       => $post['l4_other'][$i] ?? '',
-                ];
+        $l4Articles  = is_array($post['l4_articles'] ?? null) ? $post['l4_articles'] : [];
+        $l4Books     = is_array($post['l4_books'] ?? null) ? $post['l4_books'] : [];
+        // Legacy combined field (older drafts / cached forms)
+        $l4Topics    = is_array($post['l4_topic'] ?? null) ? $post['l4_topic'] : [];
+        $l4Teaching  = is_array($post['l4_teaching'] ?? null) ? $post['l4_teaching'] : [];
+        $l4Guest     = is_array($post['l4_guest'] ?? null) ? $post['l4_guest'] : [];
+        $l4Other     = is_array($post['l4_other'] ?? null) ? $post['l4_other'] : [];
+        $l4Count     = max(
+            count($l4Articles),
+            count($l4Books),
+            count($l4Topics),
+            count($l4Teaching),
+            count($l4Guest),
+            count($l4Other)
+        );
+        for ($i = 0; $i < $l4Count; $i++) {
+            $articles = trim((string) ($l4Articles[$i] ?? ''));
+            $books    = trim((string) ($l4Books[$i] ?? ''));
+            $legacy   = trim((string) ($l4Topics[$i] ?? ''));
+            if ($articles === '' && $books === '' && $legacy !== '') {
+                $articles = $legacy;
             }
+            $l4[] = [
+                'articles'            => $articles,
+                'books'               => $books,
+                'teaching_assignment' => $l4Teaching[$i] ?? '',
+                'guest_lectures'      => $l4Guest[$i] ?? '',
+                'other_details'       => $l4Other[$i] ?? '',
+            ];
         }
         model(FormatL4Model::class)->replaceForApplication($appId, $l4);
     }

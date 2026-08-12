@@ -40,6 +40,7 @@ class ApplicationController extends BaseController
             'q', 'per_page', 'status', 'notification_id',
             'age_min', 'age_max',
             'practice_years_min', 'practice_years_max', 'experience_min',
+            'cumulative_exp_min', 'cumulative_exp_max',
             'nature_of_practice', 'field_of_law', 'first_generation',
         ]);
 
@@ -63,6 +64,8 @@ class ApplicationController extends BaseController
             'ageMax'              => $list['ageMax'],
             'practiceYearsMin'    => $list['practiceYearsMin'],
             'practiceYearsMax'    => $list['practiceYearsMax'],
+            'cumulativeExpMin'    => $list['cumulativeExpMin'],
+            'cumulativeExpMax'    => $list['cumulativeExpMax'],
             'natureOfPractice'    => $list['natureOfPractice'],
             'fieldOfLaw'          => $list['fieldOfLaw'],
             'firstGeneration'     => $list['firstGeneration'],
@@ -105,6 +108,7 @@ class ApplicationController extends BaseController
             'q', 'per_page', 'status', 'notification_id',
             'age_min', 'age_max',
             'practice_years_min', 'practice_years_max', 'experience_min',
+            'cumulative_exp_min', 'cumulative_exp_max',
             'nature_of_practice', 'field_of_law', 'first_generation',
         ]);
 
@@ -125,6 +129,8 @@ class ApplicationController extends BaseController
             'ageMax'              => $list['ageMax'],
             'practiceYearsMin'    => $list['practiceYearsMin'],
             'practiceYearsMax'    => $list['practiceYearsMax'],
+            'cumulativeExpMin'    => $list['cumulativeExpMin'],
+            'cumulativeExpMax'    => $list['cumulativeExpMax'],
             'notificationId'      => $list['notificationId'],
             'notificationOptions' => $this->notificationFilterOptions(),
         ]);
@@ -219,6 +225,8 @@ class ApplicationController extends BaseController
             'Bar Council',
             'Practice years',
             'Practice months',
+            'Cumulative exp years (courts)',
+            'Cumulative exp months (courts)',
             'Net income (₹ lakhs)',
             'Bar association member',
             'Bar association name',
@@ -297,6 +305,8 @@ class ApplicationController extends BaseController
                 $a['bar_council'] ?? '',
                 $a['practice_years'] ?? '',
                 $a['practice_months'] ?? '',
+                $a['cumulative_exp_years'] ?? '',
+                $a['cumulative_exp_months'] ?? '',
                 $a['net_income_lakhs'] ?? '',
                 $this->exportBool($a['is_bar_association_member'] ?? null),
                 $a['bar_association_name'] ?? '',
@@ -329,8 +339,8 @@ class ApplicationController extends BaseController
                 $a['bar_council_details'] ?? '',
                 $a['general_health'] ?? '',
                 $a['other_information'] ?? '',
-                $a['submitted_at'] ?? '',
-                $a['reviewed_at'] ?? '',
+                ssa_format_datetime($a['submitted_at'] ?? null) === '—' ? '' : ssa_format_datetime($a['submitted_at'] ?? null),
+                ssa_format_datetime($a['reviewed_at'] ?? null) === '—' ? '' : ssa_format_datetime($a['reviewed_at'] ?? null),
                 $a['review_remarks'] ?? '',
                 $a['current_step'] ?? '',
             ];
@@ -367,6 +377,8 @@ class ApplicationController extends BaseController
      *   ageMax: ?int,
      *   practiceYearsMin: ?int,
      *   practiceYearsMax: ?int,
+     *   cumulativeExpMin: ?int,
+     *   cumulativeExpMax: ?int,
      *   natureOfPractice: string,
      *   fieldOfLaw: string,
      *   firstGeneration: string,
@@ -385,6 +397,8 @@ class ApplicationController extends BaseController
             $practiceYearsMin = $this->nullableIntGet('experience_min');
         }
         $practiceYearsMax = $this->nullableIntGet('practice_years_max');
+        $cumulativeExpMin = $this->nullableIntGet('cumulative_exp_min');
+        $cumulativeExpMax = $this->nullableIntGet('cumulative_exp_max');
         $natureOfPractice = trim((string) ($this->request->getGet('nature_of_practice') ?? ''));
         $fieldOfLaw       = trim((string) ($this->request->getGet('field_of_law') ?? ''));
         $firstGeneration  = trim((string) ($this->request->getGet('first_generation') ?? ''));
@@ -422,6 +436,8 @@ class ApplicationController extends BaseController
             || $ageMax !== null
             || $practiceYearsMin !== null
             || $practiceYearsMax !== null
+            || $cumulativeExpMin !== null
+            || $cumulativeExpMax !== null
             || $natureOfPractice !== ''
             || $fieldOfLaw !== ''
             || $firstGeneration !== ''
@@ -433,6 +449,8 @@ class ApplicationController extends BaseController
             'ageMax'           => $ageMax,
             'practiceYearsMin' => $practiceYearsMin,
             'practiceYearsMax' => $practiceYearsMax,
+            'cumulativeExpMin' => $cumulativeExpMin,
+            'cumulativeExpMax' => $cumulativeExpMax,
             'natureOfPractice' => $natureOfPractice,
             'fieldOfLaw'       => $fieldOfLaw,
             'firstGeneration'  => $firstGeneration,
@@ -448,6 +466,8 @@ class ApplicationController extends BaseController
      *   ageMax: ?int,
      *   practiceYearsMin: ?int,
      *   practiceYearsMax: ?int,
+     *   cumulativeExpMin: ?int,
+     *   cumulativeExpMax: ?int,
      *   natureOfPractice: string,
      *   fieldOfLaw: string,
      *   firstGeneration: string,
@@ -506,6 +526,12 @@ class ApplicationController extends BaseController
         if ($list['practiceYearsMax'] !== null) {
             $model->where('applications.practice_years <=', $list['practiceYearsMax']);
         }
+        if ($list['cumulativeExpMin'] !== null) {
+            $model->where('applications.cumulative_exp_years >=', $list['cumulativeExpMin']);
+        }
+        if ($list['cumulativeExpMax'] !== null) {
+            $model->where('applications.cumulative_exp_years <=', $list['cumulativeExpMax']);
+        }
         if ($list['natureOfPractice'] !== '') {
             $model->like('applications.nature_of_practice', $list['natureOfPractice'], 'both', null, true);
         }
@@ -544,6 +570,8 @@ class ApplicationController extends BaseController
             'age_max'            => $list['ageMax'],
             'practice_years_min' => $list['practiceYearsMin'],
             'practice_years_max' => $list['practiceYearsMax'],
+            'cumulative_exp_min' => $list['cumulativeExpMin'],
+            'cumulative_exp_max' => $list['cumulativeExpMax'],
             'nature_of_practice' => $list['natureOfPractice'] !== '' ? $list['natureOfPractice'] : null,
             'field_of_law'       => $list['fieldOfLaw'] !== '' ? $list['fieldOfLaw'] : null,
             'first_generation'   => $list['firstGeneration'] !== '' ? $list['firstGeneration'] : null,
@@ -577,9 +605,12 @@ class ApplicationController extends BaseController
         if ($value === null || $value === '') {
             return '';
         }
-        $s = (string) $value;
+        $formatted = ssa_format_date($value);
+        if ($formatted === '—') {
+            return '';
+        }
 
-        return substr($s, 0, 10);
+        return $formatted;
     }
 
     /**

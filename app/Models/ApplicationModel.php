@@ -27,6 +27,7 @@ class ApplicationModel extends Model
         'academic_articles_count', 'academic_books_count',
         'teaching_assignments_count', 'guest_lectures_count',
         'courts_practiced', 'tribunals_practiced',
+        'cumulative_exp_years', 'cumulative_exp_months',
         'nature_of_practice', 'field_of_law',
         'applied_mhc_earlier', 'applied_mhc_date', 'applied_mhc_status',
         'applied_other_court', 'applied_other_date', 'applied_other_details',
@@ -194,14 +195,14 @@ class ApplicationModel extends Model
     }
 
     /**
-     * Display label for the reference date, e.g. "15.08.2026" (from notification date).
+     * Display label for the reference date, e.g. "15-08-2026" (from notification date).
      */
     public static function ageAsOnLabel(?array $app = null): string
     {
         $asOn = self::ageAsOnDate($app);
         $ts   = strtotime($asOn);
 
-        return $ts !== false ? date('d.m.Y', $ts) : $asOn;
+        return $ts !== false ? date('d-m-Y', $ts) : $asOn;
     }
 
     /**
@@ -520,14 +521,19 @@ class ApplicationModel extends Model
             log_message('debug', 'Master link hydrate skipped: ' . $e->getMessage());
         }
 
-        return $app;
+        return $this->withCumulativeExperience($app);
     }
 
     public function encodeListFields(array $data): array
     {
+        $courtsForCalc = null;
+
         foreach (['courts_practiced', 'tribunals_practiced'] as $field) {
             if (isset($data[$field]) && is_array($data[$field])) {
                 $rows = array_map([$this, 'normalizePracticePeriodRow'], $data[$field]);
+                if ($field === 'courts_practiced') {
+                    $courtsForCalc = $rows;
+                }
                 $data[$field] = json_encode(array_values(array_filter($rows, static function ($row) {
                     if (! is_array($row)) {
                         return false;
@@ -538,7 +544,159 @@ class ApplicationModel extends Model
             }
         }
 
+        // Cumulative court practice experience (Sl. No. 14) from period ranges
+        if ($courtsForCalc !== null) {
+            $asOn = self::ageAsOnDate(is_array($data) ? $data : null);
+            $parts = $this->calculateCumulativeCourtExperience($courtsForCalc, $asOn);
+            $data['cumulative_exp_years']  = $parts['years'];
+            $data['cumulative_exp_months'] = $parts['months'];
+        }
+
         return $data;
+    }
+
+    /**
+     * Cumulative experience from courts practiced (Sl. No. 14).
+     * Overlapping periods are merged so concurrent courts are not double-counted.
+     * Open-ended (blank to_date) periods run through the reference "as on" date.
+     *
+     * @param list<array<string, mixed>>|string|null $courts
+     *
+     * @return array{years: int, months: int}
+     */
+    public function calculateCumulativeCourtExperience($courts, ?string $asOn = null): array
+    {
+        if (is_string($courts)) {
+            $decoded = json_decode($courts, true);
+            $courts  = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($courts) || $courts === []) {
+            return ['years' => 0, 'months' => 0];
+        }
+
+        $asOn = $asOn ?: self::ageAsOnDate();
+
+        try {
+            $ref = new \DateTimeImmutable($asOn);
+        } catch (\Exception $e) {
+            $ref = new \DateTimeImmutable('today');
+        }
+
+        $intervals = [];
+        foreach ($courts as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $fromRaw = trim((string) ($row['from_date'] ?? $row['from'] ?? ''));
+            $toRaw   = trim((string) ($row['to_date'] ?? $row['to'] ?? ''));
+            if ($fromRaw === '' || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromRaw)) {
+                continue;
+            }
+            try {
+                $start = new \DateTimeImmutable($fromRaw);
+            } catch (\Exception $e) {
+                continue;
+            }
+
+            if ($toRaw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $toRaw)) {
+                try {
+                    $end = new \DateTimeImmutable($toRaw);
+                } catch (\Exception $e) {
+                    $end = $ref;
+                }
+            } else {
+                $end = $ref;
+            }
+
+            if ($end < $start) {
+                continue;
+            }
+            // Inclusive end day for practice periods
+            $end = $end->modify('+1 day');
+            $intervals[] = [$start, $end];
+        }
+
+        if ($intervals === []) {
+            return ['years' => 0, 'months' => 0];
+        }
+
+        usort($intervals, static function ($a, $b) {
+            return $a[0] <=> $b[0];
+        });
+
+        // Merge overlapping / adjacent intervals
+        $merged = [];
+        foreach ($intervals as [$start, $end]) {
+            if ($merged === []) {
+                $merged[] = [$start, $end];
+                continue;
+            }
+            $lastIdx = count($merged) - 1;
+            [$mStart, $mEnd] = $merged[$lastIdx];
+            if ($start <= $mEnd) {
+                if ($end > $mEnd) {
+                    $merged[$lastIdx] = [$mStart, $end];
+                }
+            } else {
+                $merged[] = [$start, $end];
+            }
+        }
+
+        $totalMonths = 0;
+        foreach ($merged as [$start, $end]) {
+            // end is exclusive (+1 day already applied)
+            $diff = $start->diff($end);
+            $totalMonths += ((int) $diff->y * 12) + (int) $diff->m;
+            // Count a partial month if 15+ residual days
+            if ((int) $diff->d >= 15) {
+                $totalMonths++;
+            }
+        }
+
+        $totalMonths = max(0, $totalMonths);
+
+        return [
+            'years'  => intdiv($totalMonths, 12),
+            'months' => $totalMonths % 12,
+        ];
+    }
+
+    /**
+     * Ensure cumulative court experience fields are populated (compute if missing).
+     *
+     * @param array<string, mixed> $app
+     *
+     * @return array<string, mixed>
+     */
+    public function withCumulativeExperience(array $app): array
+    {
+        $hasYears  = array_key_exists('cumulative_exp_years', $app)
+            && $app['cumulative_exp_years'] !== null
+            && $app['cumulative_exp_years'] !== '';
+        $hasMonths = array_key_exists('cumulative_exp_months', $app)
+            && $app['cumulative_exp_months'] !== null
+            && $app['cumulative_exp_months'] !== '';
+
+        if ($hasYears && $hasMonths) {
+            $app['cumulative_exp_years']  = (int) $app['cumulative_exp_years'];
+            $app['cumulative_exp_months'] = (int) $app['cumulative_exp_months'];
+
+            return $app;
+        }
+
+        $courts = $app['courts_practiced'] ?? [];
+        if (is_string($courts)) {
+            $decoded = json_decode($courts, true);
+            $courts  = is_array($decoded) ? $decoded : [];
+        }
+        $parts = $this->calculateCumulativeCourtExperience(
+            is_array($courts) ? $courts : [],
+            self::ageAsOnDate($app)
+        );
+        $app['cumulative_exp_years']  = $parts['years'];
+        $app['cumulative_exp_months'] = $parts['months'];
+
+        return $app;
     }
 
     /**

@@ -3,7 +3,7 @@
 
 <div class="page-header">
     <h1 class="page-title">Application-cum-Consent Letter</h1>
-    <p class="page-subtitle">Step 1 of 7 — Personal Details (Sl. No. 1–5)</p>
+    <p class="page-subtitle">Step 1 of 7 — Personal Details (Sl. No. 1–6)</p>
 </div>
 <?= $this->include('applicant/application/_stepper') ?>
 
@@ -15,23 +15,24 @@
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
         ]) ?>
-        <div class="section-title">1–6. Personal Particulars</div>
-        <div class="row g-3">
-            <div class="col-md-2">
-                <label class="form-label required">Title</label>
-                <select name="title" class="form-select" required>
-                    <?php foreach (['Dr.', 'Mr.', 'Ms.', 'Mrs.'] as $t): ?>
-                        <option value="<?= $t ?>" <?= old('title', $app['title'] ?? '') === $t ? 'selected' : '' ?>><?= $t ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="col-md-10">
-                <label class="form-label required">Name of the Applicant-Advocate</label>
-                <input type="text" name="full_name" class="form-control" required
-                       value="<?= esc(old('full_name', $app['full_name'] ?? '')) ?>">
-                <div class="form-text form-help-text">Name of the applicant should tally with his/her name as mentioned in
-his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
-            </div>
+        <div class="section-title">Personal Particulars</div>
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label required">1. Name of the Applicant-Advocate: (Dr./Mr./Ms./Mrs.)</label>      
+                </div>
+                <div class="col-md-2">
+                    <select name="title" class="form-select" required>
+                        <?php foreach (['Dr.', 'Mr.', 'Ms.', 'Mrs.'] as $t): ?>
+                            <option value="<?= $t ?>" <?= old('title', $app['title'] ?? '') === $t ? 'selected' : '' ?>><?= $t ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-10">
+                    <input type="text" name="full_name" class="form-control" required
+                        value="<?= esc(old('full_name', $app['full_name'] ?? '')) ?>">
+                    <div class="form-text form-help-text">Name of the applicant should tally with his/her name as mentioned in
+                    his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
+                </div>
             <?php
             $ageAsOnDate  = $ageAsOnDate ?? ssa_age_as_on_date($app ?? null);
             $ageAsOnLabel = $ageAsOnLabel ?? ssa_age_as_on_label($app ?? null);
@@ -59,7 +60,7 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
             }
             ?>
             <div class="col-md-3">
-                <label class="form-label required" for="date_of_birth">Date of Birth</label>
+                <label class="form-label required" for="date_of_birth">2. Date of Birth</label>
                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required
                        value="<?= esc($dobValue) ?>"
                        max="<?= esc($ageAsOnDate) ?>"
@@ -70,7 +71,7 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
             </div>
             <div class="col-md-9">
                 <label class="form-label" id="ageAsOnLabel">
-                    Age as on <?= esc($ageAsOnLabel) ?>
+                    3. Age (as on <?= esc($ageAsOnLabel) ?>)
                 </label>
                 <div class="row g-2" role="group" aria-labelledby="ageAsOnLabel">
                     <div class="col-4">
@@ -106,7 +107,7 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
                 </div>
             </div>
             <div class="col-md-12">
-                <p class="border-bottom pb-0 mb-0 form-label">Address in Full:</p>
+                <p class="border-bottom pb-0 mb-0 form-label">4. Address in Full:</p>
             </div>
             <div class="col-md-6">
                 <label class="form-label required">Office</label>
@@ -117,7 +118,7 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
                 <textarea name="address_residence" class="form-control" rows="3" required><?= esc(old('address_residence', $app['address_residence'] ?? '')) ?></textarea>
             </div>
             <div class="col-md-12">
-                <p class="border-bottom pb-0 mb-0 form-label">Contact Details</p>
+                <p class="border-bottom pb-0 mb-0 form-label">5. Contact Details</p>
             </div>
             <div class="col-md-4">
                 <label class="form-label">Landline</label>
@@ -137,7 +138,7 @@ his/her enrolment certificate. Abbreviated name shall not be accepted.</div>
                 <div class="form-text">From registration (not editable).</div>
             </div>
             <div class="col-12">
-                <label class="form-label required">Educational / Professional Qualifications</label>
+                <label class="form-label required">6. Educational / Professional Qualifications</label>
                 <?php
                 $qualLabels = $lookupOptions['qualification'] ?? [];
                 $qualMulti  = $app['_multi']['qualification'] ?? null;

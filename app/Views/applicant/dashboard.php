@@ -163,7 +163,7 @@ echo view('partials/table_toolbar', [
                             <td>
                                 <span class="text-muted small"><?= (int) $a['current_step'] ?> / 7</span>
                             </td>
-                            <td class="small text-muted"><?= esc($a['submitted_at'] ?? '—') ?></td>
+                            <td class="small text-muted"><?= esc(ssa_format_datetime($a['submitted_at'] ?? null)) ?></td>
                             <td class="text-md-end">
                                 <div class="d-flex flex-wrap gap-1 justify-content-md-end">
                                     <?php if ($rowEditable): ?>

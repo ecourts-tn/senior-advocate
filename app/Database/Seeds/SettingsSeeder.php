@@ -20,8 +20,8 @@ class SettingsSeeder extends Seeder
             'email' => [
                 'enabled'     => '1',
                 'from_email'  => 'ibms.mhc@gmail.com',
-                'from_name'   => 'Madras High Court — DSA Portal',
-                'protocol'    => 'file', // writes under writable/mail/
+                'from_name'   => 'Madras High Court — SSA Portal',
+                'protocol'    => 'smtp', 
                 'smtp_host'   => 'smtp.gmail.com',
                 'smtp_user'   => 'ibms.mhc@gmail.com',
                 'smtp_pass'   => 'bpzcrxxhrzbtktdd',
@@ -29,10 +29,10 @@ class SettingsSeeder extends Seeder
                 'smtp_crypto' => 'tls',
             ],
             'sms' => [
-                'enabled'   => '1',
+                'enabled'   => '0',
                 'provider'  => 'log', // writes under writable/sms/
-                'api_url'   => 'https://api.textlocal.in/send/',
-                'api_key'   => 'your-textlocal-api-key',
+                'api_url'   => '',
+                'api_key'   => 'your-api-key',
                 'sender_id' => 'MHCSSA',
             ],
         ];

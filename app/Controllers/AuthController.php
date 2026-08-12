@@ -162,7 +162,11 @@ class AuthController extends BaseController
             return redirect()->to('/register')->with('error', $gate['message']);
         }
 
-        $captchaOk = (new CaptchaService())->verify($this->request->getPost('captcha'));
+        // Search uses its own captcha scope (independent of registration submit captcha).
+        $lookupCaptcha = (string) ($this->request->getPost('lookup_captcha')
+            ?? $this->request->getPost('captcha')
+            ?? '');
+        $captchaOk = (new CaptchaService())->verify($lookupCaptcha, CaptchaService::SCOPE_LOOKUP);
         if (! $captchaOk) {
             $limiter->record('captcha_failed');
 
@@ -170,13 +174,13 @@ class AuthController extends BaseController
                 return $this->response->setJSON([
                     'found'            => false,
                     'captcha_required' => true,
-                    'message'          => 'Invalid or expired CAPTCHA. Please complete the security check and try again.',
+                    'message'          => 'Invalid or expired search CAPTCHA. Please complete the search security check and try again.',
                 ])->setStatusCode(422);
             }
 
             return redirect()->to('/register')
                 ->withInput()
-                ->with('error', 'Invalid or expired CAPTCHA. Please complete the security check and try again.');
+                ->with('error', 'Invalid or expired search CAPTCHA. Please complete the search security check and try again.');
         }
 
         $enrolment = AdvocateDbModel::normaliseEnrolment(
@@ -274,8 +278,9 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        if (! $this->verifyCaptcha()) {
-            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
+        // Registration submit uses a separate captcha from enrolment search.
+        if (! $this->verifyCaptcha(CaptchaService::SCOPE_REGISTER)) {
+            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please complete the registration security check and try again.');
         }
 
         $enrolment = AdvocateDbModel::normaliseEnrolment((string) $this->request->getPost('enrolment_number'));
@@ -419,10 +424,13 @@ class AuthController extends BaseController
         return redirect()->to('/login')->with('success', 'You have been logged out.');
     }
 
-    private function verifyCaptcha(): bool
+    /**
+     * Verify the posted captcha for a given scope (default for login / other forms).
+     */
+    private function verifyCaptcha(?string $scope = null): bool
     {
         $captcha = new CaptchaService();
 
-        return $captcha->verify($this->request->getPost('captcha'));
+        return $captcha->verify($this->request->getPost('captcha'), $scope);
     }
 }

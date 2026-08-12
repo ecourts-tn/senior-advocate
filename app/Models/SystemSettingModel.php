@@ -35,31 +35,22 @@ class SystemSettingModel extends Model
         return [
             'email' => [
                 'enabled'     => ['value' => '1'],
-                'from_email'  => ['value' => (string) env('email.fromEmail', 'noreply@hcmadras.tn.gov.in')],
+                'from_email'  => ['value' => (string) env('email.fromEmail', 'ibms.mhc@gmail.com')],
                 'from_name'   => ['value' => (string) env('email.fromName', 'High Court of Madras — SSA Portal')],
                 // Prefer file delivery until real SMTP is configured in admin
                 'protocol'    => ['value' => (string) env('email.protocol', 'file')], // smtp|file
                 'smtp_host'   => ['value' => (string) env('email.SMTPHost', 'smtp.gmail.com')],
-                'smtp_user'   => ['value' => (string) env('email.SMTPUser', 'ssa.portal@example.com')],
-                'smtp_pass'   => ['value' => (string) env('email.SMTPPass', ''), 'secret' => true],
+                'smtp_user'   => ['value' => (string) env('email.SMTPUser', 'ibms.mhc@gmail.com')],
+                'smtp_pass'   => ['value' => (string) env('email.SMTPPass', 'bpzcrxxhrzbtktdd'), 'secret' => true],
                 'smtp_port'   => ['value' => (string) env('email.SMTPPort', '587')],
                 'smtp_crypto' => ['value' => (string) env('email.SMTPCrypto', 'tls')], // tls|ssl|
             ],
             'sms' => [
                 'enabled'   => ['value' => filter_var(env('sms.enabled', true), FILTER_VALIDATE_BOOLEAN) ? '1' : '0'],
                 'provider'  => ['value' => (string) env('sms.provider', 'log')], // log|http
-                'api_url'   => ['value' => (string) env('sms.apiUrl', 'https://api.textlocal.in/send/')],
+                'api_url'   => ['value' => (string) env('sms.apiUrl', '')],
                 'api_key'   => ['value' => (string) env('sms.apiKey', ''), 'secret' => true],
                 'sender_id' => ['value' => (string) env('sms.senderId', 'MHCSSA')],
-            ],
-            // Application cycle + post-submission edit window (admin-controlled)
-            'application' => [
-                'cycle_year'           => ['value' => (string) env('application.cycleYear', (string) date('Y'))],
-                'one_per_year'         => ['value' => '1'],
-                'edit_window_enabled'  => ['value' => '0'],
-                'edit_window_from'     => ['value' => ''],
-                'edit_window_to'       => ['value' => ''],
-                'edit_window_message'  => ['value' => 'The Permanent Secretariat has opened a limited window to correct and resubmit your application.'],
             ],
         ];
     }

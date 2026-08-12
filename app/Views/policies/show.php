@@ -4,7 +4,7 @@
 <div class="page-header">
     <h1 class="page-title"><?= esc($policy['title']) ?></h1>
     <p class="page-subtitle">
-        GIGW 3.0 compliance document · Last updated: <?= esc($lastUpdated) ?>
+        Last updated: <?= esc($lastUpdated) ?>
     </p>
 </div>
 

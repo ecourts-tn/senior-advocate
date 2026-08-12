@@ -247,19 +247,19 @@ $site = $site ?? config(\Config\Site::class);
                     <li><a href="<?= base_url('policy/terms') ?>">Terms &amp; Conditions</a></li>
                     <li><a href="<?= base_url('policy/copyright') ?>">Copyright Policy</a></li>
                     <li><a href="<?= base_url('policy/hyperlinking') ?>">Hyperlinking Policy</a></li>
-                    <li><a href="<?= base_url('policy/security') ?>">Security Policy</a></li>
+                    <!-- <li><a href="<?= base_url('policy/security') ?>">Security Policy</a></li> -->
                     <li><a href="<?= base_url('policy/disclaimer') ?>">Disclaimer</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
-                <div class="footer-heading">GIGW &amp; more</div>
+                <!-- <div class="footer-heading">GIGW &amp; more</div>
                 <ul class="footer-links">
                     <li><a href="<?= base_url('policy/accessibility') ?>">Accessibility Statement</a></li>
                     <li><a href="<?= base_url('policy/content-archival') ?>">Content Archival Policy</a></li>
                     <li><a href="<?= base_url('policy/content-review') ?>">Content Review Policy</a></li>
                     <li><a href="<?= base_url('policy/contingency') ?>">Contingency Management Plan</a></li>
                     <li><a href="<?= base_url('policy/website-monitoring') ?>">Website Monitoring Plan</a></li>
-                </ul>
+                </ul> -->
                 <div class="footer-contact mt-3">
                     <div class="footer-heading">Contact</div>
                     <p class="footer-meta mb-1">
@@ -280,11 +280,17 @@ $site = $site ?? config(\Config\Site::class);
                 <p class="footer-meta mb-1">
                     <strong>Maintained by:</strong> <?= esc($site->maintainedBy) ?>
                 </p>
-                <p class="footer-meta mb-0">
+                <p class="footer-meta mb-1">
+                    Email : cpc-tn(at)indianjudiciary(dot)gov(dot)in
+                </p>
+                <p class="footer-meta mb-1">
+                    Designed & Developed by Madras High Court.
+                </p>
+                <!-- <p class="footer-meta mb-0">
                     Designed for compliance with
                     <abbr title="Guidelines for Indian Government Websites">GIGW</abbr> 3.0
                     and WCAG 2.1 Level AA (target).
-                </p>
+                </p> -->
             </div>
             <div class="col-md-5 text-md-end">
                 <p class="footer-meta mb-1">

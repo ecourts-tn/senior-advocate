@@ -106,9 +106,9 @@ $periodDate = static function (array $row, string $key): string {
                 </div>
             </div>
         </div>
-        <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
+        <p class="form-text form-help-text">Leave "<em>To (date)</em>" blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
 
-        <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those before practising Tribunals)</span></div>
+        <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those practising before Tribunals)</span></div>
         <div class="d-flex justify-content-end mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#tribRows">+ Add tribunal</button>
         </div>
@@ -205,7 +205,7 @@ $periodDate = static function (array $row, string $key): string {
         ]);
         ?>
 
-        <div class="section-title mt-4">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise</div>
+        <div class="section-title mt-4">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Arbitration Law, Corporate Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise</div>
         <?php
         $fieldMulti = $app['_multi']['field_of_law'] ?? null;
         if ($fieldMulti === null) {
