@@ -56,7 +56,7 @@ class ApplicationModel extends Model
     public const STATUS_APPROVED         = 'approved'; // legacy; prefer STATUS_LISTED
     public const STATUS_LISTED           = 'listed';
     public const STATUS_WAITLISTED       = 'waitlisted';
-    public const STATUS_REJECTED         = 'rejected';
+    public const STATUS_DEFFERED         = 'deferred';
     public const STATUS_RETURNED         = 'returned';
 
     public const STATUSES = [
@@ -67,22 +67,23 @@ class ApplicationModel extends Model
         self::STATUS_APPROVED         => 'Accepted (legacy)',
         self::STATUS_LISTED           => 'Select Listed',
         self::STATUS_WAITLISTED       => 'Wait Listed',
-        self::STATUS_REJECTED         => 'Rejected',
+        self::STATUS_DEFFERED         => 'Deferred List',
         self::STATUS_RETURNED         => 'Returned for Correction',
     ];
 
     /**
      * Operational statuses used in admin filters and status updates:
-     * Submitted, Select Listed, Wait Listed, Rejected.
+     * Submitted, Select Listed, Wait Listed, Deferred List, Returned for Correction.
      * (Draft and other legacy values remain in STATUSES for display only.)
      *
      * @var array<string, string>
      */
     public const ADMIN_PIPELINE_STATUSES = [
-        self::STATUS_SUBMITTED  => 'Submitted',
+        // self::STATUS_SUBMITTED  => 'Submitted',
         self::STATUS_LISTED     => 'Select Listed',
         self::STATUS_WAITLISTED => 'Wait Listed',
-        self::STATUS_REJECTED   => 'Rejected',
+        self::STATUS_DEFFERED   => 'Deferred List',
+        // self::STATUS_RETURNED   => 'Returned for Correction',
     ];
 
     /**

@@ -11,7 +11,7 @@ if (! function_exists('ssa_status_badge')) {
             'approved'         => 'success',
             'listed'           => 'success',
             'waitlisted'       => 'warning',
-            'rejected'         => 'danger',
+            'deferred'         => 'danger',
             'returned'         => 'warning',
         ];
         $label = \App\Models\ApplicationModel::STATUSES[$status] ?? ucfirst((string) $status);
