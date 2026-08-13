@@ -3,6 +3,7 @@
 namespace App\Libraries;
 
 use App\Models\AuditLogModel;
+use App\Models\UserModel;
 
 /**
  * Monitor and throttle authentication attempts.
@@ -21,6 +22,8 @@ class LoginSecurityService
     /** Max failed attempts per IP within the window before temporary lockout. */
     public const MAX_PER_IP = 20;
 
+    public const ACCOUNT_LOCKED_MESSAGE = 'Your account is locked after several unsuccessful sign-in attempts.';
+
     private AuditLogModel $audit;
 
     public function __construct(?AuditLogModel $audit = null)
@@ -37,7 +40,16 @@ class LoginSecurityService
         $email = strtolower(trim($email));
         $ip    = $ip ?? $this->clientIp();
 
+        if ($email !== '' && $this->isAccountLocked($email)) {
+            return self::ACCOUNT_LOCKED_MESSAGE;
+        }
+
         if ($email !== '' && $this->countRecentFailuresByEmail($email) >= self::MAX_PER_EMAIL) {
+            $user = $this->findUser($email);
+            if ($user) {
+                return self::ACCOUNT_LOCKED_MESSAGE;
+            }
+
             return 'Too many failed sign-in attempts for this account. Please try again after 15 minutes, or use Forgot password / Resend verification.';
         }
 
@@ -49,9 +61,65 @@ class LoginSecurityService
     }
 
     /**
+     * Whether this registered email is currently locked (persisted until unlock email).
+     */
+    public function isAccountLocked(string $email): bool
+    {
+        $user = $this->findUser($email);
+
+        return $user !== null && model(UserModel::class)->isAccountLocked($user);
+    }
+
+    /**
+     * Persist a lock after too many failed sign-ins. Does not send email —
+     * the user must click Unlock account to request the link.
+     */
+    public function persistLock(?array $user, string $email): void
+    {
+        $user ??= $this->findUser($email);
+        if (! $user) {
+            return;
+        }
+
+        model(UserModel::class)->lockAccount((int) $user['id']);
+    }
+
+    /**
+     * Send (or resend) the unlock email if the cooldown has passed.
+     */
+    public function sendUnlockEmailIfAllowed(int $userId): bool
+    {
+        $users = model(UserModel::class);
+        $user  = $users->find($userId);
+        if (! $user) {
+            return false;
+        }
+
+        if (! $users->canSendUnlockEmail($user)) {
+            return false;
+        }
+
+        $plain     = $users->issueUnlockToken($userId);
+        $unlockUrl = base_url('unlock-account/' . $plain);
+
+        (new PasswordMailer())->sendAccountUnlock(
+            (string) $user['email'],
+            (string) ($user['name'] ?? ''),
+            $unlockUrl,
+            $userId
+        );
+
+        $this->audit->log('account_unlock_email_sent', $userId, null, [
+            'email' => strtolower((string) $user['email']),
+        ], 'auth', $userId);
+
+        return true;
+    }
+
+    /**
      * Record a failed authentication attempt (never stores the password).
      *
-     * @param string $reason invalid_credentials|inactive|unverified|rate_limited|captcha
+     * @param string $reason invalid_credentials|inactive|unverified|rate_limited|account_locked|captcha
      */
     public function recordFailure(
         string $email,
@@ -62,7 +130,7 @@ class LoginSecurityService
         $email = strtolower(trim($email));
 
         $this->audit->log(
-            $reason === 'rate_limited' ? 'login_blocked' : 'login_failed',
+            in_array($reason, ['rate_limited', 'account_locked'], true) ? 'login_blocked' : 'login_failed',
             $userId,
             null,
             array_merge([
@@ -103,14 +171,37 @@ class LoginSecurityService
             return 0;
         }
 
+        $since = $this->windowStart();
+        $user  = $this->findUser($email);
+        if ($user && ! empty($user['unlocked_at'])) {
+            $unlocked = (string) $user['unlocked_at'];
+            if ($unlocked > $since) {
+                $since = $unlocked;
+            }
+        }
+
         // details JSON includes "email":"<address>"
         $needle = '"email":"' . $email . '"';
 
         return (int) $this->audit->builder()
             ->whereIn('action', ['login_failed', 'login_blocked'])
-            ->where('created_at >=', $this->windowStart())
+            ->where('created_at >=', $since)
             ->like('details', $needle)
             ->countAllResults();
+    }
+
+    private function findUser(string $email): ?array
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            return null;
+        }
+
+        try {
+            return model(UserModel::class)->findByEmail($email);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function countRecentFailuresByIp(string $ip): int

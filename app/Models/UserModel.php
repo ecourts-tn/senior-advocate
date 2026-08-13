@@ -24,6 +24,10 @@ class UserModel extends Model
         'email_verification_token',
         'email_verification_sent_at',
         'last_login_at',
+        'locked_at',
+        'unlock_token',
+        'unlock_token_sent_at',
+        'unlocked_at',
     ];
 
     protected $useTimestamps = true;
@@ -41,6 +45,12 @@ class UserModel extends Model
 
     /** Minimum seconds between verification email resends. */
     public const EMAIL_VERIFY_RESEND_COOLDOWN = 60;
+
+    /** Account-unlock link validity (1 hour). */
+    public const UNLOCK_TTL = 3600;
+
+    /** Minimum seconds between unlock email resends. */
+    public const UNLOCK_RESEND_COOLDOWN = 60;
 
     public function findByEmail(string $email): ?array
     {
@@ -140,6 +150,133 @@ class UserModel extends Model
         $user['email_verified_at']          = date('Y-m-d H:i:s');
         $user['email_verification_token']   = null;
         $user['email_verification_sent_at'] = null;
+
+        return ['ok' => true, 'user' => $user];
+    }
+
+    /**
+     * Whether this account is currently locked after failed sign-in attempts.
+     */
+    public function isAccountLocked(array $user): bool
+    {
+        $lockedAt = $user['locked_at'] ?? null;
+
+        return $lockedAt !== null && $lockedAt !== '' && $lockedAt !== '0000-00-00 00:00:00';
+    }
+
+    /**
+     * Mark the account locked (keeps the original lock time if already locked).
+     */
+    public function lockAccount(int $userId): void
+    {
+        $user = $this->find($userId);
+        if (! $user) {
+            return;
+        }
+        if ($this->isAccountLocked($user)) {
+            return;
+        }
+
+        $this->update($userId, [
+            'locked_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Clear lock state so the user may sign in again.
+     */
+    public function unlockAccount(int $userId): void
+    {
+        $this->update($userId, [
+            'locked_at'            => null,
+            'unlock_token'         => null,
+            'unlock_token_sent_at' => null,
+            'unlocked_at'          => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Issue a new unlock token and ensure the account is locked.
+     * Returns the plain token for the email URL.
+     */
+    public function issueUnlockToken(int $userId): string
+    {
+        $plain = bin2hex(random_bytes(32));
+        $user  = $this->find($userId);
+        $now   = date('Y-m-d H:i:s');
+
+        $this->update($userId, [
+            'locked_at'            => ($user && $this->isAccountLocked($user))
+                ? $user['locked_at']
+                : $now,
+            'unlock_token'         => hash('sha256', $plain),
+            'unlock_token_sent_at' => $now,
+        ]);
+
+        return $plain;
+    }
+
+    /**
+     * Whether another unlock email may be sent (cooldown, or previous token expired).
+     */
+    public function canSendUnlockEmail(array $user): bool
+    {
+        $sentAt = $user['unlock_token_sent_at'] ?? null;
+        if ($sentAt === null || $sentAt === '') {
+            return true;
+        }
+
+        $sentTs = strtotime((string) $sentAt);
+        if ($sentTs === false) {
+            return true;
+        }
+
+        if ($sentTs < (time() - self::UNLOCK_TTL)) {
+            return true;
+        }
+
+        return $sentTs <= (time() - self::UNLOCK_RESEND_COOLDOWN);
+    }
+
+    /**
+     * Consume an unlock-email token.
+     *
+     * @return array{ok:bool,user?:array,reason?:string}
+     */
+    public function consumeUnlockToken(string $plainToken): array
+    {
+        $plainToken = trim($plainToken);
+        if ($plainToken === '') {
+            return ['ok' => false, 'reason' => 'invalid'];
+        }
+
+        $hash = hash('sha256', $plainToken);
+        $user = $this->where('unlock_token', $hash)->first();
+
+        if (! $user) {
+            return ['ok' => false, 'reason' => 'invalid'];
+        }
+
+        if (! $this->isAccountLocked($user)) {
+            $this->update((int) $user['id'], [
+                'unlock_token'         => null,
+                'unlock_token_sent_at' => null,
+            ]);
+
+            return ['ok' => true, 'user' => $user, 'reason' => 'already'];
+        }
+
+        $sentAt = $user['unlock_token_sent_at'] ?? null;
+        if ($sentAt && strtotime((string) $sentAt) < (time() - self::UNLOCK_TTL)) {
+            return ['ok' => false, 'reason' => 'expired', 'user' => $user];
+        }
+
+        $this->unlockAccount((int) $user['id']);
+
+        $user['locked_at']            = null;
+        $user['unlock_token']         = null;
+        $user['unlock_token_sent_at'] = null;
+        $user['unlocked_at']          = date('Y-m-d H:i:s');
 
         return ['ok' => true, 'user' => $user];
     }

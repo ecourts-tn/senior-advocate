@@ -22,7 +22,7 @@ class DashboardController extends BaseController
             'submitted'   => (int) $apps->where('status', ApplicationModel::STATUS_SUBMITTED)->countAllResults(),
             'listed'      => (int) $apps->where('status', ApplicationModel::STATUS_LISTED)->countAllResults(),
             'waitlisted'  => (int) $apps->where('status', ApplicationModel::STATUS_WAITLISTED)->countAllResults(),
-            'rejected'    => (int) $apps->where('status', ApplicationModel::STATUS_REJECTED)->countAllResults(),
+            'deferred'    => (int) $apps->where('status', ApplicationModel::STATUS_DEFERRED)->countAllResults(),
             'applicants'  => (int) model(UserModel::class)->where('role', 'applicant')->countAllResults(),
         ];
 

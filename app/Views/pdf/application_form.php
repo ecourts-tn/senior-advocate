@@ -12,7 +12,7 @@
         table.form td { border: 1px solid #333; padding: 5px 6px; vertical-align: top; }
         table.form td.label { width: 38%; background: #f3f0ea; font-weight: bold; }
         .section { margin-top: 12px; font-weight: bold; font-size: 12px; color: #0b1f3a; }
-        .decl { margin-top: 14px; border: 1px solid #333; padding: 8px; }
+        .decl { margin-top: 0; border: 1px solid #333; padding: 8px; page-break-inside: avoid; }
         .small { font-size: 9px; color: #444; }
         .photo { width: 90px; height: 110px; border: 1px solid #333; }
         .sig { max-height: 50px; max-width: 160px; }
@@ -40,9 +40,9 @@ $l3am = $l3am ?? [];
 $l4   = $l4 ?? [];
 
 $courtLevelLabels = [
-    'madras_hc'         => 'In matters before Madras High Court',
-    'supreme_other_hc'  => 'In matters before Supreme Court and Other High Courts',
-    'district_tribunal' => 'In matters before District Courts / Labour Courts or Tribunals',
+    'madras_hc'         => 'Madras High Court',
+    'supreme_other_hc'  => 'Supreme Court / Other High Courts',
+    'district_tribunal' => 'District Courts / Labour Courts / Tribunals',
 ];
 
 /**
@@ -81,7 +81,7 @@ $l2Grouped = $groupByCourtLevel($l2);
 
 <table class="form">
     <tr>
-        <td class="label">1. Name of the Applicant-Advocate</td>
+        <td class="label">1. Name of the Applicant-Advocate: (Dr./Mr./Ms./Mrs.)</td>
         <td><?= esc(trim(($app['title'] ?? '') . ' ' . ($app['full_name'] ?? ''))) ?></td>
         <td rowspan="5" style="width:100px;text-align:center;">
             <?php
@@ -112,11 +112,11 @@ $l2Grouped = $groupByCourtLevel($l2);
         </td>
     </tr>
     <tr>
-        <td class="label">4. Address in Full — (i) Office</td>
+        <td class="label">4. Address in Full: Office</td>
         <td><?= nl2br(esc($app['address_office'] ?? '')) ?></td>
     </tr>
     <tr>
-        <td class="label">4. Address in Full — (ii) Residence</td>
+        <td class="label">4. Address in Full: Residence</td>
         <td><?= nl2br(esc($app['address_residence'] ?? '')) ?></td>
     </tr>
     <tr>
@@ -155,7 +155,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         <td colspan="2"><?= esc($app['net_income_lakhs'] ?? '—') ?></td>
     </tr>
     <tr>
-        <td class="label">8. Whether the applicant is a member of any bar association attached to a specific court</td>
+        <td class="label">8. Whether the applicant is a member of any bar association attached to a specific court (eg. Madras High Court Advocates Association, Madurai High Court Advocates Association, or any district bar association)</td>
         <td colspan="2">
             <?= ssa_bool_label($app['is_bar_association_member'] ?? null) ?>
             <?php if (! empty($app['bar_association_name'])): ?>
@@ -180,7 +180,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         </td>
     </tr>
     <tr>
-        <td class="label">11. Pro Bono / Amicus Curiae work Format L-3(i), Format L-3(ii)</td>
+        <td class="label">11. Pro Bono / Amicus Curiae work Format L-3(i) Format L-3(ii)</td>
         <td colspan="2">
             Total Pro Bono cases: <?= (int) ($app['pro_bono_total'] ?? 0) ?><br>
             Total Amicus Curiae cases: <?= (int) ($app['amicus_total'] ?? 0) ?>
@@ -200,7 +200,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         </td>
     </tr>
     <tr>
-        <td class="label">14. Courts where the applicant is practicing / has practiced</td>
+        <td class="label">14. Courts where the applicant is practicing / has practiced (Court-wise period may be indicated)</td>
         <td colspan="2">
             <?php
             $courts = $app['courts_practiced'] ?? [];
@@ -221,7 +221,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         </td>
     </tr>
     <tr>
-        <td class="label">15. Tribunals, where the applicant has specialized practice</td>
+        <td class="label">15. Tribunals, where the applicant has specialized practice: (Applicable to those practising before Tribunals)</td>
         <td colspan="2">
             <?php
             $tribunals = $app['tribunals_practiced'] ?? [];
@@ -243,27 +243,39 @@ $l2Grouped = $groupByCourtLevel($l2);
         <td colspan="2"><?= nl2br(esc($app['nature_of_practice'] ?? '')) ?></td>
     </tr>
     <tr>
-        <td class="label">17. Field of Law — domain expertise … in which the applicant has specialization/expertise</td>
+        <td class="label">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Arbitration Law, Corporate Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise</td>
         <td colspan="2"><?= nl2br(esc($app['field_of_law'] ?? '')) ?></td>
     </tr>
     <tr>
-        <td class="label">18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof</td>
-        <td colspan="2"><?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
-            <?php if (! empty($app['applied_mhc_date'])): ?> <?= esc(ssa_format_date($app['applied_mhc_date'])) ?><?php endif; ?>
-            <?php if (! empty($app['applied_mhc_status'])): ?> <?= esc($app['applied_mhc_status']) ?><?php endif; ?></td>
+        <td class="label">18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof:</td>
+        <td colspan="2">
+            <?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
+            <?php if (! empty($app['applied_mhc_date'])): ?>
+                <br>Date: <?= esc(ssa_format_date($app['applied_mhc_date'])) ?>
+            <?php endif; ?>
+            <?php if (! empty($app['applied_mhc_status'])): ?>
+                <br>Details: <?= esc($app['applied_mhc_status']) ?>
+            <?php endif; ?>
+        </td>
     </tr>
     <tr>
-        <td class="label">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof</td>
-        <td colspan="2"><?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
-            <?php if (! empty($app['applied_other_date'])): ?> <?= esc(ssa_format_date($app['applied_other_date'])) ?><?php endif; ?>
-            <?php if (! empty($app['applied_other_details'])): ?> <?= esc($app['applied_other_details']) ?><?php endif; ?></td>
+        <td class="label">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof:</td>
+        <td colspan="2">
+            <?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
+            <?php if (! empty($app['applied_other_date'])): ?>
+                <br>Date: <?= esc(ssa_format_date($app['applied_other_date'])) ?>
+            <?php endif; ?>
+            <?php if (! empty($app['applied_other_details'])): ?>
+                <br>Details: <?= esc($app['applied_other_details']) ?>
+            <?php endif; ?>
+        </td>
     </tr>
     <tr>
-        <td class="label">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof</td>
+        <td class="label">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof:</td>
         <td colspan="2"><?= ssa_bool_label($app['fir_lodged'] ?? null) ?> <?= esc($app['fir_details'] ?? '') ?></td>
     </tr>
     <tr>
-        <td class="label">21. Whether the applicant is a party to any criminal case; if so, details thereof</td>
+        <td class="label">21. Whether the applicant is a party to any criminal case; if so, details thereof:</td>
         <td colspan="2"><?= ssa_bool_label($app['criminal_case_party'] ?? null) ?> <?= esc($app['criminal_case_details'] ?? '') ?></td>
     </tr>
     <tr>
@@ -280,6 +292,7 @@ $l2Grouped = $groupByCourtLevel($l2);
     </tr>
 </table>
 
+<div class="page-break"></div>
 <div class="decl">
     <strong>DECLARATION</strong>
     <p>I <strong><?= esc($app['declaration_name'] ?? $app['full_name'] ?? '') ?></strong> hereby give consent for being designated as Senior Advocate.</p>
@@ -317,8 +330,8 @@ $l2Grouped = $groupByCourtLevel($l2);
         <strong>Format L-1</strong><br>
         (See Sl. No.9 of the application)
     </div>
-    <div class="annexure-title">As Arguing Counsel</div>
-    <div class="annexure-sub">List of Reported Judgments (excluding orders not laying down any principle of law)</div>
+    <div class="annexure-title">AS ARGUING COUNSEL</div>
+    <div class="annexure-sub">LIST OF REPORTED JUDGMENTS (EXCLUDING ORDERS NOT LAYING DOWN ANY PRINCIPLE OF LAW)</div>
 </div>
 
 <?php if (empty($l1)): ?>
@@ -334,10 +347,9 @@ $l2Grouped = $groupByCourtLevel($l2);
                 <thead>
                 <tr>
                     <th class="c-sno">S.No.</th>
-                    <?php if ($level !== 'madras_hc'): ?>
-                        <th><?= $level === 'district_tribunal' ? 'Court / Tribunal(s)' : 'Court(s)' ?></th>
-                    <?php endif; ?>
-                    <th><?= $level === 'madras_hc' ? 'Case Number' : 'Citation / Case Number' ?></th>
+                    <th>Court</th>
+                    <th>Court Name</th>
+                    <th>Case Number / Citation</th>
                     <th>Cause Title and Subject Matter</th>
                     <th>Decided on</th>
                     <th>Legal formulation advanced by the applicant</th>
@@ -347,9 +359,8 @@ $l2Grouped = $groupByCourtLevel($l2);
                 <?php $n = 0; foreach ($rows as $r): $n++; ?>
                     <tr>
                         <td class="c-sno"><?= (int) ($r['s_no'] ?? $n) ?></td>
-                        <?php if ($level !== 'madras_hc'): ?>
-                            <td><?= esc($r['court_name'] ?? '') ?></td>
-                        <?php endif; ?>
+                        <td><?= esc($courtLevelLabels[$level] ?? $level) ?></td>
+                        <td><?= esc($r['court_name'] ?? '') ?></td>
                         <td>
                             <?php
                             $case = trim((string) ($r['case_number'] ?? ''));
@@ -380,8 +391,8 @@ $l2Grouped = $groupByCourtLevel($l2);
         <strong>Format L-2</strong><br>
         (See Sl. No.10 of the application)
     </div>
-    <div class="annexure-title">As Arguing Counsel</div>
-    <div class="annexure-sub">List of Unreported Judgments (excluding orders not laying down any principle of law)</div>
+    <div class="annexure-title">AS ARGUING COUNSEL</div>
+    <div class="annexure-sub">LIST OF UNREPORTED JUDGMENTS (EXCLUDING ORDERS NOT LAYING DOWN ANY PRINCIPLE OF LAW)</div>
 </div>
 
 <?php if (empty($l2)): ?>
@@ -397,10 +408,9 @@ $l2Grouped = $groupByCourtLevel($l2);
                 <thead>
                 <tr>
                     <th class="c-sno">S.No.</th>
-                    <?php if ($level !== 'madras_hc'): ?>
-                        <th><?= $level === 'district_tribunal' ? 'Court / Tribunal(s)' : 'Court(s)' ?></th>
-                    <?php endif; ?>
-                    <th><?= $level === 'madras_hc' ? 'Case Number' : 'Citation / Case Number' ?></th>
+                    <th>Court</th>
+                    <th>Court Name</th>
+                    <th>Case Number / Citation (If any)</th>
                     <th>Cause Title and Subject Matter</th>
                     <th>Decided on</th>
                     <th>Legal formulation advanced by the applicant</th>
@@ -410,9 +420,8 @@ $l2Grouped = $groupByCourtLevel($l2);
                 <?php $n = 0; foreach ($rows as $r): $n++; ?>
                     <tr>
                         <td class="c-sno"><?= (int) ($r['s_no'] ?? $n) ?></td>
-                        <?php if ($level !== 'madras_hc'): ?>
-                            <td><?= esc($r['court_name'] ?? '') ?></td>
-                        <?php endif; ?>
+                        <td><?= esc($courtLevelLabels[$level] ?? $level) ?></td>
+                        <td><?= esc($r['court_name'] ?? '') ?></td>
                         <td>
                             <?php
                             $case = trim((string) ($r['case_number'] ?? ''));
@@ -443,7 +452,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         <strong>Format L-3 (i)</strong><br>
         (See Sl. No.11 of the application)
     </div>
-    <div class="annexure-title">List of matters in which appeared as Pro-Bono</div>
+    <div class="annexure-title">LIST OF MATTERS IN WHICH APPEARED AS PRO-BONO</div>
 </div>
 
 <?php if (empty($l3pb)): ?>
@@ -457,7 +466,7 @@ $l2Grouped = $groupByCourtLevel($l2);
             <th>Citation / Case Number</th>
             <th>Cause Title</th>
             <th>Decided on</th>
-            <th>Describe manner in which society was sought to be benefited by the litigation</th>
+            <th>Describe Manner in which society was sought to be benefited by the litigation</th>
         </tr>
         </thead>
         <tbody>
@@ -483,7 +492,7 @@ $l2Grouped = $groupByCourtLevel($l2);
         <strong>Format L-3 (ii)</strong><br>
         (See Sl. No.11 of the application)
     </div>
-    <div class="annexure-title">List of matters in which appeared as Amicus Curiae</div>
+    <div class="annexure-title">LIST OF MATTERS IN WHICH APPEARED AS AMICUS CURIAE</div>
 </div>
 
 <?php if (empty($l3am)): ?>
@@ -497,7 +506,7 @@ $l2Grouped = $groupByCourtLevel($l2);
             <th>Citation / Case Number</th>
             <th>Cause Title</th>
             <th>Decided on</th>
-            <th>Reportable / Unreportable</th>
+            <th>Reportable / Unreportable?</th>
         </tr>
         </thead>
         <tbody>

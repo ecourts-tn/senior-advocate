@@ -63,20 +63,11 @@ $renderJudgmentCard = static function (
                        value="<?= esc($row['decided_on'] ?? '') ?>"<?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-4">
-                <label class="form-label">Citation / Case Number</label>
+                <label class="form-label">Case Number / Citation <?php if ($prefix === 'l2') echo '(If any)' ?></label>
                 <input name="<?= esc($prefix) ?>_case_number[]" class="form-control form-control-sm"
                        value="<?= esc($row['case_number'] ?? '') ?>"
                        <?= $disabled ?>>
             </div>
-            <?php if ($prefix === 'l1'): ?>
-            <div class="col-12 col-sm-6">
-                <label class="form-label">Citation</label>
-                <input name="l1_citation[]" class="form-control form-control-sm"
-                       value="<?= esc($row['citation'] ?? '') ?>"
-                       placeholder="Official report citation (if any)"
-                       <?= $disabled ?>>
-            </div>
-            <?php endif; ?>
             <div class="col-12 col-sm-6">
                 <label class="form-label">Cause Title and Subject Matter</label>
                 <textarea name="<?= esc($prefix) ?>_cause_title[]" class="form-control form-control-sm" rows="2"

@@ -41,6 +41,7 @@ class NotificationTemplateModel extends Model
         'application_returned'   => 'Application returned for correction',
         'password_reset'         => 'Password reset link',
         'password_changed'       => 'Password changed notice',
+        'account_unlock'         => 'Account unlock link',
     ];
 
     /**
@@ -279,6 +280,39 @@ HTML,
     If you did not make this change, please contact the
     <strong>Registrar (Administration), Madras High Court</strong> immediately
     and use the “Forgot password” option if you still have access to your registered email.
+</p>
+HTML,
+                'sms_body' => null,
+            ],
+            'account_unlock' => [
+                'name'          => self::EVENTS['account_unlock'],
+                'description'   => 'Sent when an account is locked after repeated failed sign-in attempts.',
+                'email_enabled' => true,
+                'sms_enabled'   => false,
+                'email_subject' => 'Unlock your account — Senior Advocate Designation Portal',
+                'email_body'    => <<<'HTML'
+<h1 style="font-size:1.2rem;color:#0f2340;margin:0 0 12px;">Your account is locked</h1>
+<p>Dear {{name}},</p>
+<p>
+    Your account on the <strong>{{portal_name}}</strong> was locked after several unsuccessful sign-in attempts.
+</p>
+<p>Registered email: <strong>{{email}}</strong></p>
+<p>
+    Click the button below to unlock your account. This link is valid for
+    <strong>{{expires}}</strong> and can be used only once.
+</p>
+<p style="text-align:center;margin:28px 0;">
+    <a href="{{unlock_url}}"
+       style="display:inline-block;background:#0f2340;color:#fff;text-decoration:none;padding:12px 22px;border-radius:4px;font-weight:600;">
+        Unlock account
+    </a>
+</p>
+<p style="font-size:0.9rem;color:#6b6558;">
+    If the button does not work, copy and paste this URL into your browser:<br>
+    <a href="{{unlock_url}}" style="color:#1a3558;word-break:break-all;">{{unlock_url}}</a>
+</p>
+<p style="font-size:0.9rem;color:#6b6558;">
+    If you did not try to sign in, you can ignore this message or use Forgot password after unlocking.
 </p>
 HTML,
                 'sms_body' => null,
@@ -539,6 +573,7 @@ HTML;
             '{{decision_label}}',
             '{{decision_label_lower}}',
             '{{reset_url}}',
+            '{{unlock_url}}',
             '{{expires}}',
             '{{contact_email}}',
             '{{contact_phone}}',

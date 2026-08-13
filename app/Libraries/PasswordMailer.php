@@ -83,6 +83,69 @@ class PasswordMailer
     /**
      * @return array{sent: bool, method: string, path?: string}
      */
+    public function sendAccountUnlock(string $toEmail, string $toName, string $unlockUrl, ?int $userId = null): array
+    {
+        try {
+            $this->templates->ensureDefaults();
+        } catch (\Throwable $e) {
+            // Fallback view still used if templates table is unavailable.
+        }
+
+        $vars = array_merge($this->templates->baseVars($this->site), [
+            'name'       => $toName,
+            'email'      => $toEmail,
+            'unlock_url' => $unlockUrl,
+            'expires'    => '1 hour',
+        ]);
+
+        $fallbackSubject = 'Unlock your account — Senior Advocate Designation Portal';
+        $fallbackBody    = view('emails/notify_account_unlock', [
+            'name'      => $toName,
+            'email'     => $toEmail,
+            'unlockUrl' => $unlockUrl,
+            'expires'   => '1 hour',
+            'site'      => $this->site,
+        ]);
+
+        [$subject, $body, $skip] = $this->resolveTemplate(
+            'account_unlock',
+            $vars,
+            $fallbackSubject,
+            $fallbackBody
+        );
+
+        if ($skip) {
+            $result = ['sent' => false, 'method' => 'disabled'];
+            $this->logNotification(
+                'account_unlock',
+                $toEmail,
+                $toName,
+                $subject,
+                $body,
+                $result,
+                $userId
+            );
+
+            return $result;
+        }
+
+        $result = $this->mail->send($toEmail, $toName, $subject, $body);
+        $this->logNotification(
+            'account_unlock',
+            $toEmail,
+            $toName,
+            $subject,
+            $body,
+            $result,
+            $userId
+        );
+
+        return $result;
+    }
+
+    /**
+     * @return array{sent: bool, method: string, path?: string}
+     */
     public function sendPasswordChanged(string $toEmail, string $toName, ?int $userId = null): array
     {
         $vars = array_merge($this->templates->baseVars($this->site), [

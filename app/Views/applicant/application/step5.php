@@ -16,6 +16,7 @@ $periodDate = static function (array $row, string $key): string {
 
     return '';
 };
+$practiceToMax = date('Y-m-d', strtotime('-1 day'));
 ?>
 
 <div class="page-header">
@@ -69,7 +70,8 @@ $periodDate = static function (array $row, string $key): string {
                         <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
                         <input type="date" name="court_to[]" class="form-control"
                                value="<?= esc($periodDate($c, 'to_date')) ?>"
-                               title="Practice to date (leave blank if ongoing)">
+                               max="<?= esc($practiceToMax) ?>"
+                               title="Practice to date must be at least one day before today (leave blank if ongoing)">
                     </div>
                     <div class="col-md-1">
                         <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
@@ -98,7 +100,9 @@ $periodDate = static function (array $row, string $key): string {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">To (date)</label>
-                    <input type="date" name="court_to[]" class="form-control" disabled title="Practice to date (leave blank if ongoing)">
+                    <input type="date" name="court_to[]" class="form-control" disabled
+                           max="<?= esc($practiceToMax) ?>"
+                           title="Practice to date must be at least one day before today (leave blank if ongoing)">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label d-none d-md-block">&nbsp;</label>
@@ -106,7 +110,7 @@ $periodDate = static function (array $row, string $key): string {
                 </div>
             </div>
         </div>
-        <p class="form-text form-help-text">Leave "<em>To (date)</em>" blank if still practicing there. Choose <strong>Others</strong> to enter a court not listed.</p>
+        <p class="form-text form-help-text">Leave "<em>To (date)</em>" blank if still practicing there. If entered, To date must be at least one day before today. Choose <strong>Others</strong> to enter a court not listed.</p>
 
         <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those practising before Tribunals)</span></div>
         <div class="d-flex justify-content-end mb-2">
@@ -145,7 +149,8 @@ $periodDate = static function (array $row, string $key): string {
                         <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
                         <input type="date" name="tribunal_to[]" class="form-control"
                                value="<?= esc($periodDate($t, 'to_date')) ?>"
-                               title="Practice to date (leave blank if ongoing)">
+                               max="<?= esc($practiceToMax) ?>"
+                               title="Practice to date must be at least one day before today (leave blank if ongoing)">
                     </div>
                     <div class="col-md-1">
                         <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
@@ -174,7 +179,9 @@ $periodDate = static function (array $row, string $key): string {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">To (date)</label>
-                    <input type="date" name="tribunal_to[]" class="form-control" disabled title="Practice to date (leave blank if ongoing)">
+                    <input type="date" name="tribunal_to[]" class="form-control" disabled
+                           max="<?= esc($practiceToMax) ?>"
+                           title="Practice to date must be at least one day before today (leave blank if ongoing)">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label d-none d-md-block">&nbsp;</label>
@@ -182,7 +189,7 @@ $periodDate = static function (array $row, string $key): string {
                 </div>
             </div>
         </div>
-        <p class="form-text">Leave <em>To</em> blank if still practicing there. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
+        <p class="form-text">Leave <em>To</em> blank if still practicing there. If entered, To date must be at least one day before today. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
 
         <div class="section-title mt-4">16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</div>
         <?php

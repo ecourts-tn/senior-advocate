@@ -56,7 +56,7 @@ class ApplicationModel extends Model
     public const STATUS_APPROVED         = 'approved'; // legacy; prefer STATUS_LISTED
     public const STATUS_LISTED           = 'listed';
     public const STATUS_WAITLISTED       = 'waitlisted';
-    public const STATUS_DEFFERED         = 'deferred';
+    public const STATUS_DEFERRED         = 'deferred';
     public const STATUS_RETURNED         = 'returned';
 
     public const STATUSES = [
@@ -67,7 +67,7 @@ class ApplicationModel extends Model
         self::STATUS_APPROVED         => 'Accepted (legacy)',
         self::STATUS_LISTED           => 'Select Listed',
         self::STATUS_WAITLISTED       => 'Wait Listed',
-        self::STATUS_DEFFERED         => 'Deferred List',
+        self::STATUS_DEFERRED         => 'Deferred List',
         self::STATUS_RETURNED         => 'Returned for Correction',
     ];
 
@@ -79,10 +79,10 @@ class ApplicationModel extends Model
      * @var array<string, string>
      */
     public const ADMIN_PIPELINE_STATUSES = [
-        // self::STATUS_SUBMITTED  => 'Submitted',
+        self::STATUS_SUBMITTED  => 'Submitted',
         self::STATUS_LISTED     => 'Select Listed',
         self::STATUS_WAITLISTED => 'Wait Listed',
-        self::STATUS_DEFFERED   => 'Deferred List',
+        self::STATUS_DEFERRED   => 'Deferred List',
         // self::STATUS_RETURNED   => 'Returned for Correction',
     ];
 

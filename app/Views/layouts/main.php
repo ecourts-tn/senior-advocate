@@ -200,9 +200,28 @@ $site = $site ?? config(\Config\Site::class);
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
-    <?php if (session()->getFlashdata('error')): ?>
+    <?php
+    $accountLocked = session()->getFlashdata('account_locked');
+    $errorFlash    = session()->getFlashdata('error');
+    if ($accountLocked):
+        $unlockEmail = old('email') ?: (string) (session()->getFlashdata('locked_email') ?? '');
+        $unlockHref  = base_url('request-unlock');
+        if ($unlockEmail !== '' && filter_var($unlockEmail, FILTER_VALIDATE_EMAIL)) {
+            $unlockHref .= '?email=' . rawurlencode($unlockEmail);
+        }
+    ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i><?= esc(session()->getFlashdata('error')) ?>
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
+            <strong>Your account is locked</strong> after several unsuccessful sign-in attempts.
+            Sign-in is disabled until you unlock the account.
+            <a href="<?= esc($unlockHref) ?>" class="alert-link fw-semibold">Click here to unlock</a>
+            — you will be asked to confirm your email, and a one-time unlock link will then be sent
+            to your registered address (valid for 1 hour).
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php elseif ($errorFlash): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i><?= esc($errorFlash) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>

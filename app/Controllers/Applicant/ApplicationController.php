@@ -352,6 +352,13 @@ class ApplicationController extends BaseController
 
         $data = $this->mapStepData($step, $post, $app);
 
+        if ($step === 5) {
+            $periodError = $this->validatePracticeToDates($data);
+            if ($periodError !== null) {
+                return redirect()->back()->withInput()->with('error', $periodError);
+            }
+        }
+
         $ageAsOn = ApplicationModel::ageAsOnDate($app);
 
         if ($step === 1 && ! empty($data['date_of_birth'])) {
@@ -853,6 +860,41 @@ class ApplicationController extends BaseController
         }
 
         return [];
+    }
+
+    /**
+     * Practice "To (date)" must be at least one day before today (blank = still practising).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function validatePracticeToDates(array $data): ?string
+    {
+        $latest = date('Y-m-d', strtotime('-1 day'));
+
+        foreach (['courts_practiced', 'tribunals_practiced'] as $field) {
+            $rows = $data[$field] ?? [];
+            if (! is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $to = trim((string) ($row['to_date'] ?? ''));
+                if ($to === '') {
+                    continue;
+                }
+                if ($to > $latest) {
+                    return 'Practice To (date) must be at least one day before today. Leave it blank if you are still practising there.';
+                }
+                $from = trim((string) ($row['from_date'] ?? ''));
+                if ($from !== '' && $to < $from) {
+                    return 'Practice To (date) cannot be earlier than From (date).';
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

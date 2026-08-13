@@ -109,6 +109,8 @@ class PasswordController extends BaseController
         $userModel->update($user['id'], [
             'password_hash' => $userModel->hashPassword((string) $this->request->getPost('password')),
         ]);
+        // A completed reset also clears a failed-login lock so they can sign in.
+        $userModel->unlockAccount((int) $user['id']);
 
         model(PasswordResetModel::class)->markUsed((int) $row['id']);
 

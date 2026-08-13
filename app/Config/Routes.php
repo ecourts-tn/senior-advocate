@@ -31,13 +31,16 @@ $routes->group('', ['filter' => 'guest'], static function ($routes) {
     });
     $routes->get('resend-verification', 'AuthController::resendVerification');
     $routes->post('resend-verification', 'AuthController::sendVerificationLink');
+    $routes->get('request-unlock', 'AuthController::requestUnlock');
+    $routes->post('request-unlock', 'AuthController::sendUnlockLink');
     $routes->get('forgot-password', 'PasswordController::forgot');
     $routes->post('forgot-password', 'PasswordController::sendResetLink');
     $routes->get('reset-password/(:segment)', 'PasswordController::reset/$1');
     $routes->post('reset-password/(:segment)', 'PasswordController::processReset/$1');
 });
-// Email verification link (public; not limited to guest so the link always works)
+// Email verification / account-unlock links (public; not limited to guest so the link always works)
 $routes->get('verify-email/(:segment)', 'AuthController::verifyEmail/$1');
+$routes->get('unlock-account/(:segment)', 'AuthController::unlockAccount/$1');
 // CAPTCHA image (session-backed; available without auth)
 $routes->get('captcha/image', 'CaptchaController::image');
 $routes->get('logout', 'AuthController::logout');

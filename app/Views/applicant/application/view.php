@@ -233,15 +233,21 @@
             <div class="col-md-6">
                 <strong>18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application &amp; current status thereof</strong><br>
                 <?= ssa_bool_label($app['applied_mhc_earlier'] ?? null) ?>
-                <?php if (! empty($app['applied_mhc_date']) || ! empty($app['applied_mhc_status'])): ?>
-                    <br><?= esc(ssa_format_date($app['applied_mhc_date'] ?? null)) ?> <?= esc($app['applied_mhc_status'] ?? '') ?>
+                <?php if (! empty($app['applied_mhc_date'])): ?>
+                    <br>Date: <?= esc(ssa_format_date($app['applied_mhc_date'])) ?>
+                <?php endif; ?>
+                <?php if (! empty($app['applied_mhc_status'])): ?>
+                    <br>Details: <?= esc($app['applied_mhc_status']) ?>
                 <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <strong>19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof</strong><br>
                 <?= ssa_bool_label($app['applied_other_court'] ?? null) ?>
-                <?php if (! empty($app['applied_other_date']) || ! empty($app['applied_other_details'])): ?>
-                    <br><?= esc(ssa_format_date($app['applied_other_date'] ?? null)) ?> <?= esc($app['applied_other_details'] ?? '') ?>
+                <?php if (! empty($app['applied_other_date'])): ?>
+                    <br>Date: <?= esc(ssa_format_date($app['applied_other_date'])) ?>
+                <?php endif; ?>
+                <?php if (! empty($app['applied_other_details'])): ?>
+                    <br>Details: <?= esc($app['applied_other_details']) ?>
                 <?php endif; ?>
             </div>
             <div class="col-md-6">

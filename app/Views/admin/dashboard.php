@@ -27,7 +27,7 @@
         ['Submitted', $stats['submitted'] ?? 0, 'bi-send'],
         ['Select Listed', $stats['listed'] ?? 0, 'bi-check-circle'],
         ['Wait Listed', $stats['waitlisted'] ?? 0, 'bi-hourglass-split'],
-        ['Rejected', $stats['rejected'] ?? 0, 'bi-x-circle'],
+        ['Deferred List', $stats['deferred'] ?? 0, 'bi-x-circle'],
         ['Total (non-draft)', $stats['total'] ?? 0, 'bi-collection'],
         ['Applicants', $stats['applicants'] ?? 0, 'bi-people'],
     ];
@@ -120,7 +120,7 @@
                 </div>
                 <p class="small text-muted mb-2">
                     Valid credentials grant access to the SSA dashboard and application processing.
-                    Monitor failed attempts below. Accounts are temporarily locked after repeated failures.
+                    Monitor failed attempts below. Accounts are locked after repeated failures. The user requests an unlock email from the unlock page.
                 </p>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">

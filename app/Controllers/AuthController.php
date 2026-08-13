@@ -44,11 +44,27 @@ class AuthController extends BaseController
         $password = (string) $this->request->getPost('password');
         $security = new LoginSecurityService();
 
-        // Temporary lockout after repeated unauthorized attempts (email / IP).
+        // Account lock (email unlock) or temporary IP lockout.
         if ($lockMsg = $security->lockoutMessage($email)) {
-            $security->recordFailure($email, 'rate_limited');
+            $accountLocked = $security->isAccountLocked($email)
+                || $lockMsg === LoginSecurityService::ACCOUNT_LOCKED_MESSAGE;
+            $security->recordFailure(
+                $email,
+                $accountLocked ? 'account_locked' : 'rate_limited',
+                $this->userIdForEmail($email)
+            );
+            if ($accountLocked) {
+                $security->persistLock(null, $email);
+            }
 
-            return redirect()->back()->withInput()->with('error', $lockMsg);
+            $redirect = redirect()->back()->withInput()->with('error', $lockMsg);
+            if ($accountLocked) {
+                $redirect = $redirect
+                    ->with('account_locked', true)
+                    ->with('locked_email', $email);
+            }
+
+            return $redirect;
         }
 
         if (! $this->verifyCaptcha()) {
@@ -67,6 +83,15 @@ class AuthController extends BaseController
                 'invalid_credentials',
                 $user ? (int) $user['id'] : null
             );
+
+            if ($user && $security->countRecentFailuresByEmail($email) >= LoginSecurityService::MAX_PER_EMAIL) {
+                $security->persistLock($user, $email);
+
+                return redirect()->back()->withInput()
+                    ->with('error', LoginSecurityService::ACCOUNT_LOCKED_MESSAGE)
+                    ->with('account_locked', true)
+                    ->with('locked_email', $email);
+            }
 
             return redirect()->back()->withInput()->with('error', 'Invalid email or password.');
         }
@@ -413,6 +438,103 @@ class AuthController extends BaseController
         return redirect()->to('/login')->with('success', $generic);
     }
 
+    /**
+     * Unlock a locked account via the one-time link emailed after failed logins.
+     */
+    public function unlockAccount(string $token = '')
+    {
+        $result = model(UserModel::class)->consumeUnlockToken($token);
+
+        if (! empty($result['ok'])) {
+            $user = $result['user'] ?? null;
+            model(AuditLogModel::class)->log(
+                ($result['reason'] ?? '') === 'already' ? 'account_already_unlocked' : 'account_unlocked',
+                $user ? (int) $user['id'] : null,
+                null,
+                ['email' => $user['email'] ?? null],
+                'auth',
+                $user ? (int) $user['id'] : null
+            );
+
+            $msg = ($result['reason'] ?? '') === 'already'
+                ? 'Your account is already unlocked. You may log in.'
+                : 'Your account has been unlocked. You may now log in.';
+
+            return redirect()->to('/login')->with('success', $msg);
+        }
+
+        $reason = $result['reason'] ?? 'invalid';
+        if ($reason === 'expired') {
+            return redirect()->to('/request-unlock')
+                ->with('error', 'This unlock link has expired. Submit the form below to receive a new unlock email.')
+                ->with('locked_email', $result['user']['email'] ?? null);
+        }
+
+        return redirect()->to('/request-unlock')
+            ->with('error', 'This unlock link is invalid or has already been used. Submit the form below if you still need to unlock your account.');
+    }
+
+    /**
+     * Separate page: user confirms email and requests the unlock email.
+     */
+    public function requestUnlock()
+    {
+        $email = old('email')
+            ?: (string) (session()->getFlashdata('locked_email') ?? '')
+            ?: strtolower(trim((string) ($this->request->getGet('email') ?? '')));
+        if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $email = '';
+        }
+
+        return view('auth/request_unlock', [
+            'title' => 'Unlock account',
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * Send the unlock email only after the user submits the unlock form.
+     */
+    public function sendUnlockLink()
+    {
+        $rules = [
+            'email'   => 'required|valid_email',
+            'captcha' => 'required|min_length[4]|max_length[8]',
+        ];
+
+        if (! $this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        if (! $this->verifyCaptcha()) {
+            return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
+        }
+
+        $email    = strtolower(trim((string) $this->request->getPost('email')));
+        $security = new LoginSecurityService();
+        $user     = model(UserModel::class)->findByEmail($email);
+
+        $generic = 'If this account is locked, a one-time unlock link has been sent to the registered email. Please check your inbox and spam folder. The link expires in 1 hour.';
+
+        if ($user && $security->isAccountLocked($email)) {
+            if (! model(UserModel::class)->canSendUnlockEmail($user)) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Please wait a minute before requesting another unlock email.')
+                    ->with('locked_email', $email);
+            }
+
+            $security->sendUnlockEmailIfAllowed((int) $user['id']);
+        } else {
+            model(AuditLogModel::class)->log('account_unlock_email_skipped', $user ? (int) $user['id'] : null, null, [
+                'email'  => $email,
+                'reason' => $user ? 'not_locked' : 'unknown_email',
+            ], 'auth', $user ? (int) $user['id'] : null);
+        }
+
+        return redirect()->to('/login')->with('success', $generic);
+    }
+
     public function logout()
     {
         $userId = session()->get('user_id');
@@ -432,5 +554,12 @@ class AuthController extends BaseController
         $captcha = new CaptchaService();
 
         return $captcha->verify($this->request->getPost('captcha'), $scope);
+    }
+
+    private function userIdForEmail(string $email): ?int
+    {
+        $user = model(UserModel::class)->findByEmail($email);
+
+        return $user ? (int) $user['id'] : null;
     }
 }
