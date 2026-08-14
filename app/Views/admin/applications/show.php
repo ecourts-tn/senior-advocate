@@ -187,7 +187,7 @@
                         </div>
                     </div>
                     <div class="col-12">
-                        <strong>15. Tribunals, where the applicant has specialized practice</strong><br>
+                        <strong>15. Tribunals, where the applicant has specialized practice: (Applicable to those practising before Tribunals)</strong><br>
                         <?php
                         $tribunals = $app['tribunals_practiced'] ?? [];
                         if (is_string($tribunals)) {
@@ -212,7 +212,7 @@
                         <?= nl2br(esc($app['nature_of_practice'] ?? '—')) ?>
                     </div>
                     <div class="col-md-6">
-                        <strong>17. Field of Law — domain expertise … in which the applicant has specialization/expertise</strong><br>
+                        <strong>17. Field of Law — domain expertise (such as, Consitutional Law, Inter-State Water Disputes, Criminal Law, Arbitration Law, Corportate Law, Family Law, Human Righsts, Public Interest Litigation, International Law, law relating to women ) in which the applicant has specialization/expertise</strong><br>
                         <?= nl2br(esc($app['field_of_law'] ?? '—')) ?>
                     </div>
                     <div class="col-md-6">
