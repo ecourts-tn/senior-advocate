@@ -59,12 +59,53 @@ class UserModel extends Model
 
     public function findByEnrolment(string $enrolment): ?array
     {
-        $enrolment = trim($enrolment);
+        $enrolment = AdvocateDbModel::normaliseEnrolment($enrolment);
         if ($enrolment === '') {
             return null;
         }
 
-        return $this->where('enrolment_number', $enrolment)->first();
+        $exact = $this->where('enrolment_number', $enrolment)->first();
+        if ($exact) {
+            return $exact;
+        }
+
+        $key = AdvocateDbModel::parseNumberAndYear($enrolment);
+        if ($key === null) {
+            return null;
+        }
+
+        return $this->findByEnrolmentNumberAndYear($key['number'], $key['year']);
+    }
+
+    /**
+     * Active user whose enrolment matches the given serial number and year.
+     */
+    public function findByEnrolmentNumberAndYear(string $number, string $year, ?int $exceptUserId = null): ?array
+    {
+        $number = ltrim($number, '0');
+        if ($number === '') {
+            $number = '0';
+        }
+        $year = trim($year);
+        if ($number === '' || $year === '') {
+            return null;
+        }
+
+        $builder = $this->builder();
+        $builder->where('enrolment_number IS NOT NULL', null, false)
+            ->where("enrolment_number <> ''", null, false);
+        if ($exceptUserId !== null && $exceptUserId > 0) {
+            $builder->where('id !=', $exceptUserId);
+        }
+
+        foreach ($builder->get()->getResultArray() as $row) {
+            $parsed = AdvocateDbModel::parseNumberAndYear((string) ($row['enrolment_number'] ?? ''));
+            if ($parsed !== null && $parsed['number'] === $number && $parsed['year'] === $year) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     public function verifyPassword(array $user, string $password): bool

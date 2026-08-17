@@ -488,6 +488,44 @@ class ApplicationModel extends Model
         return $this->where('user_id', $userId)->find($id);
     }
 
+    /**
+     * Another application (any status) that already uses this enrolment number + year.
+     */
+    public function findOtherByEnrolmentNumberAndYear(
+        string $number,
+        string $year,
+        int $exceptApplicationId = 0,
+        ?int $exceptUserId = null
+    ): ?array {
+        $number = ltrim($number, '0');
+        if ($number === '') {
+            $number = '0';
+        }
+        $year = trim($year);
+        if ($number === '' || $year === '') {
+            return null;
+        }
+
+        $builder = $this->builder();
+        $builder->where('enrolment_number IS NOT NULL', null, false)
+            ->where("enrolment_number <> ''", null, false);
+        if ($exceptApplicationId > 0) {
+            $builder->where('id !=', $exceptApplicationId);
+        }
+        if ($exceptUserId !== null && $exceptUserId > 0) {
+            $builder->where('user_id !=', $exceptUserId);
+        }
+
+        foreach ($builder->get()->getResultArray() as $row) {
+            $parsed = AdvocateDbModel::parseNumberAndYear((string) ($row['enrolment_number'] ?? ''));
+            if ($parsed !== null && $parsed['number'] === $number && $parsed['year'] === $year) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
     public function listForUser(int $userId): array
     {
         return $this->where('user_id', $userId)

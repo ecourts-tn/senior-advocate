@@ -13,6 +13,45 @@ $courtLevels = [
     'supreme_other_hc'  => 'Supreme Court / Other High Courts',
     'district_tribunal' => 'District Courts / Labour Courts / Tribunals',
 ];
+$notificationDate = $notificationDate ?? ($ageAsOnDate ?? ssa_age_as_on_date($app ?? null));
+$decidedOnMax     = $decidedOnMax ?? \App\Libraries\ApplicationDateRules::decidedOnMax($notificationDate);
+$notifLabel       = ! empty($notificationDate) ? date('d-m-Y', strtotime((string) $notificationDate)) : '';
+
+$applyOldJudgmentRows = static function (array $existing, string $prefix): array {
+    $keys = ['court_level', 'court_name', 'decided_on', 'case_number', 'cause_title', 'legal_formulation'];
+    $hasOld = false;
+    $posted = [];
+    foreach ($keys as $key) {
+        $posted[$key] = old($prefix . '_' . $key);
+        if (is_array($posted[$key])) {
+            $hasOld = true;
+        }
+    }
+    if (! $hasOld) {
+        return $existing;
+    }
+    $count = 0;
+    foreach ($posted as $vals) {
+        if (is_array($vals)) {
+            $count = max($count, count($vals));
+        }
+    }
+    $rows = [];
+    for ($i = 0; $i < $count; $i++) {
+        $rows[] = [
+            'court_level'        => $posted['court_level'][$i] ?? 'madras_hc',
+            'court_name'         => $posted['court_name'][$i] ?? '',
+            'decided_on'         => $posted['decided_on'][$i] ?? '',
+            'case_number'        => $posted['case_number'][$i] ?? '',
+            'cause_title'        => $posted['cause_title'][$i] ?? '',
+            'legal_formulation'  => $posted['legal_formulation'][$i] ?? '',
+        ];
+    }
+
+    return $rows !== [] ? $rows : $existing;
+};
+$l1 = $applyOldJudgmentRows($l1 ?? [], 'l1');
+$l2 = $applyOldJudgmentRows($l2 ?? [], 'l2');
 
 /**
  * Render one L-1 / L-2 judgment entry card.
@@ -29,11 +68,15 @@ $renderJudgmentCard = static function (
     array $courtLevels,
     bool $isTemplate,
     string $label
-): void {
+) use ($decidedOnMax): void {
     $disabled = $isTemplate ? ' disabled' : '';
     $classes  = 'entry-card dynamic-row' . ($isTemplate ? ' d-none' : '');
     $attrs    = $isTemplate ? ' data-row-template hidden aria-hidden="true"' : '';
     $level    = (string) ($row['court_level'] ?? 'madras_hc');
+    $decided  = $row['decided_on'] ?? '';
+    if (is_string($decided) && $decided !== '') {
+        $decided = substr($decided, 0, 10);
+    }
     ?>
     <div class="<?= esc($classes, 'attr') ?>"<?= $attrs ?>>
         <div class="entry-card-top">
@@ -60,7 +103,9 @@ $renderJudgmentCard = static function (
             <div class="col-12 col-sm-6 col-lg-2">
                 <label class="form-label">Decided on</label>
                 <input type="date" name="<?= esc($prefix) ?>_decided_on[]" class="form-control form-control-sm"
-                       value="<?= esc($row['decided_on'] ?? '') ?>"<?= $disabled ?>>
+                       value="<?= esc($decided) ?>"
+                       <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
+                       title="Must be earlier than the notification date"<?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-4">
                 <label class="form-label">Case Number / Citation <?php if ($prefix === 'l2') echo '(If any)' ?></label>
@@ -181,7 +226,7 @@ $renderJudgmentCard = static function (
             </div>
         </div>
 
-        <p class="form-text mb-0">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB). Use <strong>Add entry</strong> for additional judgments. Removing entries always keeps one blank card so you can add again.</p>
+        <p class="form-text mb-0">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB). Use <strong>Add entry</strong> for additional judgments. Removing entries always keeps one blank card so you can add again.<?php if ($notifLabel !== ''): ?> <strong>Decided on</strong> must be earlier than the notification date (<?= esc($notifLabel) ?>).<?php endif; ?></p>
 
         <?= $this->include('applicant/application/_form_nav') ?>
         <?= form_close() ?>

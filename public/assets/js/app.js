@@ -30,6 +30,27 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // Declaration checkboxes must be confirmed on this visit — never restore checked from saved/autofill state
+  document.querySelectorAll('input[type="checkbox"][data-reset-on-load="1"]').forEach(function (box) {
+    box.checked = false;
+    box.removeAttribute('checked');
+  });
+
+  // Landline: digits and telephone punctuation only (strip letters as they are typed)
+  document.querySelectorAll('input[data-landline="1"], input[name="phone_landline"]').forEach(function (el) {
+    function stripLetters() {
+      var next = (el.value || '').replace(/[A-Za-z]/g, '');
+      if (next !== el.value) {
+        el.value = next;
+      }
+    }
+    el.addEventListener('input', stripLetters);
+    el.addEventListener('paste', function () {
+      window.setTimeout(stripLetters, 0);
+    });
+    stripLetters();
+  });
+
   // ---------- GIGW accessibility controls ----------
   var root = document.documentElement;
   var body = document.body;

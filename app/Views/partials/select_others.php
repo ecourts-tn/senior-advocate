@@ -11,6 +11,7 @@
  * - string|null $placeholder
  * - bool $showLabel
  * - string|null $label
+ * - bool $required      when true, the select is required (first visible row)
  * - bool $disabled      when true, fields are disabled (clone templates only)
  *
  * Note: Config\View::$saveData is true, so always pass disabled explicitly
@@ -28,14 +29,15 @@ $showLabel   = $showLabel ?? false;
 $label       = $label ?? 'Option';
 // Strict check: only true when explicitly enabled for templates
 $disabled    = isset($disabled) && ($disabled === true || $disabled === 1 || $disabled === '1');
+$required    = ! $disabled && isset($required) && ($required === true || $required === 1 || $required === '1');
 $othersVal   = MasterRegistry::OTHERS_VALUE;
 $isOthers    = ($value === $othersVal) || strcasecmp((string) $value, MasterRegistry::OTHERS_LABEL) === 0;
 ?>
 <div data-others-group>
     <?php if ($showLabel): ?>
-        <label class="form-label"><?= esc($label) ?></label>
+        <label class="form-label<?= $required ? ' required' : '' ?>"><?= esc($label) ?></label>
     <?php endif; ?>
-    <select name="<?= esc($name) ?>" class="form-select" data-others-trigger<?= $disabled ? ' disabled' : '' ?>>
+    <select name="<?= esc($name) ?>" class="form-select" data-others-trigger<?= $disabled ? ' disabled' : '' ?><?= $required ? ' required' : '' ?>>
         <option value=""><?= esc($placeholder) ?></option>
         <?php foreach ($options as $opt): ?>
             <option value="<?= esc($opt) ?>" <?= $value === $opt ? 'selected' : '' ?>><?= esc($opt) ?></option>
@@ -53,4 +55,5 @@ $isOthers    = ($value === $othersVal) || strcasecmp((string) $value, MasterRegi
 <?php
 // Prevent Config\View::$saveData from poisoning the next partial call
 $disabled = false;
+$required = false;
 ?>

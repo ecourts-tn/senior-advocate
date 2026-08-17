@@ -5,11 +5,11 @@
 <div class="form-actions no-print">
     <div class="form-actions-left">
         <?php if ($step > 1): ?>
-            <button type="submit" name="action" value="prev" class="btn btn-outline-secondary">
+            <button type="submit" name="action" value="prev" class="btn btn-outline-secondary" formnovalidate>
                 <i class="bi bi-arrow-left"></i> Previous
             </button>
         <?php endif; ?>
-        <button type="submit" name="action" value="save" class="btn btn-outline-primary">
+        <button type="submit" name="action" value="save" class="btn btn-outline-primary" formnovalidate>
             <i class="bi bi-save"></i> Save Draft
         </button>
     </div>

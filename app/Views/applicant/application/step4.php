@@ -7,6 +7,61 @@
 </div>
 <?= $this->include('applicant/application/_stepper') ?>
 
+<?php
+$notificationDate = $notificationDate ?? ($ageAsOnDate ?? ssa_age_as_on_date($app ?? null));
+$decidedOnMax     = $decidedOnMax ?? \App\Libraries\ApplicationDateRules::decidedOnMax($notificationDate);
+$notifLabel       = ! empty($notificationDate) ? date('d-m-Y', strtotime((string) $notificationDate)) : '';
+
+$applyOldL3 = static function (array $existing, array $map): array {
+    $hasOld = false;
+    $posted = [];
+    foreach ($map as $postKey => $rowKey) {
+        $posted[$rowKey] = old($postKey);
+        if (is_array($posted[$rowKey])) {
+            $hasOld = true;
+        }
+    }
+    if (! $hasOld) {
+        return $existing;
+    }
+    $count = 0;
+    foreach ($posted as $vals) {
+        if (is_array($vals)) {
+            $count = max($count, count($vals));
+        }
+    }
+    $rows = [];
+    for ($i = 0; $i < $count; $i++) {
+        $row = [];
+        foreach ($map as $rowKey) {
+            $row[$rowKey] = $posted[$rowKey][$i] ?? '';
+        }
+        $rows[] = $row;
+    }
+
+    return $rows !== [] ? $rows : $existing;
+};
+$l3pb = $applyOldL3($l3pb ?? [], [
+    'pb_court'           => 'court_tribunal',
+    'pb_case_number'     => 'case_number',
+    'pb_decided_on'      => 'decided_on',
+    'pb_cause_title'     => 'cause_title',
+    'pb_society_benefit' => 'society_benefit',
+]);
+$l3am = $applyOldL3($l3am ?? [], [
+    'am_court'        => 'court_tribunal',
+    'am_case_number'  => 'case_number',
+    'am_cause_title'  => 'cause_title',
+    'am_decided_on'   => 'decided_on',
+    'am_reportable'   => 'reportable',
+]);
+$fgPosted = old('is_first_generation');
+$fgValue  = $fgPosted !== null && $fgPosted !== false
+    ? (string) $fgPosted
+    : (ssa_bool_label($app['is_first_generation'] ?? null) === 'Yes' ? '1'
+        : (ssa_bool_label($app['is_first_generation'] ?? null) === 'No' ? '0' : ''));
+?>
+
 <div class="card card-mhc">
     <div class="card-body">
         <?= form_open('applicant/application/step/4', [
@@ -64,7 +119,9 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Decided on</label>
-                            <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" disabled>
+                            <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" disabled
+                                   <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
+                                   title="Must be earlier than the notification date">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cause Title</label>
@@ -95,7 +152,10 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Decided on</label>
-                                <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>">
+                                <input type="date" name="pb_decided_on[]" class="form-control form-control-sm"
+                                       value="<?= esc(isset($row['decided_on']) && $row['decided_on'] !== '' ? substr((string) $row['decided_on'], 0, 10) : '') ?>"
+                                       <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
+                                       title="Must be earlier than the notification date">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Cause Title</label>
@@ -148,7 +208,9 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Decided on</label>
-                            <input type="date" name="am_decided_on[]" class="form-control form-control-sm" disabled>
+                            <input type="date" name="am_decided_on[]" class="form-control form-control-sm" disabled
+                                   <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
+                                   title="Must be earlier than the notification date">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Reportable / Unreportable?</label>
@@ -183,7 +245,10 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Decided on</label>
-                                <input type="date" name="am_decided_on[]" class="form-control form-control-sm" value="<?= esc($row['decided_on'] ?? '') ?>">
+                                <input type="date" name="am_decided_on[]" class="form-control form-control-sm"
+                                       value="<?= esc(isset($row['decided_on']) && $row['decided_on'] !== '' ? substr((string) $row['decided_on'], 0, 10) : '') ?>"
+                                       <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
+                                       title="Must be earlier than the notification date">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Reportable / Unreportable?</label>
@@ -198,14 +263,18 @@
                 <?php endforeach; ?>
             </div>
         </div>
+        <?php if ($notifLabel !== ''): ?>
+            <p class="form-text">Decided on dates in Format L-3 entries must be earlier than the notification date (<?= esc($notifLabel) ?>).</p>
+        <?php endif; ?>
 
-        <div class="section-title">12. Whether the applicant is first-generation lawyer</div>
+        <div class="section-title">12. Whether the applicant is first-generation lawyer <span class="text-danger">*</span></div>
         <div class="row g-3 mb-4">
             <div class="col-md-4">
-                <select name="is_first_generation" class="form-select">
+                <label class="form-label required" for="is_first_generation">Select Yes or No</label>
+                <select name="is_first_generation" id="is_first_generation" class="form-select" required>
                     <option value="">— Select —</option>
-                    <option value="1" <?= ssa_bool_label($app['is_first_generation'] ?? null) === 'Yes' ? 'selected' : '' ?>>Yes</option>
-                    <option value="0" <?= ssa_bool_label($app['is_first_generation'] ?? null) === 'No' ? 'selected' : '' ?>>No</option>
+                    <option value="1" <?= $fgValue === '1' ? 'selected' : '' ?>>Yes</option>
+                    <option value="0" <?= $fgValue === '0' ? 'selected' : '' ?>>No</option>
                 </select>
             </div>
         </div>

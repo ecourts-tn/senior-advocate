@@ -123,7 +123,13 @@
             <div class="col-md-4">
                 <label class="form-label">Landline</label>
                 <input type="text" name="phone_landline" class="form-control"
+                       inputmode="tel" autocomplete="tel"
+                       maxlength="20"
+                       pattern="[0-9+\-()\/., ]*"
+                       data-landline="1"
+                       title="Numbers and special characters only (no letters)"
                        value="<?= esc(old('phone_landline', $app['phone_landline'] ?? '')) ?>">
+                <div class="form-text">Numbers and special characters only — letters are not allowed.</div>
             </div>
             <div class="col-md-4">
                 <label class="form-label required">Mobile</label>

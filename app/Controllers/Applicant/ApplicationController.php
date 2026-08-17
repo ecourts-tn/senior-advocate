@@ -3,6 +3,7 @@
 namespace App\Controllers\Applicant;
 
 use App\Controllers\BaseController;
+use App\Libraries\ApplicationDateRules;
 use App\Libraries\NotificationService;
 use App\Libraries\PdfService;
 use App\Libraries\UploadService;
@@ -209,7 +210,6 @@ class ApplicationController extends BaseController
             'mobile'                => $contact['mobile'],
             'full_name'             => session()->get('name'),
             'enrolment_number'      => $user['enrolment_number'] ?? null,
-            'instructions_accepted' => 't',
         ]);
 
         model(AuditLogModel::class)->log('application_created', $userId, (int) $id, [
@@ -273,30 +273,32 @@ class ApplicationController extends BaseController
                 $app['enrolment_number'] = $enrolmentFromAccount;
             }
 
-            // Prefill date / bar council from advocate master when still blank.
-            // Practice duration is NOT auto-filled — applicant enters it manually.
+            // Prefill enrolment date from advocate master when still blank.
+            // Bar Council is entered by the applicant — not copied from advocate_t.
             $lookupNo = trim((string) ($app['enrolment_number'] ?? $enrolmentFromAccount ?? ''));
-            if ($lookupNo !== '' && (empty($app['enrolment_date']) || empty($app['bar_council']))) {
+            if ($lookupNo !== '' && empty($app['enrolment_date'])) {
                 $adv = model(AdvocateDbModel::class)->findByEnrolment($lookupNo);
                 if ($adv) {
                     $prefill = model(AdvocateDbModel::class)->toRegistrationPrefill($adv);
-                    if (empty($app['enrolment_date']) && ! empty($prefill['enrolment_date'])) {
+                    if (! empty($prefill['enrolment_date'])) {
                         $app['enrolment_date'] = $prefill['enrolment_date'];
-                    }
-                    if (empty($app['bar_council']) && ! empty($prefill['bar'])) {
-                        $app['bar_council'] = $prefill['bar'];
                     }
                 }
             }
         }
 
+        $enrolmentDate = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+
         $data = [
-            'title'        => 'Application – Step ' . $step,
-            'app'          => $app,
-            'step'         => $step,
-            'steps'        => ssa_step_labels(),
-            'ageAsOnDate'  => $ageAsOn,
-            'ageAsOnLabel' => ApplicationModel::ageAsOnLabel($app),
+            'title'             => 'Application – Step ' . $step,
+            'app'               => $app,
+            'step'              => $step,
+            'steps'             => ssa_step_labels(),
+            'ageAsOnDate'       => $ageAsOn,
+            'ageAsOnLabel'      => ApplicationModel::ageAsOnLabel($app),
+            'notificationDate'  => $ageAsOn,
+            'enrolmentDate'     => $enrolmentDate,
+            'decidedOnMax'      => ApplicationDateRules::decidedOnMax($ageAsOn),
         ];
 
         if ($step === 2) {
@@ -351,11 +353,23 @@ class ApplicationController extends BaseController
         $app = $fresh;
 
         $data = $this->mapStepData($step, $post, $app);
+        $action = $this->request->getPost('action') ?? 'save';
 
-        if ($step === 5) {
-            $periodError = $this->validatePracticeToDates($data);
-            if ($periodError !== null) {
-                return redirect()->back()->withInput()->with('error', $periodError);
+        $fieldError = $this->validateStepFieldRules($step, $post, $data, $app);
+        if ($fieldError !== null) {
+            return redirect()->back()->withInput()->with('error', $fieldError);
+        }
+
+        $dateError = $this->validateStepDates($step, $post, $data, $app);
+        if ($dateError !== null) {
+            return redirect()->back()->withInput()->with('error', $dateError);
+        }
+
+        // Mandatory sl. nos. 12 / 14 / 16 / 17: required to proceed or submit, not to save a draft.
+        if (in_array($action, ['next', 'submit'], true)) {
+            $requiredError = $this->validateMandatoryStepFields($step, $post, $data, $app);
+            if ($requiredError !== null) {
+                return redirect()->back()->withInput()->with('error', $requiredError);
             }
         }
 
@@ -417,8 +431,6 @@ class ApplicationController extends BaseController
         }
 
         model(AuditLogModel::class)->log('application_step_saved', $userId, (int) $app['id'], ['step' => $step]);
-
-        $action = $this->request->getPost('action') ?? 'save';
 
         if ($action === 'submit' && $step === ApplicationModel::TOTAL_STEPS) {
             // Final gate before status change (stale Back-button form)
@@ -594,6 +606,7 @@ class ApplicationController extends BaseController
     protected function validateForSubmit(array $app): array
     {
         $errors = [];
+        $app    = $this->apps->withDecoded($app);
         $required = [
             'full_name'         => 'Name of the applicant',
             'date_of_birth'     => 'Date of birth',
@@ -617,16 +630,74 @@ class ApplicationController extends BaseController
             }
         }
 
+        $enrolment = trim((string) ($app['enrolment_number'] ?? ''));
+        if ($enrolment !== '') {
+            $key = AdvocateDbModel::parseNumberAndYear($enrolment);
+            if ($key !== null) {
+                $userId = (int) session()->get('user_id');
+                $takenUser = model(UserModel::class)->findByEnrolmentNumberAndYear(
+                    $key['number'],
+                    $key['year'],
+                    $userId
+                );
+                if ($takenUser) {
+                    $errors[] = 'Enrolment number ' . $key['number'] . '/' . $key['year']
+                        . ' is already registered to another account.';
+                }
+                $takenApp = $this->apps->findOtherByEnrolmentNumberAndYear(
+                    $key['number'],
+                    $key['year'],
+                    (int) ($app['id'] ?? 0),
+                    $userId
+                );
+                if ($takenApp) {
+                    $errors[] = 'Enrolment number ' . $key['number'] . '/' . $key['year']
+                        . ' is already used on another application.';
+                }
+            }
+        }
+
         // Practice duration is entered manually (0 years / 0 months are valid once set)
         if ($app['practice_years'] === null || $app['practice_years'] === ''
             || $app['practice_months'] === null || $app['practice_months'] === '') {
             $errors[] = 'Years and months of practice are required.';
         }
 
-        if (empty($this->request->getPost('declaration_accepted')) && empty($app['declaration_accepted'])) {
+        if (! $this->isFirstGenerationAnswered($app['is_first_generation'] ?? null)) {
+            $errors[] = 'Sl. No. 12 (Whether the applicant is first-generation lawyer) is required.';
+        }
+        if (! $this->hasFilledCourtPractice($app['courts_practiced'] ?? [])) {
+            $errors[] = 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required.';
+        }
+        if (trim((string) ($app['nature_of_practice'] ?? '')) === '') {
+            $errors[] = 'Sl. No. 16 (Nature of practice) is required.';
+        }
+        if (trim((string) ($app['field_of_law'] ?? '')) === '') {
+            $errors[] = 'Sl. No. 17 (Field of Law) is required.';
+        }
+
+        $notificationDate = ApplicationModel::ageAsOnDate($app);
+        $enrolmentDate    = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+        $decidedError     = $this->invalidStoredDecidedOn((int) $app['id'], $notificationDate);
+        if ($decidedError !== null) {
+            $errors[] = $decidedError;
+        }
+        $practiceError = $this->validatePracticePeriodDates(
+            [
+                'courts_practiced'    => is_array($app['courts_practiced'] ?? null) ? $app['courts_practiced'] : [],
+                'tribunals_practiced' => is_array($app['tribunals_practiced'] ?? null) ? $app['tribunals_practiced'] : [],
+            ],
+            $enrolmentDate,
+            $notificationDate
+        );
+        if ($practiceError !== null) {
+            $errors[] = $practiceError;
+        }
+
+        if (empty($this->request->getPost('declaration_accepted'))) {
             $errors[] = 'You must accept the declaration.';
         }
-        if (empty($this->request->getPost('instructions_accepted')) && empty($app['instructions_accepted'])) {
+        if (empty($this->request->getPost('instructions_accepted'))) {
             $errors[] = 'You must confirm that you have read the instructions.';
         }
 
@@ -736,7 +807,7 @@ class ApplicationController extends BaseController
                     'date_of_birth'     => $post['date_of_birth'] ?: null,
                     'address_office'    => trim($post['address_office'] ?? ''),
                     'address_residence' => trim($post['address_residence'] ?? ''),
-                    'phone_landline'    => trim($post['phone_landline'] ?? ''),
+                    'phone_landline'    => $this->sanitizeLandline($post['phone_landline'] ?? ''),
                     'mobile'            => $contact['mobile'] !== '' ? $contact['mobile'] : (string) ($app['mobile'] ?? ''),
                     'email'             => $contact['email'] !== '' ? $contact['email'] : (string) ($app['email'] ?? ''),
                 ];
@@ -863,13 +934,177 @@ class ApplicationController extends BaseController
     }
 
     /**
-     * Practice "To (date)" must be at least one day before today (blank = still practising).
+     * Landline: digits and telephone punctuation only (no letters).
+     */
+    private function sanitizeLandline(mixed $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        return preg_replace('/[^0-9+\-()\/., ]/', '', $value) ?? '';
+    }
+
+    /**
+     * Field-level rules that are not date-range checks (landline charset, enrolment uniqueness).
+     *
+     * @param array<string, mixed> $post
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $app
+     */
+    private function validateStepFieldRules(int $step, array $post, array $data, array $app): ?string
+    {
+        if ($step === 1) {
+            $raw = trim((string) ($post['phone_landline'] ?? ''));
+            if ($raw !== '' && preg_match('/[A-Za-z]/', $raw)) {
+                return 'Landline may contain only numbers and special characters (no letters).';
+            }
+        }
+
+        if ($step === 2) {
+            $enrolment = trim((string) ($data['enrolment_number'] ?? ''));
+            if ($enrolment === '') {
+                return null;
+            }
+            $key = AdvocateDbModel::parseNumberAndYear($enrolment);
+            if ($key === null) {
+                return null;
+            }
+
+            $userId = (int) session()->get('user_id');
+            $takenUser = model(UserModel::class)->findByEnrolmentNumberAndYear(
+                $key['number'],
+                $key['year'],
+                $userId
+            );
+            if ($takenUser) {
+                return 'Enrolment number ' . $key['number'] . '/' . $key['year']
+                    . ' is already registered to another account.';
+            }
+
+            $takenApp = $this->apps->findOtherByEnrolmentNumberAndYear(
+                $key['number'],
+                $key['year'],
+                (int) $app['id'],
+                $userId
+            );
+            if ($takenApp) {
+                return 'Enrolment number ' . $key['number'] . '/' . $key['year']
+                    . ' is already used on another application.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Date rules for judgment "Decided on" and court/tribunal practice periods.
+     *
+     * @param array<string, mixed> $post
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $app
+     */
+    private function validateStepDates(int $step, array $post, array $data, array $app): ?string
+    {
+        $notificationDate = ApplicationModel::ageAsOnDate($app);
+
+        if ($step === 3 || $step === 4) {
+            $error = $this->validatePostedDecidedOn($post, $notificationDate);
+            if ($error !== null) {
+                return $error;
+            }
+        }
+
+        if ($step === 5) {
+            $enrolmentDate = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+
+            return $this->validatePracticePeriodDates($data, $enrolmentDate, $notificationDate);
+        }
+
+        return null;
+    }
+
+    /**
+     * Mandatory sl. nos. 12 (step 4) and 14, 16, 17 (step 5).
+     *
+     * @param array<string, mixed> $post
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $app
+     */
+    private function validateMandatoryStepFields(int $step, array $post, array $data, array $app): ?string
+    {
+        if ($step === 4 && ! $this->isFirstGenerationAnswered($post['is_first_generation'] ?? null)) {
+            return 'Sl. No. 12 (Whether the applicant is first-generation lawyer) is required.';
+        }
+
+        if ($step === 5) {
+            if (! $this->hasFilledCourtPractice($data['courts_practiced'] ?? [])) {
+                return 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required. Add at least one court.';
+            }
+            if (! $this->postedMultiHasValue($post, 'nature_of_practice')) {
+                return 'Sl. No. 16 (Nature of practice) is required.';
+            }
+            if (! $this->postedMultiHasValue($post, 'field_of_law')) {
+                return 'Sl. No. 17 (Field of Law) is required.';
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $post
+     */
+    private function validatePostedDecidedOn(array $post, string $notificationDate): ?string
+    {
+        $label = $this->notificationDateLabel($notificationDate);
+        foreach (['l1_decided_on', 'l2_decided_on', 'pb_decided_on', 'am_decided_on'] as $key) {
+            $vals = $post[$key] ?? null;
+            if (! is_array($vals)) {
+                continue;
+            }
+            if (ApplicationDateRules::firstInvalidDecidedOn($vals, $notificationDate) !== null) {
+                return 'Decided on date must be earlier than the notification date (' . $label . ').';
+            }
+        }
+
+        return null;
+    }
+
+    private function invalidStoredDecidedOn(int $applicationId, string $notificationDate): ?string
+    {
+        $dates = [];
+        foreach ([
+            model(FormatL1Model::class)->forApplication($applicationId),
+            model(FormatL2Model::class)->forApplication($applicationId),
+            model(FormatL3ProBonoModel::class)->forApplication($applicationId),
+            model(FormatL3AmicusModel::class)->forApplication($applicationId),
+        ] as $rows) {
+            foreach ($rows as $row) {
+                if (! empty($row['decided_on'])) {
+                    $dates[] = $row['decided_on'];
+                }
+            }
+        }
+        if (ApplicationDateRules::firstInvalidDecidedOn($dates, $notificationDate) !== null) {
+            return 'Decided on date in judgment / pro bono / amicus entries must be earlier than the notification date ('
+                . $this->notificationDateLabel($notificationDate) . ').';
+        }
+
+        return null;
+    }
+
+    /**
+     * Practice from/to must be between enrolment date and notification date (inclusive).
+     * Blank "To" means still practising. To cannot be earlier than From.
      *
      * @param array<string, mixed> $data
      */
-    private function validatePracticeToDates(array $data): ?string
+    private function validatePracticePeriodDates(array $data, ?string $enrolmentDate, ?string $notificationDate): ?string
     {
-        $latest = date('Y-m-d', strtotime('-1 day'));
+        $enrolLabel = $enrolmentDate !== null ? $this->notificationDateLabel($enrolmentDate) : null;
+        $notifLabel = $notificationDate !== null ? $this->notificationDateLabel($notificationDate) : null;
 
         foreach (['courts_practiced', 'tribunals_practiced'] as $field) {
             $rows = $data[$field] ?? [];
@@ -880,21 +1115,104 @@ class ApplicationController extends BaseController
                 if (! is_array($row)) {
                     continue;
                 }
-                $to = trim((string) ($row['to_date'] ?? ''));
-                if ($to === '') {
-                    continue;
+                $from = ApplicationDateRules::parseDate($row['from_date'] ?? $row['from'] ?? null);
+                $to   = ApplicationDateRules::parseDate($row['to_date'] ?? $row['to'] ?? null);
+
+                foreach (['From' => $from, 'To' => $to] as $which => $date) {
+                    if ($date === null) {
+                        continue;
+                    }
+                    if (! ApplicationDateRules::practiceDateIsValid($date, $enrolmentDate, $notificationDate)) {
+                        $bounds = [];
+                        if ($enrolLabel !== null) {
+                            $bounds[] = 'enrolment date (' . $enrolLabel . ')';
+                        }
+                        if ($notifLabel !== null) {
+                            $bounds[] = 'notification date (' . $notifLabel . ')';
+                        }
+
+                        return 'Practice ' . $which . ' (date) must be between the '
+                            . implode(' and the ', $bounds) . '.';
+                    }
                 }
-                if ($to > $latest) {
-                    return 'Practice To (date) must be at least one day before today. Leave it blank if you are still practising there.';
-                }
-                $from = trim((string) ($row['from_date'] ?? ''));
-                if ($from !== '' && $to < $from) {
+
+                if ($from !== null && $to !== null && $to < $from) {
                     return 'Practice To (date) cannot be earlier than From (date).';
                 }
             }
         }
 
         return null;
+    }
+
+    private function isFirstGenerationAnswered(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        return in_array($value, ['0', '1', 0, 1, true, false, 'true', 'false', 'yes', 'no', 'on', 't', 'f'], true);
+    }
+
+    /**
+     * @param list<mixed>|string|null $courts
+     */
+    private function hasFilledCourtPractice($courts): bool
+    {
+        if (is_string($courts)) {
+            $decoded = json_decode($courts, true);
+            $courts  = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($courts)) {
+            return false;
+        }
+        foreach ($courts as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $name = trim((string) ($row['court'] ?? ''));
+            if ($name !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $post
+     */
+    private function postedMultiHasValue(array $post, string $name): bool
+    {
+        $selected = $post[$name] ?? [];
+        if (! is_array($selected)) {
+            $selected = $selected !== '' && $selected !== null ? [(string) $selected] : [];
+        }
+        $other = trim((string) ($post[$name . '_other'] ?? ''));
+        foreach ($selected as $value) {
+            $value = trim((string) $value);
+            if ($value === '') {
+                continue;
+            }
+            if ($value === MasterRegistry::OTHERS_VALUE
+                || strcasecmp($value, MasterRegistry::OTHERS_LABEL) === 0) {
+                if ($other !== '') {
+                    return true;
+                }
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function notificationDateLabel(string $isoDate): string
+    {
+        $ts = strtotime($isoDate);
+
+        return $ts !== false ? date('d-m-Y', $ts) : $isoDate;
     }
 
     /**

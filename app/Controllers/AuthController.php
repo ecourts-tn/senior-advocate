@@ -251,7 +251,10 @@ class AuthController extends BaseController
         $existing = model(UserModel::class)->findByEnrolment($enrolment);
         if ($existing) {
             $limiter->record('already_registered', $enrolment, ['user_id' => (int) $existing['id']]);
-            $msg = 'An account already exists for this enrolment number. Please log in or use Forgot Password.';
+            $key = AdvocateDbModel::parseNumberAndYear($enrolment);
+            $msg = $key !== null
+                ? 'An account already exists for enrolment number ' . $key['number'] . '/' . $key['year'] . '. Please log in or use Forgot Password.'
+                : 'An account already exists for this enrolment number. Please log in or use Forgot Password.';
             if ($wantsJson) {
                 return $this->response->setJSON([
                     'found'              => true,
@@ -312,8 +315,12 @@ class AuthController extends BaseController
         $userModel = model(UserModel::class);
 
         if ($userModel->findByEnrolment($enrolment)) {
-            return redirect()->back()->withInput()
-                ->with('error', 'An account already exists for this enrolment number. Please log in.');
+            $key = AdvocateDbModel::parseNumberAndYear($enrolment);
+            $msg = $key !== null
+                ? 'An account already exists for enrolment number ' . $key['number'] . '/' . $key['year'] . '. Please log in.'
+                : 'An account already exists for this enrolment number. Please log in.';
+
+            return redirect()->back()->withInput()->with('error', $msg);
         }
 
         $payload = [

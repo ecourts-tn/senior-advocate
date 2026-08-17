@@ -50,7 +50,8 @@ $lookupMsg = $lookupMsg ?? null;
                         <input type="text" name="enrolment_number" id="enrolment_number" class="form-control"
                                value="<?= esc($val('enrolment_number')) ?>"
                                required maxlength="40"
-                               placeholder="e.g. 1234/2010" autocomplete="off">
+                               placeholder="e.g. 1234/2010" autocomplete="off"
+                               title="Unique by serial number and year (e.g. 1234/2010)">
                     </div>
                     <div class="col-md-5">
                         <button type="button" class="btn btn-outline-primary w-100" id="btnLookupAdvocate">

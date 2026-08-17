@@ -44,16 +44,18 @@
                        value="<?= esc($enrolmentValue) ?>"
                        autocomplete="off">
                 <?php if ($enrolmentLocked): ?>
-                    <div class="form-text">From your registration (not editable).</div>
+                    <div class="form-text">From your registration (not editable). Unique by serial number and year.</div>
                 <?php else: ?>
-                    <div class="form-text">Enter the enrolment number as on your certificate.</div>
+                    <div class="form-text">Enter the enrolment number as on your certificate (unique by number and year, e.g. 1234/2010).</div>
                 <?php endif; ?>
             </div>
             <div class="col-md-4">
                 <label class="form-label required">(iii) Bar Council where registered (Copy of Enrolment Certificate to be attached)</label>
                 <input type="text" name="bar_council" class="form-control" required
                        value="<?= esc(old('bar_council', $app['bar_council'] ?? '')) ?>"
-                       placeholder="e.g. Bar Council of Tamil Nadu & Puducherry">
+                       placeholder="e.g. Bar Council of Tamil Nadu & Puducherry"
+                       autocomplete="off">
+                <div class="form-text">Enter the Bar Council as on your enrolment certificate.</div>
             </div>
             <div class="col-md-6">
                 <label class="form-label required" id="practiceAsOnLabel">

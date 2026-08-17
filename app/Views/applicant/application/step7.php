@@ -160,12 +160,12 @@
 
         <div class="form-check mb-2">
             <input class="form-check-input" type="checkbox" name="declaration_accepted" value="1" id="decl"
-                <?= ssa_bool_label($app['declaration_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
+                   data-reset-on-load="1" required>
             <label class="form-check-label" for="decl">I accept the above declaration.</label>
         </div>
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="instructions_accepted" value="1" id="instr"
-                <?= ssa_bool_label($app['instructions_accepted'] ?? null) === 'Yes' ? 'checked' : '' ?> required>
+                   data-reset-on-load="1" required>
             <label class="form-check-label" for="instr">
                 Yes, I have read the instructions carefully and understand that an error in this application cannot be
                 subsequently rectified and may result in rejection of my application.

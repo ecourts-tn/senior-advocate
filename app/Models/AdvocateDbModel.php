@@ -32,6 +32,45 @@ class AdvocateDbModel extends Model
     }
 
     /**
+     * Split an enrolment value into its serial number and year (e.g. "Ms. 1234/2010" → 1234 + 2010).
+     *
+     * @return array{number: string, year: string}|null
+     */
+    public static function parseNumberAndYear(string $enrolment): ?array
+    {
+        $enrolment = self::normaliseEnrolment($enrolment);
+        if ($enrolment === '') {
+            return null;
+        }
+        if (! preg_match('/(\d+)\D*((?:19|20)\d{2})\b/', $enrolment, $m)) {
+            return null;
+        }
+        $number = ltrim($m[1], '0');
+        if ($number === '') {
+            $number = '0';
+        }
+
+        return [
+            'number' => $number,
+            'year'   => $m[2],
+        ];
+    }
+
+    /**
+     * Whether two enrolment strings refer to the same number + year.
+     */
+    public static function sameNumberAndYear(string $left, string $right): bool
+    {
+        $a = self::parseNumberAndYear($left);
+        $b = self::parseNumberAndYear($right);
+        if ($a === null || $b === null) {
+            return strcasecmp(self::normaliseEnrolment($left), self::normaliseEnrolment($right)) === 0;
+        }
+
+        return $a['number'] === $b['number'] && $a['year'] === $b['year'];
+    }
+
+    /**
      * Find advocate by enrolment number (exact, then case-insensitive).
      */
     public function findByEnrolment(string $enrolment): ?array

@@ -10,13 +10,55 @@ $fieldOptions    = $lookupOptions['field_of_law'] ?? [];
 $periodDate = static function (array $row, string $key): string {
     $alt = $key === 'from_date' ? 'from' : 'to';
     $raw = trim((string) ($row[$key] ?? $row[$alt] ?? ''));
-    if ($raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
-        return $raw;
+    if ($raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}/', $raw)) {
+        return substr($raw, 0, 10);
     }
 
     return '';
 };
-$practiceToMax = date('Y-m-d', strtotime('-1 day'));
+$notificationDate = $notificationDate ?? ($ageAsOnDate ?? ssa_age_as_on_date($app ?? null));
+$enrolmentDate    = $enrolmentDate ?? \App\Libraries\ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+$practiceMin      = $enrolmentDate ?: null;
+$practiceMax      = $notificationDate ?: null;
+$enrolLabel       = $enrolmentDate ? date('d-m-Y', strtotime($enrolmentDate)) : '';
+$notifLabel       = $notificationDate ? date('d-m-Y', strtotime((string) $notificationDate)) : '';
+$practiceRangeHelp = 'Leave "<em>To (date)</em>" blank if still practicing there. '
+    . 'From and To dates must fall between the date of enrolment'
+    . ($enrolLabel !== '' ? ' (' . $enrolLabel . ')' : '')
+    . ' and the notification date'
+    . ($notifLabel !== '' ? ' (' . $notifLabel . ')' : '')
+    . '.';
+
+$postedCourtNames = old('court_name');
+if (is_array($postedCourtNames)) {
+    $postedFrom  = (array) (old('court_from') ?? []);
+    $postedTo    = (array) (old('court_to') ?? []);
+    $postedOther = (array) (old('court_other') ?? []);
+    $app['courts_practiced'] = [];
+    foreach ($postedCourtNames as $i => $name) {
+        $resolved = \App\Models\MasterRegistry::resolveSingle((string) $name, $postedOther[$i] ?? null);
+        $app['courts_practiced'][] = [
+            'court'     => $resolved !== '' ? $resolved : (string) $name,
+            'from_date' => $postedFrom[$i] ?? '',
+            'to_date'   => $postedTo[$i] ?? '',
+        ];
+    }
+}
+$postedTribNames = old('tribunal_name');
+if (is_array($postedTribNames)) {
+    $postedTFrom  = (array) (old('tribunal_from') ?? []);
+    $postedTTo    = (array) (old('tribunal_to') ?? []);
+    $postedTOther = (array) (old('tribunal_other') ?? []);
+    $app['tribunals_practiced'] = [];
+    foreach ($postedTribNames as $i => $name) {
+        $resolved = \App\Models\MasterRegistry::resolveSingle((string) $name, $postedTOther[$i] ?? null);
+        $app['tribunals_practiced'][] = [
+            'tribunal'  => $resolved !== '' ? $resolved : (string) $name,
+            'from_date' => $postedTFrom[$i] ?? '',
+            'to_date'   => $postedTTo[$i] ?? '',
+        ];
+    }
+}
 ?>
 
 <div class="page-header">
@@ -33,7 +75,7 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
             'class'                => 'application-step-form',
         ]) ?>
 
-        <div class="section-title">14. Courts where the applicant is practicing / has practiced <span class="small text-muted">(Court-wise period may be indicated)</span></div>
+        <div class="section-title">14. Courts where the applicant is practicing / has practiced <span class="text-danger">*</span> <span class="small text-muted">(Court-wise period may be indicated)</span></div>
         <div class="d-flex justify-content-end mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#courtRows">+ Add court</button>
         </div>
@@ -57,6 +99,7 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                             'placeholder' => 'Select court…',
                             'showLabel'   => $i === 0,
                             'label'       => 'Court',
+                            'required'    => $i === 0,
                             'disabled'    => false,
                         ], ['saveData' => false]) ?>
                     </div>
@@ -64,14 +107,17 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                         <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
                         <input type="date" name="court_from[]" class="form-control"
                                value="<?= esc($periodDate($c, 'from_date')) ?>"
-                               title="Practice from date">
+                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                               title="Must be between enrolment date and notification date">
                     </div>
                     <div class="col-md-3">
                         <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
                         <input type="date" name="court_to[]" class="form-control"
                                value="<?= esc($periodDate($c, 'to_date')) ?>"
-                               max="<?= esc($practiceToMax) ?>"
-                               title="Practice to date must be at least one day before today (leave blank if ongoing)">
+                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                               title="Must be between enrolment date and notification date (leave blank if ongoing)">
                     </div>
                     <div class="col-md-1">
                         <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
@@ -96,13 +142,17 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">From (date)</label>
-                    <input type="date" name="court_from[]" class="form-control" disabled title="Practice from date">
+                    <input type="date" name="court_from[]" class="form-control" disabled
+                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           title="Must be between enrolment date and notification date">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">To (date)</label>
                     <input type="date" name="court_to[]" class="form-control" disabled
-                           max="<?= esc($practiceToMax) ?>"
-                           title="Practice to date must be at least one day before today (leave blank if ongoing)">
+                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           title="Must be between enrolment date and notification date (leave blank if ongoing)">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label d-none d-md-block">&nbsp;</label>
@@ -110,7 +160,7 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                 </div>
             </div>
         </div>
-        <p class="form-text form-help-text">Leave "<em>To (date)</em>" blank if still practicing there. If entered, To date must be at least one day before today. Choose <strong>Others</strong> to enter a court not listed.</p>
+        <p class="form-text form-help-text"><?= $practiceRangeHelp ?> Choose <strong>Others</strong> to enter a court not listed.</p>
 
         <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those practising before Tribunals)</span></div>
         <div class="d-flex justify-content-end mb-2">
@@ -143,14 +193,17 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                         <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
                         <input type="date" name="tribunal_from[]" class="form-control"
                                value="<?= esc($periodDate($t, 'from_date')) ?>"
-                               title="Practice from date">
+                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                               title="Must be between enrolment date and notification date">
                     </div>
                     <div class="col-md-3">
                         <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
                         <input type="date" name="tribunal_to[]" class="form-control"
                                value="<?= esc($periodDate($t, 'to_date')) ?>"
-                               max="<?= esc($practiceToMax) ?>"
-                               title="Practice to date must be at least one day before today (leave blank if ongoing)">
+                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                               title="Must be between enrolment date and notification date (leave blank if ongoing)">
                     </div>
                     <div class="col-md-1">
                         <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
@@ -175,13 +228,17 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">From (date)</label>
-                    <input type="date" name="tribunal_from[]" class="form-control" disabled title="Practice from date">
+                    <input type="date" name="tribunal_from[]" class="form-control" disabled
+                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           title="Must be between enrolment date and notification date">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">To (date)</label>
                     <input type="date" name="tribunal_to[]" class="form-control" disabled
-                           max="<?= esc($practiceToMax) ?>"
-                           title="Practice to date must be at least one day before today (leave blank if ongoing)">
+                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           title="Must be between enrolment date and notification date (leave blank if ongoing)">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label d-none d-md-block">&nbsp;</label>
@@ -189,9 +246,9 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
                 </div>
             </div>
         </div>
-        <p class="form-text">Leave <em>To</em> blank if still practicing there. If entered, To date must be at least one day before today. Choose <strong>Others</strong> to enter a tribunal not listed.</p>
+        <p class="form-text form-help-text"><?= $practiceRangeHelp ?> Choose <strong>Others</strong> to enter a tribunal not listed.</p>
 
-        <div class="section-title mt-4">16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.)</div>
+        <div class="section-title mt-4">16. Nature of practice (e.g. Civil, Criminal, Constitutional, Taxation, Labour, Company, Service, etc.) <span class="text-danger">*</span></div>
         <?php
         $natureMulti = $app['_multi']['nature_of_practice'] ?? null;
         if ($natureMulti === null) {
@@ -207,12 +264,12 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
             'options'  => $natureOptions,
             'selected' => $natureMulti['selected'] ?? [],
             'other'    => $natureMulti['other'] ?? '',
-            'required' => false,
-            'help'     => 'Select all that apply (stored as related master records).',
+            'required' => true,
+            'help'     => 'Select at least one option (stored as related master records).',
         ]);
         ?>
 
-        <div class="section-title mt-4">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Arbitration Law, Corporate Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise</div>
+        <div class="section-title mt-4">17. Field of Law — domain expertise (such as Constitutional Law, Inter-State Water Disputes, Criminal Law, Arbitration Law, Corporate Law, Family Law, Human Rights, Public Interest Litigation, International Law, law relating to women) in which the applicant has specialization/expertise <span class="text-danger">*</span></div>
         <?php
         $fieldMulti = $app['_multi']['field_of_law'] ?? null;
         if ($fieldMulti === null) {
@@ -228,8 +285,8 @@ $practiceToMax = date('Y-m-d', strtotime('-1 day'));
             'options'  => $fieldOptions,
             'selected' => $fieldMulti['selected'] ?? [],
             'other'    => $fieldMulti['other'] ?? '',
-            'required' => false,
-            'help'     => 'Select all that apply (stored as related master records).',
+            'required' => true,
+            'help'     => 'Select at least one option (stored as related master records).',
         ]);
         ?>
 
