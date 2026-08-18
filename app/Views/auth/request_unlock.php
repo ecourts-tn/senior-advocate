@@ -19,7 +19,10 @@
                 <strong>1 hour</strong> and can be used only once. Check your inbox and spam folder.
                 No email is sent until you click the button below.
             </p>
-            <?= form_open('request-unlock') ?>
+            <?= form_open('request-unlock', [
+                'data-mail-loader'      => '1',
+                'data-mail-loader-text' => 'Sending the unlock email…',
+            ]) ?>
             <div class="mb-3">
                 <label class="form-label required" for="email">Registered email address</label>
                 <div class="input-group">

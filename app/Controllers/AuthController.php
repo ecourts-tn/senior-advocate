@@ -31,7 +31,7 @@ class AuthController extends BaseController
     public function attemptLogin()
     {
         $rules = [
-            'email'    => 'required|valid_email',
+            'email'    => 'required|min_length[5]|max_length[255]',
             'password' => 'required|min_length[6]',
             'captcha'  => 'required|min_length[4]|max_length[8]',
         ];
@@ -40,71 +40,71 @@ class AuthController extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $email    = strtolower(trim((string) $this->request->getPost('email')));
+        $login    = trim((string) $this->request->getPost('email'));
         $password = (string) $this->request->getPost('password');
         $security = new LoginSecurityService();
+        $userModel = model(UserModel::class);
+        $user      = $userModel->findByLogin($login);
+        $lockKey   = $user ? (string) $user['email'] : $login;
 
         // Account lock (email unlock) or temporary IP lockout.
-        if ($lockMsg = $security->lockoutMessage($email)) {
-            $accountLocked = $security->isAccountLocked($email)
+        if ($lockMsg = $security->lockoutMessage($lockKey)) {
+            $accountLocked = $security->isAccountLocked($lockKey)
                 || $lockMsg === LoginSecurityService::ACCOUNT_LOCKED_MESSAGE;
             $security->recordFailure(
-                $email,
+                $lockKey,
                 $accountLocked ? 'account_locked' : 'rate_limited',
-                $this->userIdForEmail($email)
+                $user ? (int) $user['id'] : null
             );
             if ($accountLocked) {
-                $security->persistLock(null, $email);
+                $security->persistLock($user, $lockKey);
             }
 
             $redirect = redirect()->back()->withInput()->with('error', $lockMsg);
-            if ($accountLocked) {
+            if ($accountLocked && $user) {
                 $redirect = $redirect
                     ->with('account_locked', true)
-                    ->with('locked_email', $email);
+                    ->with('locked_email', $user['email']);
             }
 
             return $redirect;
         }
 
         if (! $this->verifyCaptcha()) {
-            $security->recordFailure($email, 'captcha');
+            $security->recordFailure($lockKey, 'captcha', $user ? (int) $user['id'] : null);
 
             return redirect()->back()->withInput()->with('error', 'Invalid or expired CAPTCHA. Please try again.');
         }
 
-        $userModel = model(UserModel::class);
-        $user      = $userModel->findByEmail($email);
-
-        // Same public message for unknown email and wrong password (do not reveal which).
+        // Same public message for unknown account and wrong password (do not reveal which).
         if (! $user || ! $userModel->verifyPassword($user, $password)) {
             $security->recordFailure(
-                $email,
+                $lockKey,
                 'invalid_credentials',
                 $user ? (int) $user['id'] : null
             );
 
-            if ($user && $security->countRecentFailuresByEmail($email) >= LoginSecurityService::MAX_PER_EMAIL) {
-                $security->persistLock($user, $email);
+            if ($user && $security->countRecentFailuresByEmail($lockKey) >= LoginSecurityService::MAX_PER_EMAIL) {
+                $security->persistLock($user, $lockKey);
 
                 return redirect()->back()->withInput()
                     ->with('error', LoginSecurityService::ACCOUNT_LOCKED_MESSAGE)
                     ->with('account_locked', true)
-                    ->with('locked_email', $email);
+                    ->with('locked_email', $user['email']);
             }
 
-            return redirect()->back()->withInput()->with('error', 'Invalid email or password.');
+            return redirect()->back()->withInput()->with('error', 'Invalid email, mobile number, or password.');
         }
 
         if (! $user['is_active'] && $user['is_active'] !== 't' && $user['is_active'] !== true && $user['is_active'] !== '1') {
-            $security->recordFailure($email, 'inactive', (int) $user['id']);
+            $security->recordFailure($lockKey, 'inactive', (int) $user['id']);
 
             return redirect()->back()->with('error', 'Your account is inactive. Contact the Registry.');
         }
 
         // Registered users must verify their email before they can sign in.
         if (! $userModel->isEmailVerified($user)) {
-            $security->recordFailure($email, 'unverified', (int) $user['id']);
+            $security->recordFailure($lockKey, 'unverified', (int) $user['id']);
 
             return redirect()->back()
                 ->withInput()
@@ -338,7 +338,22 @@ class AuthController extends BaseController
         $plainToken = $userModel->issueEmailVerificationToken((int) $id);
         $verifyUrl  = base_url('verify-email/' . $plainToken);
 
-        model(AuditLogModel::class)->log('register', (int) $id, null, ['enrolment_number' => $enrolment]);
+        $advocateSync = 'skipped';
+        try {
+            $advocateSync = model(AdvocateDbModel::class)->upsertFromRegistration([
+                'enrolment_number' => $enrolment,
+                'name'             => $payload['name'],
+                'mobile'           => $payload['mobile'],
+            ]);
+        } catch (\Throwable $e) {
+            $advocateSync = 'failed';
+            log_message('error', 'advocate_t sync on register failed [' . $enrolment . ']: ' . $e->getMessage());
+        }
+
+        model(AuditLogModel::class)->log('register', (int) $id, null, [
+            'enrolment_number' => $enrolment,
+            'advocate_t'       => $advocateSync,
+        ]);
 
         (new NotificationService())->emailVerification([
             'id'     => (int) $id,
@@ -565,7 +580,7 @@ class AuthController extends BaseController
 
     private function userIdForEmail(string $email): ?int
     {
-        $user = model(UserModel::class)->findByEmail($email);
+        $user = model(UserModel::class)->findByLogin($email);
 
         return $user ? (int) $user['id'] : null;
     }

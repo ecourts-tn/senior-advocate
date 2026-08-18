@@ -12,7 +12,10 @@
             <p class="small text-muted mb-3">
                 We will send a secure link to reset your password. The link expires in <strong>1 hour</strong>.
             </p>
-            <?= form_open('forgot-password') ?>
+            <?= form_open('forgot-password', [
+                'data-mail-loader'      => '1',
+                'data-mail-loader-text' => 'Sending the password reset email…',
+            ]) ?>
             <div class="mb-3">
                 <label class="form-label required" for="email">Registered email</label>
                 <div class="input-group">

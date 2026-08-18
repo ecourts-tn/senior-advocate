@@ -99,7 +99,10 @@
         <div class="card card-mhc mb-3">
             <div class="card-header">Send test email</div>
             <div class="card-body">
-                <?= form_open('admin/settings/email/test') ?>
+                <?= form_open('admin/settings/email/test', [
+                    'data-mail-loader'      => '1',
+                    'data-mail-loader-text' => 'Sending the test email…',
+                ]) ?>
                 <div class="mb-3">
                     <label class="form-label" for="test_email">Recipient</label>
                     <input type="email" name="test_email" id="test_email" class="form-control" required

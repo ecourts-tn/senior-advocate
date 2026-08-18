@@ -13,7 +13,10 @@
                 Enter the email address you used at registration. If the account exists and is not yet verified,
                 we will send a new verification link.
             </p>
-            <?= form_open('resend-verification') ?>
+            <?= form_open('resend-verification', [
+                'data-mail-loader'      => '1',
+                'data-mail-loader-text' => 'Sending the verification email…',
+            ]) ?>
             <div class="mb-3">
                 <label class="form-label required" for="email">Email address</label>
                 <div class="input-group">

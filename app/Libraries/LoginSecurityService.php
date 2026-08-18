@@ -180,14 +180,23 @@ class LoginSecurityService
             }
         }
 
-        // details JSON includes "email":"<address>"
-        $needle = '"email":"' . $email . '"';
-
-        return (int) $this->audit->builder()
+        $builder = $this->audit->builder()
             ->whereIn('action', ['login_failed', 'login_blocked'])
-            ->where('created_at >=', $since)
-            ->like('details', $needle)
-            ->countAllResults();
+            ->where('created_at >=', $since);
+
+        if ($user) {
+            $accountEmail = strtolower((string) ($user['email'] ?? ''));
+            $builder->groupStart()
+                ->where('user_id', (int) $user['id']);
+            if ($accountEmail !== '') {
+                $builder->orLike('details', '"email":"' . $accountEmail . '"');
+            }
+            $builder->groupEnd();
+        } else {
+            $builder->like('details', '"email":"' . $email . '"');
+        }
+
+        return (int) $builder->countAllResults();
     }
 
     private function findUser(string $email): ?array
@@ -198,7 +207,7 @@ class LoginSecurityService
         }
 
         try {
-            return model(UserModel::class)->findByEmail($email);
+            return model(UserModel::class)->findByLogin($email);
         } catch (\Throwable $e) {
             return null;
         }

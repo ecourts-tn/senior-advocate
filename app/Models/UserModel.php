@@ -57,6 +57,78 @@ class UserModel extends Model
         return $this->where('email', strtolower(trim($email)))->first();
     }
 
+    /**
+     * Find by registered email or mobile (10-digit Indian number, with or without +91 / 0).
+     */
+    public function findByLogin(string $login): ?array
+    {
+        $login = trim($login);
+        if ($login === '') {
+            return null;
+        }
+
+        if (self::looksLikeEmail($login)) {
+            return $this->findByEmail($login);
+        }
+
+        $byMobile = $this->findByMobile($login);
+        if ($byMobile) {
+            return $byMobile;
+        }
+
+        // Fallback: treat as email if it contains '@' but failed a strict parse.
+        if (str_contains($login, '@')) {
+            return $this->findByEmail($login);
+        }
+
+        return null;
+    }
+
+    public function findByMobile(string $mobile): ?array
+    {
+        $last10 = self::normaliseMobile($mobile);
+        if (strlen($last10) < 10) {
+            return null;
+        }
+
+        $sql = 'SELECT * FROM users'
+            . ' WHERE deleted_at IS NULL'
+            . " AND mobile IS NOT NULL AND BTRIM(mobile) <> ''"
+            . " AND RIGHT(regexp_replace(mobile, '[^0-9]', '', 'g'), 10) = ?"
+            . ' ORDER BY id ASC'
+            . ' LIMIT 1';
+        $row = $this->db->query($sql, [$last10])->getRowArray();
+
+        return $row ?: null;
+    }
+
+    public static function looksLikeEmail(string $value): bool
+    {
+        return filter_var(trim($value), FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /**
+     * Reduce a mobile string to the last 10 digits (strip +91 / leading 0).
+     */
+    public static function normaliseMobile(string $mobile): string
+    {
+        $digits = preg_replace('/\D+/', '', $mobile) ?? '';
+        if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+        if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+            $digits = substr($digits, 2);
+        }
+        if (strlen($digits) === 13 && str_starts_with($digits, '091')) {
+            $digits = substr($digits, 3);
+        }
+        if (strlen($digits) > 10) {
+            $digits = substr($digits, -10);
+        }
+
+        return $digits;
+    }
+
     public function findByEnrolment(string $enrolment): ?array
     {
         $enrolment = AdvocateDbModel::normaliseEnrolment($enrolment);

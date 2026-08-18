@@ -19,6 +19,98 @@ window.addEventListener('pageshow', function (event) {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+  // Overlay while SMTP / outbound mail is in progress (registration, resend, reset, test).
+  (function initMailLoader() {
+    var DEFAULT_TEXT = 'Sending email… Please wait.';
+
+    function ensureOverlay() {
+      var el = document.getElementById('mailBusyOverlay');
+      if (el) return el;
+      el = document.createElement('div');
+      el.id = 'mailBusyOverlay';
+      el.className = 'mail-busy-overlay';
+      el.hidden = true;
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-live', 'assertive');
+      el.setAttribute('aria-busy', 'true');
+      el.innerHTML = '<div class="mail-busy-box">'
+        + '<div class="spinner-border" aria-hidden="true"></div>'
+        + '<p class="mail-busy-text"></p>'
+        + '</div>';
+      document.body.appendChild(el);
+      return el;
+    }
+
+    function showMailLoader(form, text) {
+      var overlay = ensureOverlay();
+      var msg = text
+        || (form && form.getAttribute('data-mail-loader-text'))
+        || DEFAULT_TEXT;
+      var label = overlay.querySelector('.mail-busy-text');
+      if (label) label.textContent = msg;
+      overlay.hidden = false;
+      document.body.classList.add('mail-busy');
+
+      if (!form) return;
+      form.setAttribute('data-mail-busy', '1');
+      form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+      });
+    }
+
+    function hideMailLoader() {
+      var overlay = document.getElementById('mailBusyOverlay');
+      if (overlay) overlay.hidden = true;
+      document.body.classList.remove('mail-busy');
+    }
+
+    document.querySelectorAll('form[data-mail-loader]').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (form.getAttribute('data-mail-busy') === '1') {
+          e.preventDefault();
+          return;
+        }
+        showMailLoader(form);
+      });
+    });
+
+    document.querySelectorAll('form.application-step-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        var btn = e.submitter;
+        if (!btn || btn.getAttribute('data-submit-loader') !== '1') {
+          return;
+        }
+        if (form.getAttribute('data-mail-busy') === '1') {
+          e.preventDefault();
+          return;
+        }
+        if (!form.querySelector('input[data-submit-loader-action]')) {
+          var hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'action';
+          hidden.value = 'submit';
+          hidden.setAttribute('data-submit-loader-action', '1');
+          form.appendChild(hidden);
+        }
+        showMailLoader(form, btn.getAttribute('data-submit-loader-text') || 'Submitting your application… Please wait.');
+      });
+    });
+
+    window.addEventListener('pageshow', function (event) {
+      if (event.persisted) {
+        hideMailLoader();
+        document.querySelectorAll('form[data-mail-busy]').forEach(function (form) {
+          form.removeAttribute('data-mail-busy');
+          form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+          });
+        });
+      }
+    });
+  })();
+
   // Block double-submit on application forms; disable controls after first submit
   function clearStaleDateRequired(form) {
     if (!form) return;
@@ -632,6 +724,52 @@ document.addEventListener('DOMContentLoaded', function () {
     return name.indexOf('_from') !== -1 && name.indexOf('_from_') === -1;
   }
 
+  function normalizeDateCompare(value) {
+    var s = String(value || '').replace('T', ' ').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + ' 00:00';
+    if (s.length >= 16) return s.substring(0, 16);
+    return s;
+  }
+
+  function linkedMinSelector(sourceId) {
+    if (!sourceId) return '';
+    return '[data-date-min-from="#' + sourceId + '"], [data-date-min-from="' + sourceId + '"]';
+  }
+
+  function setPickerMin(el, minVal) {
+    if (!el) return;
+    if (minVal) {
+      el.setAttribute('min', minVal);
+    } else {
+      el.removeAttribute('min');
+    }
+    var fp = el._flatpickr;
+    if (fp) {
+      fp.set('minDate', minVal || null);
+      var current = normalizeDateCompare(el.value);
+      var minCmp  = normalizeDateCompare(minVal);
+      if (current && minCmp && current < minCmp) {
+        fp.clear();
+      }
+    } else {
+      var native = normalizeDateCompare(el.value);
+      var minN   = normalizeDateCompare(minVal);
+      if (native && minN && native < minN) {
+        el.value = '';
+      }
+    }
+  }
+
+  function applyLinkedDateMins(sourceEl) {
+    if (!sourceEl || !sourceEl.id) return;
+    var minVal = String(sourceEl.value || '').trim();
+    document.querySelectorAll(linkedMinSelector(sourceEl.id)).forEach(function (dep) {
+      setPickerMin(dep, minVal);
+      applyLinkedDateMins(dep);
+    });
+  }
+
   function applyPeriodToBounds(fromEl) {
     var toEl = findPeriodPairTo(fromEl);
     if (!toEl) return;
@@ -715,6 +853,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (isPeriodFromInput(el)) {
             applyPeriodToBounds(el);
           }
+          applyLinkedDateMins(el);
         },
         onReady: function (selectedDates, dateStr, instance) {
           // Move HTML5 required onto the visible alt input
@@ -732,6 +871,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (isPeriodFromInput(el)) {
             applyPeriodToBounds(el);
           }
+          applyLinkedDateMins(el);
         },
       };
       if (el.getAttribute('min')) opts.minDate = el.getAttribute('min');
@@ -773,6 +913,7 @@ document.addEventListener('DOMContentLoaded', function () {
           if (instance.altInput && wasRequired) {
             instance.altInput.setCustomValidity(dateStr ? '' : 'Please select date and time.');
           }
+          applyLinkedDateMins(el);
         },
         onReady: function (selectedDates, dateStr, instance) {
           if (instance.altInput) {
@@ -783,6 +924,7 @@ document.addEventListener('DOMContentLoaded', function () {
               instance.altInput.setCustomValidity(dateStr || el.value ? '' : 'Please select date and time.');
             }
           }
+          applyLinkedDateMins(el);
         },
       };
       if (el.getAttribute('min')) opts.minDate = el.getAttribute('min');
@@ -827,11 +969,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initFlatpickrIn(document);
 
+  document.querySelectorAll('[data-date-min-from]').forEach(function (dep) {
+    var ref = (dep.getAttribute('data-date-min-from') || '').replace(/^#/, '');
+    var src = ref ? document.getElementById(ref) : null;
+    if (src) applyLinkedDateMins(src);
+  });
+
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (!el || el.nodeType !== 1) return;
-    if (!isPeriodFromInput(el)) return;
-    applyPeriodToBounds(el);
+    if (isPeriodFromInput(el)) applyPeriodToBounds(el);
+    if (el.id) applyLinkedDateMins(el);
   });
 
   // Expose for dynamic row clones

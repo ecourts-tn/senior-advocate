@@ -1,5 +1,5 @@
-To: 9884740424
-Date: 2026-08-12T06:05:45+00:00
+To: 8344381139
+Date: 2026-08-18T22:14:28+05:30
 Method: log
 
 MHC SSA Portal: Verify your email to activate your account. Open the verification link sent to your registered email.

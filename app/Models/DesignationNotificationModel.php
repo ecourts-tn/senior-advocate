@@ -163,6 +163,78 @@ class DesignationNotificationModel extends Model
     }
 
     /**
+     * Calendar date (Y-m-d) from a date or datetime string, or null if empty/invalid.
+     */
+    public static function calendarDate(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})/', $value, $m)) {
+            $ymd = $m[1];
+            $dt  = \DateTime::createFromFormat('Y-m-d', $ymd);
+
+            return ($dt && $dt->format('Y-m-d') === $ymd) ? $ymd : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate notification / application / edit-window dates.
+     *
+     * Notification date cannot be in the future.
+     * Application start is on or after the notification date (future allowed).
+     * Application end is on or after application start (future allowed).
+     * Edit start is on or after application end (future allowed).
+     * Edit end is on or after edit start (future allowed).
+     *
+     * @param array<string, mixed> $payload
+     */
+    public static function validateAdminDates(array $payload, ?string $today = null): ?string
+    {
+        $today = $today ?? date('Y-m-d');
+
+        $notif = self::calendarDate((string) ($payload['notification_date'] ?? ''));
+        if ($notif === null) {
+            return 'Notification date is required and must be a valid date.';
+        }
+        if ($notif > $today) {
+            return 'Notification date cannot be a future date.';
+        }
+
+        $appStart = self::normalizeDateTime($payload['application_start_date'] ?? null);
+        $appEnd   = self::normalizeDateTime($payload['application_end_date'] ?? null);
+        if ($appStart === null || $appEnd === null) {
+            return 'Application start and end must be valid date and time values.';
+        }
+        if (self::calendarDate($appStart) < $notif) {
+            return 'Application start date cannot be earlier than the notification date.';
+        }
+        if (strtotime($appEnd) < strtotime($appStart)) {
+            return 'Application end date/time cannot be earlier than the application start date/time.';
+        }
+
+        $editStart = self::normalizeDateTime($payload['edit_window_start_date'] ?? null);
+        $editEnd   = self::normalizeDateTime($payload['edit_window_end_date'] ?? null);
+        if ($editStart === null && $editEnd === null) {
+            return null;
+        }
+        if ($editStart === null || $editEnd === null) {
+            return 'Edit window start and end dates must both be entered.';
+        }
+        if (strtotime($editStart) < strtotime($appEnd)) {
+            return 'Edit window start date/time cannot be earlier than the application end date/time.';
+        }
+        if (strtotime($editEnd) < strtotime($editStart)) {
+            return 'Edit window end date/time cannot be earlier than the edit window start date/time.';
+        }
+
+        return null;
+    }
+
+    /**
      * Notification whose application window includes now (and is active).
      */
     public function getOpenForApplications(?string $now = null): ?array

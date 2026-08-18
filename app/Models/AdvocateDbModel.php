@@ -87,6 +87,89 @@ class AdvocateDbModel extends Model
     }
 
     /**
+     * Map registration form fields onto advocate_t columns.
+     * Empty / missing values are omitted so updates do not wipe existing data.
+     *
+     * @param array<string, mixed> $registration
+     *
+     * @return array<string, string>
+     */
+    public static function registrationFieldsToRow(array $registration): array
+    {
+        $enrolment = self::normaliseEnrolment((string) ($registration['enrolment_number'] ?? $registration['advenrol'] ?? ''));
+
+        $name = trim((string) ($registration['name'] ?? $registration['advname'] ?? ''));
+        if ($name !== '') {
+            $name = mb_substr($name, 0, 100);
+        }
+
+        $mobile = trim((string) ($registration['mobile'] ?? $registration['mobileno'] ?? ''));
+        if ($mobile === '0' || $mobile === '0.0') {
+            $mobile = '';
+        }
+        if ($mobile !== '' && str_contains($mobile, '.')) {
+            $mobile = explode('.', $mobile, 2)[0];
+        }
+        if ($mobile !== '') {
+            $mobile = mb_substr($mobile, 0, 20);
+        }
+
+        $row = [];
+        if ($enrolment !== '') {
+            $row['advenrol'] = mb_substr($enrolment, 0, 40);
+        }
+        if ($name !== '') {
+            $row['advname'] = $name;
+        }
+        if ($mobile !== '') {
+            $row['mobileno'] = $mobile;
+        }
+
+        return $row;
+    }
+
+    /**
+     * Insert advocate master row from registration, or update provided fields if it exists.
+     *
+     * @param array<string, mixed> $registration
+     *
+     * @return 'inserted'|'updated'|'unchanged'|'skipped'
+     */
+    public function upsertFromRegistration(array $registration): string
+    {
+        $row       = self::registrationFieldsToRow($registration);
+        $enrolment = $row['advenrol'] ?? '';
+        if ($enrolment === '') {
+            return 'skipped';
+        }
+
+        $now      = date('Y-m-d H:i:s');
+        $existing = $this->findByEnrolment($enrolment);
+
+        if ($existing) {
+            $update = $row;
+            unset($update['advenrol']);
+            if ($update === []) {
+                return 'unchanged';
+            }
+
+            $update['create_modify'] = $now;
+            $this->update((string) $existing['advenrol'], $update);
+
+            return 'updated';
+        }
+
+        $this->insert([
+            'advenrol'      => $enrolment,
+            'advname'       => $row['advname'] ?? '',
+            'mobileno'      => $row['mobileno'] ?? null,
+            'create_modify' => $now,
+        ]);
+
+        return 'inserted';
+    }
+
+    /**
      * Map advocate_db row to registration form fields.
      *
      * @return array{enrolment_number: string, name: string, mobile: string, address: string, date_of_birth: string, gender: string, father_husband: string, bar: string, enrolment_date: string, found: bool}

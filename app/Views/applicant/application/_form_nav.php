@@ -27,6 +27,8 @@
                 : 'Submit this application? Errors cannot be rectified later.';
             ?>
             <button type="submit" name="action" value="submit" class="btn btn-success"
+                    data-submit-loader="1"
+                    data-submit-loader-text="<?= esc($isResubmit ? 'Resubmitting your application… Please wait.' : 'Submitting your application… Please wait.', 'attr') ?>"
                     onclick="return confirm(<?= json_encode($submitConfirm) ?>);">
                 <i class="bi bi-send-check"></i> <?= esc($submitLabel) ?>
             </button>

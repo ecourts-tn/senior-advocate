@@ -96,12 +96,13 @@ $editWindow = $editWindow ?? \App\Models\ApplicationModel::editWindowInfo();
                 <div class="card-body">
                     <?= form_open('login') ?>
                     <div class="mb-3">
-                        <label class="form-label required" for="email">Email address</label>
+                        <label class="form-label required" for="email">Email or mobile number</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="bi bi-envelope"></i></span>
-                            <input type="email" name="email" id="email" class="form-control"
-                                   value="<?= old('email') ?>" required autocomplete="username"
-                                   placeholder="name@example.com">
+                            <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                            <input type="text" name="email" id="email" class="form-control"
+                                   value="<?= esc(old('email')) ?>" required autocomplete="username"
+                                   maxlength="255" inputmode="email"
+                                   placeholder="name@example.com or 10-digit mobile">
                         </div>
                     </div>
                     <div class="mb-3">

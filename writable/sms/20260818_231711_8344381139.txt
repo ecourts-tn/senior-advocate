@@ -1,5 +1,5 @@
-To: 9445063705
-Date: 2026-08-12T10:11:41+00:00
-Method: log
+To: 8344381139
+Date: 2026-08-18T23:17:11+05:30
+Method: disabled
 
 MHC SSA Portal: Application MHC/SSA/2026/0001 submitted successfully. Keep your Application No. for reference.

@@ -203,6 +203,32 @@ class ApplicationController extends BaseController
             ]
         );
 
+        $appIds = [];
+        $mainRowByApp = [];
+        $excelRow     = 2; // row 1 is the header
+        foreach ($rows as $a) {
+            $id = (int) ($a['id'] ?? 0);
+            if ($id > 0) {
+                $appIds[]           = $id;
+                $mainRowByApp[$id]  = $excelRow;
+            }
+            $excelRow++;
+        }
+
+        $l1ByApp   = $this->formatEntriesByApplication(FormatL1Model::class, $appIds, ['court_level', 's_no']);
+        $l2ByApp   = $this->formatEntriesByApplication(FormatL2Model::class, $appIds, ['court_level', 's_no']);
+        $l3pbByApp = $this->formatEntriesByApplication(FormatL3ProBonoModel::class, $appIds, ['s_no']);
+        $l3amByApp = $this->formatEntriesByApplication(FormatL3AmicusModel::class, $appIds, ['s_no']);
+        $l4ByApp   = $this->formatEntriesByApplication(FormatL4Model::class, $appIds, ['s_no']);
+
+        $courtsSheet    = $this->buildPracticeSheet($rows, $mainRowByApp, 'courts_practiced', 'court', 'Court');
+        $tribunalsSheet = $this->buildPracticeSheet($rows, $mainRowByApp, 'tribunals_practiced', 'tribunal', 'Tribunal');
+        $l1Sheet        = $this->buildJudgmentSheet($rows, $mainRowByApp, $l1ByApp);
+        $l2Sheet        = $this->buildJudgmentSheet($rows, $mainRowByApp, $l2ByApp);
+        $l3iSheet       = $this->buildProBonoSheet($rows, $mainRowByApp, $l3pbByApp);
+        $l3iiSheet      = $this->buildAmicusSheet($rows, $mainRowByApp, $l3amByApp);
+        $l4Sheet        = $this->buildL4Sheet($rows, $mainRowByApp, $l4ByApp);
+
         $headers = [
             'Application No.',
             'Status',
@@ -227,6 +253,8 @@ class ApplicationController extends BaseController
             'Practice months',
             'Cumulative exp years (courts)',
             'Cumulative exp months (courts)',
+            'Courts practiced',
+            'Tribunals practiced',
             'Net income (₹ lakhs)',
             'Bar association member',
             'Bar association name',
@@ -236,13 +264,18 @@ class ApplicationController extends BaseController
             'Unreported SC',
             'Unreported HC',
             'Unreported District/Tribunal',
+            'Format L-1',
+            'Format L-2',
             'Pro bono total',
             'Amicus total',
+            'Format L-3(i)',
+            'Format L-3(ii)',
             'First-generation lawyer',
             'Academic articles',
             'Academic books',
             'Teaching assignments',
             'Guest lectures',
+            'Format L-4',
             'Nature of practice',
             'Field of law',
             'Applied MHC earlier',
@@ -265,25 +298,11 @@ class ApplicationController extends BaseController
             'Current step',
         ];
 
-        $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-        $xml .= '<?mso-application progid="Excel.Sheet"?>' . "\n";
-        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
-            . ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
-        $xml .= '<Styles>'
-            . '<Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#0F2340" ss:Pattern="Solid"/>'
-            . '<Font ss:Color="#FFFFFF" ss:Bold="1"/></Style>'
-            . '</Styles>' . "\n";
-        $xml .= '<Worksheet ss:Name="Applications"><Table>' . "\n";
-
-        $xml .= '<Row>';
-        foreach ($headers as $h) {
-            $xml .= '<Cell ss:StyleID="Header"><Data ss:Type="String">' . $this->xmlEscape($h) . '</Data></Cell>';
-        }
-        $xml .= '</Row>' . "\n";
-
+        $mainRows = [];
         foreach ($rows as $a) {
+            $appId       = (int) ($a['id'] ?? 0);
             $statusLabel = ApplicationModel::STATUSES[$a['status'] ?? ''] ?? (string) ($a['status'] ?? '');
-            $cells       = [
+            $mainRows[]  = [
                 $a['application_no'] ?? '',
                 $statusLabel,
                 $a['cycle_year'] ?? '',
@@ -307,6 +326,8 @@ class ApplicationController extends BaseController
                 $a['practice_months'] ?? '',
                 $a['cumulative_exp_years'] ?? '',
                 $a['cumulative_exp_months'] ?? '',
+                $this->exportSheetLink($courtsSheet['anchors'][$appId] ?? null, $courtsSheet['counts'][$appId] ?? 0, 'Courts'),
+                $this->exportSheetLink($tribunalsSheet['anchors'][$appId] ?? null, $tribunalsSheet['counts'][$appId] ?? 0, 'Tribunals'),
                 $a['net_income_lakhs'] ?? '',
                 $this->exportBool($a['is_bar_association_member'] ?? null),
                 $a['bar_association_name'] ?? '',
@@ -316,13 +337,18 @@ class ApplicationController extends BaseController
                 $a['unreported_sc'] ?? '',
                 $a['unreported_hc'] ?? '',
                 $a['unreported_district'] ?? '',
+                $this->exportSheetLink($l1Sheet['anchors'][$appId] ?? null, $l1Sheet['counts'][$appId] ?? 0, 'L-1'),
+                $this->exportSheetLink($l2Sheet['anchors'][$appId] ?? null, $l2Sheet['counts'][$appId] ?? 0, 'L-2'),
                 $a['pro_bono_total'] ?? '',
                 $a['amicus_total'] ?? '',
+                $this->exportSheetLink($l3iSheet['anchors'][$appId] ?? null, $l3iSheet['counts'][$appId] ?? 0, 'L-3i'),
+                $this->exportSheetLink($l3iiSheet['anchors'][$appId] ?? null, $l3iiSheet['counts'][$appId] ?? 0, 'L-3ii'),
                 $this->exportBool($a['is_first_generation'] ?? null),
                 $a['academic_articles_count'] ?? '',
                 $a['academic_books_count'] ?? '',
                 $a['teaching_assignments_count'] ?? '',
                 $a['guest_lectures_count'] ?? '',
+                $this->exportSheetLink($l4Sheet['anchors'][$appId] ?? null, $l4Sheet['counts'][$appId] ?? 0, 'L-4'),
                 $a['nature_of_practice'] ?? '',
                 $a['field_of_law'] ?? '',
                 $this->exportBool($a['applied_mhc_earlier'] ?? null),
@@ -344,24 +370,28 @@ class ApplicationController extends BaseController
                 $a['review_remarks'] ?? '',
                 $a['current_step'] ?? '',
             ];
-
-            $xml .= '<Row>';
-            foreach ($cells as $cell) {
-                $type = is_numeric($cell) && $cell !== '' && ! preg_match('/^0\d/', (string) $cell)
-                    ? 'Number'
-                    : 'String';
-                // Keep long text / mixed IDs as strings
-                if ($type === 'Number' && (str_contains((string) $cell, ' ') || strlen((string) $cell) > 12)) {
-                    $type = 'String';
-                }
-                $xml .= '<Cell><Data ss:Type="' . $type . '">' . $this->xmlEscape((string) $cell) . '</Data></Cell>';
-            }
-            $xml .= '</Row>' . "\n";
         }
 
-        $xml .= '</Table></Worksheet></Workbook>';
+        $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $xml .= '<?mso-application progid="Excel.Sheet"?>' . "\n";
+        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+            . ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
+        $xml .= '<Styles>'
+            . '<Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#0F2340" ss:Pattern="Solid"/>'
+            . '<Font ss:Color="#FFFFFF" ss:Bold="1"/></Style>'
+            . '<Style ss:ID="Link"><Font ss:Color="#0563C1" ss:Underline="Single"/></Style>'
+            . '</Styles>' . "\n";
+        $xml .= $this->renderExportSheet('Applications', $headers, $mainRows);
+        $xml .= $this->renderExportSheet('Courts', $courtsSheet['headers'], $courtsSheet['rows']);
+        $xml .= $this->renderExportSheet('Tribunals', $tribunalsSheet['headers'], $tribunalsSheet['rows']);
+        $xml .= $this->renderExportSheet('L-1', $l1Sheet['headers'], $l1Sheet['rows']);
+        $xml .= $this->renderExportSheet('L-2', $l2Sheet['headers'], $l2Sheet['rows']);
+        $xml .= $this->renderExportSheet('L-3i', $l3iSheet['headers'], $l3iSheet['rows']);
+        $xml .= $this->renderExportSheet('L-3ii', $l3iiSheet['headers'], $l3iiSheet['rows']);
+        $xml .= $this->renderExportSheet('L-4', $l4Sheet['headers'], $l4Sheet['rows']);
+        $xml .= '</Workbook>';
 
-        $filename = 'DSA_applications_' . date('Ymd_His') . '.xls';
+        $filename = 'SSA_applications_' . date('Ymd_His') . '.xls';
 
         return $this->response
             ->setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
@@ -611,6 +641,318 @@ class ApplicationController extends BaseController
         }
 
         return $formatted;
+    }
+
+    /**
+     * @param list<int> $applicationIds
+     * @param list<string> $orderBy
+     *
+     * @return array<int, list<array<string, mixed>>>
+     */
+    private function formatEntriesByApplication(string $modelClass, array $applicationIds, array $orderBy = ['s_no']): array
+    {
+        if ($applicationIds === []) {
+            return [];
+        }
+
+        $builder = model($modelClass)->whereIn('application_id', $applicationIds);
+        foreach ($orderBy as $col) {
+            $builder->orderBy($col, 'ASC');
+        }
+        $grouped = [];
+        foreach ($builder->findAll() as $row) {
+            $grouped[(int) $row['application_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildPracticeSheet(array $apps, array $mainRowByApp, string $field, string $nameKey, string $nameLabel): array
+    {
+        $headers = ['Application No.', 'Full name', 'S.No.', $nameLabel, 'From', 'To'];
+        $rows    = [];
+        $anchors = [];
+        $counts  = [];
+        $excelRow = 2;
+
+        foreach ($apps as $app) {
+            $appId = (int) ($app['id'] ?? 0);
+            $raw   = $app[$field] ?? null;
+            if (is_string($raw) && $raw !== '') {
+                $decoded = json_decode($raw, true);
+                $raw     = is_array($decoded) ? $decoded : [];
+            }
+            if (! is_array($raw)) {
+                $raw = [];
+            }
+
+            $n = 0;
+            foreach ($raw as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $name = trim((string) ($row[$nameKey] ?? ''));
+                $from = $this->exportDate($row['from_date'] ?? ($row['from'] ?? null));
+                $to   = trim((string) ($row['to_date'] ?? $row['to'] ?? ''));
+                $to   = $to === '' ? 'present' : $this->exportDate($to);
+                if ($name === '' && $from === '' && ($to === '' || $to === 'present')) {
+                    continue;
+                }
+                $n++;
+                if ($n === 1 && $appId > 0) {
+                    $anchors[$appId] = $excelRow;
+                }
+                $rows[] = [
+                    $this->exportAppNoLink($app, $mainRowByApp),
+                    $app['full_name'] ?? '',
+                    $n,
+                    $name,
+                    $from,
+                    $to,
+                ];
+                $excelRow++;
+            }
+            if ($appId > 0) {
+                $counts[$appId] = $n;
+            }
+        }
+
+        return ['headers' => $headers, 'rows' => $rows, 'anchors' => $anchors, 'counts' => $counts];
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @param array<int, list<array<string, mixed>>> $byApp
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildJudgmentSheet(array $apps, array $mainRowByApp, array $byApp): array
+    {
+        $headers = [
+            'Application No.', 'Full name', 'S.No.', 'Court level', 'Court',
+            'Case number', 'Decided on', 'Cause title', 'Citation', 'Legal formulation',
+        ];
+
+        return $this->buildEntrySheet($apps, $mainRowByApp, $byApp, $headers, function (array $row, int $n): array {
+            return [
+                $n,
+                $this->courtLevelLabel((string) ($row['court_level'] ?? '')),
+                trim((string) ($row['court_name'] ?? '')),
+                trim((string) ($row['case_number'] ?? '')),
+                $this->exportDate($row['decided_on'] ?? null),
+                trim((string) ($row['cause_title'] ?? '')),
+                trim((string) ($row['citation'] ?? '')),
+                trim((string) ($row['legal_formulation'] ?? '')),
+            ];
+        });
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @param array<int, list<array<string, mixed>>> $byApp
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildProBonoSheet(array $apps, array $mainRowByApp, array $byApp): array
+    {
+        $headers = [
+            'Application No.', 'Full name', 'S.No.', 'Court / Tribunal',
+            'Case number', 'Decided on', 'Cause title', 'Society benefit',
+        ];
+
+        return $this->buildEntrySheet($apps, $mainRowByApp, $byApp, $headers, function (array $row, int $n): array {
+            return [
+                $n,
+                trim((string) ($row['court_tribunal'] ?? '')),
+                trim((string) ($row['case_number'] ?? '')),
+                $this->exportDate($row['decided_on'] ?? null),
+                trim((string) ($row['cause_title'] ?? '')),
+                trim((string) ($row['society_benefit'] ?? '')),
+            ];
+        });
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @param array<int, list<array<string, mixed>>> $byApp
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildAmicusSheet(array $apps, array $mainRowByApp, array $byApp): array
+    {
+        $headers = [
+            'Application No.', 'Full name', 'S.No.', 'Court / Tribunal',
+            'Case number', 'Decided on', 'Cause title', 'Reportable',
+        ];
+
+        return $this->buildEntrySheet($apps, $mainRowByApp, $byApp, $headers, function (array $row, int $n): array {
+            return [
+                $n,
+                trim((string) ($row['court_tribunal'] ?? '')),
+                trim((string) ($row['case_number'] ?? '')),
+                $this->exportDate($row['decided_on'] ?? null),
+                trim((string) ($row['cause_title'] ?? '')),
+                $this->exportBool($row['reportable'] ?? null),
+            ];
+        });
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @param array<int, list<array<string, mixed>>> $byApp
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildL4Sheet(array $apps, array $mainRowByApp, array $byApp): array
+    {
+        $headers = [
+            'Application No.', 'Full name', 'S.No.', 'Articles', 'Books',
+            'Teaching assignment', 'Guest lectures', 'Other details',
+        ];
+
+        return $this->buildEntrySheet($apps, $mainRowByApp, $byApp, $headers, function (array $row, int $n): array {
+            $articles = trim((string) ($row['articles'] ?? ''));
+            if ($articles === '') {
+                $articles = trim((string) ($row['topic'] ?? ''));
+            }
+
+            return [
+                $n,
+                $articles,
+                trim((string) ($row['books'] ?? '')),
+                trim((string) ($row['teaching_assignment'] ?? '')),
+                trim((string) ($row['guest_lectures'] ?? '')),
+                trim((string) ($row['other_details'] ?? '')),
+            ];
+        });
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @param array<int, list<array<string, mixed>>> $byApp
+     * @param list<string> $headers
+     * @param callable(array<string, mixed>, int): list<mixed> $mapRow
+     * @return array{headers: list<string>, rows: list<list<mixed>>, anchors: array<int, int>, counts: array<int, int>}
+     */
+    private function buildEntrySheet(array $apps, array $mainRowByApp, array $byApp, array $headers, callable $mapRow): array
+    {
+        $rows     = [];
+        $anchors  = [];
+        $counts   = [];
+        $excelRow = 2;
+
+        foreach ($apps as $app) {
+            $appId   = (int) ($app['id'] ?? 0);
+            $entries = $byApp[$appId] ?? [];
+            $n       = 0;
+            foreach ($entries as $entry) {
+                $n++;
+                if ($n === 1 && $appId > 0) {
+                    $anchors[$appId] = $excelRow;
+                }
+                $rows[] = array_merge(
+                    [
+                        $this->exportAppNoLink($app, $mainRowByApp),
+                        $app['full_name'] ?? '',
+                    ],
+                    $mapRow($entry, $n)
+                );
+                $excelRow++;
+            }
+            if ($appId > 0) {
+                $counts[$appId] = $n;
+            }
+        }
+
+        return ['headers' => $headers, 'rows' => $rows, 'anchors' => $anchors, 'counts' => $counts];
+    }
+
+    /**
+     * @param array<int, int> $mainRowByApp
+     * @return array{value: string, href: string}
+     */
+    private function exportAppNoLink(array $app, array $mainRowByApp): array
+    {
+        $appId = (int) ($app['id'] ?? 0);
+        $label = trim((string) ($app['application_no'] ?? ''));
+        if ($label === '') {
+            $label = $appId > 0 ? '#' . $appId : '—';
+        }
+        $row = $mainRowByApp[$appId] ?? null;
+
+        return [
+            'value' => $label,
+            'href'  => $row ? "#'Applications'!A" . $row : '',
+        ];
+    }
+
+    /**
+     * @return array{value: string, href?: string}|string
+     */
+    private function exportSheetLink(?int $anchorRow, int $count, string $sheet): array|string
+    {
+        if ($count < 1 || $anchorRow === null) {
+            return '';
+        }
+        $label = $count === 1 ? '1 entry' : $count . ' entries';
+
+        return [
+            'value' => $label,
+            'href'  => "#'" . $sheet . "'!A" . $anchorRow,
+        ];
+    }
+
+    private function courtLevelLabel(string $level): string
+    {
+        return match ($level) {
+            'madras_hc'         => 'Madras High Court',
+            'supreme_other_hc'  => 'Supreme Court / Other High Courts',
+            'district_tribunal' => 'District Courts / Labour Courts / Tribunals',
+            default             => $level,
+        };
+    }
+
+    /**
+     * @param list<string> $headers
+     * @param list<list<mixed>> $rows
+     */
+    private function renderExportSheet(string $name, array $headers, array $rows): string
+    {
+        $xml = '<Worksheet ss:Name="' . $this->xmlEscape($name) . '"><Table>' . "\n";
+        $xml .= '<Row>';
+        foreach ($headers as $h) {
+            $xml .= '<Cell ss:StyleID="Header"><Data ss:Type="String">' . $this->xmlEscape($h) . '</Data></Cell>';
+        }
+        $xml .= '</Row>' . "\n";
+
+        foreach ($rows as $cells) {
+            $xml .= '<Row>';
+            foreach ($cells as $cell) {
+                $href  = '';
+                $value = $cell;
+                if (is_array($cell)) {
+                    $value = (string) ($cell['value'] ?? '');
+                    $href  = trim((string) ($cell['href'] ?? ''));
+                }
+                $type = is_numeric($value) && $value !== '' && ! preg_match('/^0\d/', (string) $value)
+                    ? 'Number'
+                    : 'String';
+                if ($type === 'Number' && (str_contains((string) $value, ' ') || strlen((string) $value) > 12)) {
+                    $type = 'String';
+                }
+                $attrs = '';
+                if ($href !== '') {
+                    $attrs .= ' ss:StyleID="Link" ss:HRef="' . $this->xmlEscape($href) . '"';
+                }
+                $xml .= '<Cell' . $attrs . '><Data ss:Type="' . $type . '">'
+                    . $this->xmlEscape((string) $value) . '</Data></Cell>';
+            }
+            $xml .= '</Row>' . "\n";
+        }
+
+        $xml .= '</Table></Worksheet>' . "\n";
+
+        return $xml;
     }
 
     /**

@@ -11,6 +11,7 @@ $formAction = $isEdit
 $isActiveDefault = $isEdit
     ? (! empty($n['is_active']) && $n['is_active'] !== 'f' && $n['is_active'] !== '0' && $n['is_active'] !== false)
     : true;
+$maxDate = date('Y-m-d');
 ?>
 
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -45,7 +46,9 @@ $isActiveDefault = $isEdit
                     <div class="col-md-6">
                         <label class="form-label required" for="notification_date">Notification date</label>
                         <input type="date" name="notification_date" id="notification_date" class="form-control" required
-                               value="<?= esc(old('notification_date', $n['notification_date'] ?? '')) ?>">
+                               max="<?= esc($maxDate) ?>"
+                               value="<?= esc(old('notification_date', isset($n['notification_date']) ? substr((string) $n['notification_date'], 0, 10) : '')) ?>">
+                        <div class="form-text">Cannot be a future date.</div>
                     </div>
 
                     <div class="col-md-6">
@@ -90,13 +93,17 @@ $isActiveDefault = $isEdit
                     <div class="col-12">
                         <hr class="my-1">
                         <h2 class="h6 text-uppercase text-muted mb-0">Application period</h2>
-                        <p class="small text-muted mb-0">Date and time when applicants may start and last submit applications.</p>
+                        <p class="small text-muted mb-0">
+                            Application start must be on or after the notification date (future dates allowed).
+                            Application end must be on or after the start.
+                        </p>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label required" for="application_start_date">Application start date &amp; time</label>
                         <input type="datetime-local" name="application_start_date" id="application_start_date"
                                class="form-control" required
+                               data-date-min-from="#notification_date"
                                value="<?= esc(old(
                                    'application_start_date',
                                    \App\Models\DesignationNotificationModel::toDatetimeLocal($n['application_start_date'] ?? '')
@@ -106,11 +113,12 @@ $isActiveDefault = $isEdit
                         <label class="form-label required" for="application_end_date">Application end date &amp; time</label>
                         <input type="datetime-local" name="application_end_date" id="application_end_date"
                                class="form-control" required
+                               data-date-min-from="#application_start_date"
                                value="<?= esc(old(
                                    'application_end_date',
                                    \App\Models\DesignationNotificationModel::toDatetimeLocal($n['application_end_date'] ?? '')
                                )) ?>">
-                        <div class="form-text">Applications close at this exact date and time.</div>
+                        <div class="form-text">Must be on or after the application start. Future dates are allowed.</div>
                     </div>
 
                     <div class="col-12">
@@ -118,6 +126,7 @@ $isActiveDefault = $isEdit
                         <h2 class="h6 text-uppercase text-muted mb-0">Edit window</h2>
                         <p class="small text-muted mb-0">
                             Period when applicants may correct and resubmit after submission. Leave blank if not applicable.
+                            Edit start must be on or after the application end. Future dates are allowed.
                         </p>
                     </div>
 
@@ -125,6 +134,7 @@ $isActiveDefault = $isEdit
                         <label class="form-label" for="edit_window_start_date">Edit window start date &amp; time</label>
                         <input type="datetime-local" name="edit_window_start_date" id="edit_window_start_date"
                                class="form-control"
+                               data-date-min-from="#application_end_date"
                                value="<?= esc(old(
                                    'edit_window_start_date',
                                    \App\Models\DesignationNotificationModel::toDatetimeLocal($n['edit_window_start_date'] ?? '')
@@ -134,10 +144,12 @@ $isActiveDefault = $isEdit
                         <label class="form-label" for="edit_window_end_date">Edit window end date &amp; time</label>
                         <input type="datetime-local" name="edit_window_end_date" id="edit_window_end_date"
                                class="form-control"
+                               data-date-min-from="#edit_window_start_date"
                                value="<?= esc(old(
                                    'edit_window_end_date',
                                    \App\Models\DesignationNotificationModel::toDatetimeLocal($n['edit_window_end_date'] ?? '')
                                )) ?>">
+                        <div class="form-text">Must be on or after the edit window start. Future dates are allowed.</div>
                     </div>
 
                     <div class="col-12">
@@ -178,8 +190,9 @@ $isActiveDefault = $isEdit
             <strong class="d-block mb-1">How this works</strong>
             <ul class="mb-0 small ps-3">
                 <li>Each official notification opens one application cycle.</li>
-                <li>Application start/end dates control when applicants may submit.</li>
-                <li>Edit window dates control post-submission corrections.</li>
+                <li>Notification date cannot be in the future.</li>
+                <li>Application start is on or after the notification date (future allowed). Application end is on or after the start.</li>
+                <li>Edit window start is on or after the application end. Edit end is on or after edit start (future allowed).</li>
                 <li>Applications are listed notification-wise in admin.</li>
                 <li>When a notification PDF is uploaded, it appears on the public portal for advocates to download/view.</li>
             </ul>

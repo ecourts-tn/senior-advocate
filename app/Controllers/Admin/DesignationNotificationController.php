@@ -78,7 +78,7 @@ class DesignationNotificationController extends BaseController
         }
 
         $payload = $this->payloadFromRequest();
-        $dateErr = $this->validateDateOrder($payload);
+        $dateErr = DesignationNotificationModel::validateAdminDates($payload);
         if ($dateErr !== null) {
             return redirect()->back()->withInput()->with('error', $dateErr);
         }
@@ -145,7 +145,7 @@ class DesignationNotificationController extends BaseController
         }
 
         $payload = $this->payloadFromRequest(true);
-        $dateErr = $this->validateDateOrder($payload);
+        $dateErr = DesignationNotificationModel::validateAdminDates($payload);
         if ($dateErr !== null) {
             return redirect()->back()->withInput()->with('error', $dateErr);
         }
@@ -288,38 +288,6 @@ class DesignationNotificationController extends BaseController
             'edit_window_end_date'   => 'permit_empty',
             'remarks'                => 'permit_empty|max_length[2000]',
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     */
-    private function validateDateOrder(array $payload): ?string
-    {
-        $appStart = DesignationNotificationModel::normalizeDateTime($payload['application_start_date'] ?? null);
-        $appEnd   = DesignationNotificationModel::normalizeDateTime($payload['application_end_date'] ?? null);
-        if ($appStart === null || $appEnd === null) {
-            return 'Application start and end must be valid date and time values.';
-        }
-        if (strtotime($appEnd) < strtotime($appStart)) {
-            return 'Application end date/time cannot be earlier than the application start date/time.';
-        }
-
-        $editStart = DesignationNotificationModel::normalizeDateTime($payload['edit_window_start_date'] ?? null);
-        $editEnd   = DesignationNotificationModel::normalizeDateTime($payload['edit_window_end_date'] ?? null);
-        // Empty strings become null after normalize; allow blank edit window
-        $rawEditStart = trim((string) ($payload['edit_window_start_date'] ?? ''));
-        $rawEditEnd   = trim((string) ($payload['edit_window_end_date'] ?? ''));
-        if ($rawEditStart !== '' && $editStart === null) {
-            return 'Edit window start must be a valid date and time.';
-        }
-        if ($rawEditEnd !== '' && $editEnd === null) {
-            return 'Edit window end must be a valid date and time.';
-        }
-        if ($editStart !== null && $editEnd !== null && strtotime($editEnd) < strtotime($editStart)) {
-            return 'Edit window end date/time cannot be earlier than the edit window start date/time.';
-        }
-
-        return null;
     }
 
     /**

@@ -31,7 +31,11 @@ $lookupMsg = $lookupMsg ?? null;
                 Register with the <strong>same full name</strong> as on your Enrolment Certificate. Abbreviated names will not be accepted.
             </div>
 
-            <?= form_open('register', ['id' => 'registerForm']) ?>
+            <?= form_open('register', [
+                'id'                     => 'registerForm',
+                'data-mail-loader'       => '1',
+                'data-mail-loader-text'  => 'Creating your account and sending the verification email…',
+            ]) ?>
 
             <!-- Step 1: Enrolment lookup (own CAPTCHA + rate-limited POST) -->
             <div class="border rounded p-3 mb-4 bg-light">
@@ -42,7 +46,7 @@ $lookupMsg = $lookupMsg ?? null;
                 <p class="small text-muted mb-3">
                     Enter your Bar Council enrolment number and complete the <strong>search</strong> security check, then search.
                     If a match is found, your name and mobile (when available) will be filled automatically.
-                    Otherwise you may enter details manually. Lookups are rate-limited to protect advocate data.
+                    Otherwise you may enter details manually.
                 </p>
                 <div class="row g-2 align-items-end">
                     <div class="col-md-7">

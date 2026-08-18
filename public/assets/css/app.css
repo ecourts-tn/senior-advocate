@@ -2206,6 +2206,51 @@ a.util-rules:focus {
   }
 }
 
+.mail-busy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 35, 64, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.mail-busy-overlay[hidden] {
+  display: none !important;
+}
+
+.mail-busy-box {
+  max-width: 22rem;
+  margin: 1rem;
+  padding: 1.5rem 1.75rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #d9d2c5;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(15, 35, 64, 0.2);
+}
+
+.mail-busy-box .spinner-border {
+  width: 2.25rem;
+  height: 2.25rem;
+  color: #0f2340;
+  border-width: 0.22rem;
+}
+
+.mail-busy-text {
+  margin: 0.9rem 0 0;
+  color: #0f2340;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+body.mail-busy {
+  overflow: hidden;
+}
+
 .form-help-text{
   color:#9F0712;
   font-weight:600;
