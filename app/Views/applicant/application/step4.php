@@ -9,7 +9,10 @@
 
 <?php
 $notificationDate = $notificationDate ?? ($ageAsOnDate ?? ssa_age_as_on_date($app ?? null));
+$enrolmentDate    = $enrolmentDate ?? \App\Libraries\ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+$decidedOnMin     = $decidedOnMin ?? \App\Libraries\ApplicationDateRules::decidedOnMin($enrolmentDate);
 $decidedOnMax     = $decidedOnMax ?? \App\Libraries\ApplicationDateRules::decidedOnMax($notificationDate);
+$enrolLabel       = ! empty($enrolmentDate) ? date('d-m-Y', strtotime((string) $enrolmentDate)) : '';
 $notifLabel       = ! empty($notificationDate) ? date('d-m-Y', strtotime((string) $notificationDate)) : '';
 
 $applyOldL3 = static function (array $existing, array $map): array {
@@ -120,8 +123,9 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
                         <div class="col-md-4">
                             <label class="form-label">Decided on</label>
                             <input type="date" name="pb_decided_on[]" class="form-control form-control-sm" disabled
+                                   <?php if ($decidedOnMin): ?>min="<?= esc($decidedOnMin) ?>"<?php endif; ?>
                                    <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
-                                   title="Must be earlier than the notification date">
+                                   title="Must be between the date of enrolment and the notification date">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Cause Title</label>
@@ -154,8 +158,9 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
                                 <label class="form-label">Decided on</label>
                                 <input type="date" name="pb_decided_on[]" class="form-control form-control-sm"
                                        value="<?= esc(isset($row['decided_on']) && $row['decided_on'] !== '' ? substr((string) $row['decided_on'], 0, 10) : '') ?>"
+                                       <?php if ($decidedOnMin): ?>min="<?= esc($decidedOnMin) ?>"<?php endif; ?>
                                        <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
-                                       title="Must be earlier than the notification date">
+                                       title="Must be between the date of enrolment and the notification date">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Cause Title</label>
@@ -209,8 +214,9 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
                         <div class="col-md-3">
                             <label class="form-label">Decided on</label>
                             <input type="date" name="am_decided_on[]" class="form-control form-control-sm" disabled
+                                   <?php if ($decidedOnMin): ?>min="<?= esc($decidedOnMin) ?>"<?php endif; ?>
                                    <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
-                                   title="Must be earlier than the notification date">
+                                   title="Must be between the date of enrolment and the notification date">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Reportable / Unreportable?</label>
@@ -247,8 +253,9 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
                                 <label class="form-label">Decided on</label>
                                 <input type="date" name="am_decided_on[]" class="form-control form-control-sm"
                                        value="<?= esc(isset($row['decided_on']) && $row['decided_on'] !== '' ? substr((string) $row['decided_on'], 0, 10) : '') ?>"
+                                       <?php if ($decidedOnMin): ?>min="<?= esc($decidedOnMin) ?>"<?php endif; ?>
                                        <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
-                                       title="Must be earlier than the notification date">
+                                       title="Must be between the date of enrolment and the notification date">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Reportable / Unreportable?</label>
@@ -263,9 +270,7 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
                 <?php endforeach; ?>
             </div>
         </div>
-        <?php if ($notifLabel !== ''): ?>
-            <p class="form-text">Decided on dates in Format L-3 entries must be earlier than the notification date (<?= esc($notifLabel) ?>).</p>
-        <?php endif; ?>
+        <p class="form-text">Decided on dates in Format L-3 entries must be between the date of enrolment<?php if ($enrolLabel !== ''): ?> (<?= esc($enrolLabel) ?>)<?php endif; ?> and the notification date<?php if ($notifLabel !== ''): ?> (<?= esc($notifLabel) ?>)<?php endif; ?>.</p>
 
         <div class="section-title">12. Whether the applicant is first-generation lawyer <span class="text-danger">*</span></div>
         <div class="row g-3 mb-4">

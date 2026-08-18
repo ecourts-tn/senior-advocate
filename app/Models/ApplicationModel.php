@@ -6,6 +6,15 @@ use CodeIgniter\Model;
 
 class ApplicationModel extends Model
 {
+    public const PRACTICE_COURT_SUPREME     = 'supreme_court';
+    public const PRACTICE_COURT_HC_DISTRICT = 'hc_district_trial';
+
+    /** @var array<string, string> */
+    public const PRACTICE_COURT_LABELS = [
+        self::PRACTICE_COURT_SUPREME     => 'Supreme Court of India',
+        self::PRACTICE_COURT_HC_DISTRICT => 'High Court(s)/District/Trial Court(s)',
+    ];
+
     protected $table            = 'applications';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
@@ -772,6 +781,43 @@ class ApplicationModel extends Model
         $row['to_date']   = $to;
 
         return $row;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    public static function practiceCourtTypeFromRow(array $row): string
+    {
+        $type = trim((string) ($row['court_type'] ?? ''));
+        if (isset(self::PRACTICE_COURT_LABELS[$type])) {
+            return $type;
+        }
+
+        $court = trim((string) ($row['court'] ?? ''));
+        if ($court === '') {
+            return '';
+        }
+
+        $norm = strtolower($court);
+        if ($norm === 'supreme court of india' || $norm === 'supreme court') {
+            return self::PRACTICE_COURT_SUPREME;
+        }
+
+        return self::PRACTICE_COURT_HC_DISTRICT;
+    }
+
+    /**
+     * Typed court name for High Court / District / Trial (empty for Supreme Court).
+     *
+     * @param array<string, mixed> $row
+     */
+    public static function practiceCourtDetailFromRow(array $row): string
+    {
+        if (self::practiceCourtTypeFromRow($row) !== self::PRACTICE_COURT_HC_DISTRICT) {
+            return '';
+        }
+
+        return trim((string) ($row['court'] ?? ''));
     }
 
     /**

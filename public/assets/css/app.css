@@ -1361,6 +1361,14 @@ body.contrast-high .landing-alert {
   color: var(--muted);
 }
 
+.upload-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  margin-top: 0.4rem;
+}
+
 .upload-preview-frame.has-preview {
   border-style: solid;
   border-color: var(--mhc-border, var(--line));

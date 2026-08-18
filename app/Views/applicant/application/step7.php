@@ -15,6 +15,31 @@
             'class'                => 'application-step-form',
         ]) ?>
 
+        <?php
+        $renderUploadActions = static function (string $type, string $column, array $app): void {
+            if (empty($app['id']) || empty($app[$column])) {
+                return;
+            }
+            $viewUrl   = base_url('files/application/' . $app['id'] . '/' . $type);
+            $removeUrl = base_url('applicant/application/' . $app['id'] . '/upload/' . $type . '/remove');
+            ?>
+            <div class="upload-file-actions">
+                <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Uploaded</span>
+                <a href="<?= $viewUrl ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">View</a>
+                <button type="submit"
+                        class="btn btn-sm btn-outline-danger"
+                        formaction="<?= $removeUrl ?>"
+                        formnovalidate
+                        name="remove_upload"
+                        value="<?= esc($type, 'attr') ?>"
+                        onclick="return confirm('Remove this document? You can upload a new file afterwards.');">
+                    Remove
+                </button>
+            </div>
+            <?php
+        };
+        ?>
+
         <div class="section-title">Required uploads (strict validation)</div>
         <div class="row g-3">
             <div class="col-md-6">
@@ -46,7 +71,8 @@
                     <div class="form-text form-help-text">JPG/JPEG only · 20–200 KB</div>
                     <div class="upload-file-meta small" id="photoMeta" aria-live="polite">
                         <?php if (! empty($app['photo_path'])): ?>
-                            <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Photo on file — choose a new file to replace</span>
+                            <span class="text-muted">On file — choose a new file to replace, or remove it.</span>
+                            <?php $renderUploadActions('photo', 'photo_path', $app); ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -80,7 +106,8 @@
                     <div class="form-text form-help-text">JPG/JPEG only · 20–200 KB</div>
                     <div class="upload-file-meta small" id="signatureMeta" aria-live="polite">
                         <?php if (! empty($app['signature_path'])): ?>
-                            <span class="text-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Signature on file — choose a new file to replace</span>
+                            <span class="text-muted">On file — choose a new file to replace, or remove it.</span>
+                            <?php $renderUploadActions('signature', 'signature_path', $app); ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -88,54 +115,54 @@
             <div class="col-md-6">
                 <label class="form-label required">Enrolment Certificate</label>
                 <input type="file" name="enrolment_cert" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['enrolment_cert_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB</div>
+                <?php $renderUploadActions('enrolment_cert', 'enrolment_cert_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label required" for="ageProofInput">Age proof</label>
                 <input type="file" name="age_proof" id="ageProofInput" class="form-control" accept=".pdf,application/pdf">
                 <div class="form-text form-help-text">
                     PDF · less than 5 MB · Mandatory (e.g. birth certificate / SSLC mark sheet)
-                    <?php if (! empty($app['age_proof_path'])): ?>
-                        · <span class="text-success">Uploaded</span>
-                        · <a href="<?= base_url('files/application/' . $app['id'] . '/age_proof') ?>" target="_blank" rel="noopener">View</a>
-                    <?php endif; ?>
                 </div>
+                <?php $renderUploadActions('age_proof', 'age_proof_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label" for="educationQualInput">Educational qualifications document</label>
                 <input type="file" name="education_qual" id="educationQualInput" class="form-control" accept=".pdf,application/pdf">
                 <div class="form-text form-help-text">
                     PDF · less than 5 MB · Optional (supporting certificates / mark sheets)
-                    <?php if (! empty($app['education_qual_path'])): ?>
-                        · <span class="text-success">Uploaded</span>
-                        · <a href="<?= base_url('files/application/' . $app['id'] . '/education_qual') ?>" target="_blank" rel="noopener">View</a>
-                    <?php endif; ?>
                 </div>
+                <?php $renderUploadActions('education_qual', 'education_qual_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-1 (Reported Judgments)</label>
                 <input type="file" name="format_l1" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l1_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB · Optional</div>
+                <?php $renderUploadActions('format_l1', 'format_l1_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-2 (Unreported Judgments)</label>
                 <input type="file" name="format_l2" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l2_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB · Optional</div>
+                <?php $renderUploadActions('format_l2', 'format_l2_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-3(i) Pro Bono</label>
                 <input type="file" name="format_l3i" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l3i_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB · Optional</div>
+                <?php $renderUploadActions('format_l3i', 'format_l3i_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-3(ii) Amicus Curiae</label>
                 <input type="file" name="format_l3ii" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l3ii_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB · Optional</div>
+                <?php $renderUploadActions('format_l3ii', 'format_l3ii_path', $app); ?>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Format L-4 Academic</label>
                 <input type="file" name="format_l4" class="form-control" accept=".pdf,application/pdf">
-                <div class="form-text form-help-text">PDF · less than 5 MB <?= ! empty($app['format_l4_path']) ? '· <span class="text-success">Uploaded</span>' : '' ?></div>
+                <div class="form-text form-help-text">PDF · less than 5 MB · Optional</div>
+                <?php $renderUploadActions('format_l4', 'format_l4_path', $app); ?>
             </div>
         </div>
 

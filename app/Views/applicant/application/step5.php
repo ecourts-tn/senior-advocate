@@ -2,7 +2,7 @@
 <?= $this->section('content') ?>
 
 <?php
-$courtOptions    = $lookupOptions['court'] ?? [];
+$courtTypeLabels = \App\Models\ApplicationModel::PRACTICE_COURT_LABELS;
 $tribunalOptions = $lookupOptions['tribunal'] ?? [];
 $natureOptions   = $lookupOptions['nature_of_practice'] ?? [];
 $fieldOptions    = $lookupOptions['field_of_law'] ?? [];
@@ -27,20 +27,26 @@ $practiceRangeHelp = 'Leave "<em>To (date)</em>" blank if still practicing there
     . ($enrolLabel !== '' ? ' (' . $enrolLabel . ')' : '')
     . ' and the notification date'
     . ($notifLabel !== '' ? ' (' . $notifLabel . ')' : '')
-    . '.';
+    . '';
 
-$postedCourtNames = old('court_name');
-if (is_array($postedCourtNames)) {
-    $postedFrom  = (array) (old('court_from') ?? []);
-    $postedTo    = (array) (old('court_to') ?? []);
-    $postedOther = (array) (old('court_other') ?? []);
+$rangeMinAttr = $practiceMin ? ' data-range-min="' . esc($practiceMin, 'attr') . '"' : '';
+$rangeMaxAttr = $practiceMax ? ' data-range-max="' . esc($practiceMax, 'attr') . '"' : '';
+
+$postedCourtTypes = old('court_type');
+if (is_array($postedCourtTypes)) {
+    $postedFrom   = (array) (old('court_from') ?? []);
+    $postedTo     = (array) (old('court_to') ?? []);
+    $postedNames  = (array) (old('court_name') ?? []);
     $app['courts_practiced'] = [];
-    foreach ($postedCourtNames as $i => $name) {
-        $resolved = \App\Models\MasterRegistry::resolveSingle((string) $name, $postedOther[$i] ?? null);
+    foreach ($postedCourtTypes as $i => $type) {
+        $type = (string) $type;
         $app['courts_practiced'][] = [
-            'court'     => $resolved !== '' ? $resolved : (string) $name,
-            'from_date' => $postedFrom[$i] ?? '',
-            'to_date'   => $postedTo[$i] ?? '',
+            'court_type' => $type,
+            'court'      => $type === \App\Models\ApplicationModel::PRACTICE_COURT_SUPREME
+                ? \App\Models\ApplicationModel::PRACTICE_COURT_LABELS[$type]
+                : (string) ($postedNames[$i] ?? ''),
+            'from_date'  => $postedFrom[$i] ?? '',
+            'to_date'    => $postedTo[$i] ?? '',
         ];
     }
 }
@@ -82,85 +88,81 @@ if (is_array($postedTribNames)) {
         <div id="courtRows" data-rows>
             <?php
             $courts = ! empty($app['courts_practiced']) ? $app['courts_practiced'] : [
-                ['court' => '', 'from_date' => '', 'to_date' => ''],
+                ['court' => '', 'court_type' => '', 'from_date' => '', 'to_date' => ''],
             ];
-            // Editable rows first (never disabled)
+            $hcDistrictVal = \App\Models\ApplicationModel::PRACTICE_COURT_HC_DISTRICT;
+
+            $renderPracticeCourtFields = static function (
+                array $c,
+                bool $showLabel,
+                bool $required,
+                bool $disabled
+            ) use ($courtTypeLabels, $hcDistrictVal, $periodDate, $practiceMin, $practiceMax, $rangeMinAttr, $rangeMaxAttr): void {
+                $type     = \App\Models\ApplicationModel::practiceCourtTypeFromRow($c);
+                $detail   = \App\Models\ApplicationModel::practiceCourtDetailFromRow($c);
+                $showName = $type === $hcDistrictVal;
+                $fromVal  = $periodDate($c, 'from_date');
+                $toMin    = $fromVal !== '' ? $fromVal : $practiceMin;
+                $dis      = $disabled ? ' disabled' : '';
+                ?>
+                <div class="col-md-5">
+                    <?php if ($showLabel): ?>
+                        <label class="form-label<?= $required ? ' required' : '' ?>">Court</label>
+                    <?php endif; ?>
+                    <select name="court_type[]" class="form-select" data-practice-court-type
+                            <?= $required ? ' required' : '' ?><?= $dis ?>>
+                        <option value="">Select court…</option>
+                        <?php foreach ($courtTypeLabels as $key => $lab): ?>
+                            <option value="<?= esc($key) ?>" <?= $type === $key ? 'selected' : '' ?>><?= esc($lab) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div class="mt-1" data-practice-court-name <?= $showName ? '' : 'hidden' ?>>
+                        <input type="text" name="court_name[]" class="form-control"
+                               value="<?= esc($detail) ?>"
+                               placeholder="Enter court name"
+                               maxlength="255"
+                               <?= $disabled ? 'disabled' : '' ?>>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <?php if ($showLabel): ?><label class="form-label">From (date)</label><?php endif; ?>
+                    <input type="date" name="court_from[]" class="form-control"
+                           value="<?= esc($periodDate($c, 'from_date')) ?>"
+                           data-period="from"
+                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
+                           title="Must be between enrolment date and notification date"<?= $dis ?>>
+                </div>
+                <div class="col-md-3">
+                    <?php if ($showLabel): ?><label class="form-label">To (date)</label><?php endif; ?>
+                    <input type="date" name="court_to[]" class="form-control"
+                           value="<?= esc($periodDate($c, 'to_date')) ?>"
+                           data-period="to"
+                           <?= $toMin ? 'min="' . esc($toMin) . '"' : '' ?>
+                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
+                           title="Must be on or after From date and on or before the notification date (leave blank if ongoing)"<?= $dis ?>>
+                </div>
+                <div class="col-md-1">
+                    <?php if ($showLabel): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
+                    <button type="button" class="btn btn-outline-danger w-100" data-remove-row aria-label="Remove">&times;</button>
+                </div>
+                <?php
+            };
+
             foreach ($courts as $i => $c):
-                $parsed = \App\Models\MasterRegistry::parseSingleStored($c['court'] ?? '', $courtOptions);
             ?>
                 <div class="row g-2 mb-2 dynamic-row align-items-end">
-                    <div class="col-md-5">
-                        <?= view('partials/select_others', [
-                            'name'        => 'court_name[]',
-                            'otherName'   => 'court_other[]',
-                            'options'     => $courtOptions,
-                            'value'       => $parsed['value'],
-                            'other'       => $parsed['other'],
-                            'placeholder' => 'Select court…',
-                            'showLabel'   => $i === 0,
-                            'label'       => 'Court',
-                            'required'    => $i === 0,
-                            'disabled'    => false,
-                        ], ['saveData' => false]) ?>
-                    </div>
-                    <div class="col-md-3">
-                        <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
-                        <input type="date" name="court_from[]" class="form-control"
-                               value="<?= esc($periodDate($c, 'from_date')) ?>"
-                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
-                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                               title="Must be between enrolment date and notification date">
-                    </div>
-                    <div class="col-md-3">
-                        <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
-                        <input type="date" name="court_to[]" class="form-control"
-                               value="<?= esc($periodDate($c, 'to_date')) ?>"
-                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
-                               <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                               title="Must be between enrolment date and notification date (leave blank if ongoing)">
-                    </div>
-                    <div class="col-md-1">
-                        <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
-                        <button type="button" class="btn btn-outline-danger w-100" data-remove-row aria-label="Remove">&times;</button>
-                    </div>
+                    <?php $renderPracticeCourtFields($c, $i === 0, $i === 0, false); ?>
                 </div>
             <?php endforeach; ?>
             <!-- Hidden clone template last (disabled fields; not submitted) -->
             <div class="row g-2 mb-2 dynamic-row align-items-end d-none" data-row-template hidden aria-hidden="true">
-                <div class="col-md-5">
-                    <?= view('partials/select_others', [
-                        'name'        => 'court_name[]',
-                        'otherName'   => 'court_other[]',
-                        'options'     => $courtOptions,
-                        'value'       => '',
-                        'other'       => '',
-                        'placeholder' => 'Select court…',
-                        'showLabel'   => true,
-                        'label'       => 'Court',
-                        'disabled'    => true,
-                    ], ['saveData' => false]) ?>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">From (date)</label>
-                    <input type="date" name="court_from[]" class="form-control" disabled
-                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
-                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                           title="Must be between enrolment date and notification date">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">To (date)</label>
-                    <input type="date" name="court_to[]" class="form-control" disabled
-                           <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
-                           <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                           title="Must be between enrolment date and notification date (leave blank if ongoing)">
-                </div>
-                <div class="col-md-1">
-                    <label class="form-label d-none d-md-block">&nbsp;</label>
-                    <button type="button" class="btn btn-outline-danger w-100" data-remove-row aria-label="Remove">&times;</button>
-                </div>
+                <?php $renderPracticeCourtFields(['court' => '', 'court_type' => '', 'from_date' => '', 'to_date' => ''], true, false, true); ?>
             </div>
         </div>
-        <p class="form-text form-help-text"><?= $practiceRangeHelp ?> Choose <strong>Others</strong> to enter a court not listed.</p>
+        <p class="form-text form-help-text"><?= $practiceRangeHelp ?> If <strong>High Court(s)/District/Trial Court(s)</strong> is selected, enter the court name.</p>
 
         <div class="section-title mt-4">15. Tribunals, where the applicant has specialized practice: <span class="small text-muted">(Applicable to those practising before Tribunals)</span></div>
         <div class="d-flex justify-content-end mb-2">
@@ -174,6 +176,8 @@ if (is_array($postedTribNames)) {
             // Editable rows first (never disabled)
             foreach ($tribunals as $i => $t):
                 $parsedT = \App\Models\MasterRegistry::parseSingleStored($t['tribunal'] ?? '', $tribunalOptions);
+                $fromValT = $periodDate($t, 'from_date');
+                $toMinT   = $fromValT !== '' ? $fromValT : $practiceMin;
             ?>
                 <div class="row g-2 mb-2 dynamic-row align-items-end">
                     <div class="col-md-5">
@@ -193,17 +197,21 @@ if (is_array($postedTribNames)) {
                         <?php if ($i === 0): ?><label class="form-label">From (date)</label><?php endif; ?>
                         <input type="date" name="tribunal_from[]" class="form-control"
                                value="<?= esc($periodDate($t, 'from_date')) ?>"
+                               data-period="from"
                                <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
                                <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                               <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
                                title="Must be between enrolment date and notification date">
                     </div>
                     <div class="col-md-3">
                         <?php if ($i === 0): ?><label class="form-label">To (date)</label><?php endif; ?>
                         <input type="date" name="tribunal_to[]" class="form-control"
                                value="<?= esc($periodDate($t, 'to_date')) ?>"
-                               <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
+                               data-period="to"
+                               <?= $toMinT ? 'min="' . esc($toMinT) . '"' : '' ?>
                                <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                               title="Must be between enrolment date and notification date (leave blank if ongoing)">
+                               <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
+                               title="Must be on or after From date and on or before the notification date (leave blank if ongoing)">
                     </div>
                     <div class="col-md-1">
                         <?php if ($i === 0): ?><label class="form-label d-none d-md-block">&nbsp;</label><?php endif; ?>
@@ -229,16 +237,20 @@ if (is_array($postedTribNames)) {
                 <div class="col-md-3">
                     <label class="form-label">From (date)</label>
                     <input type="date" name="tribunal_from[]" class="form-control" disabled
+                           data-period="from"
                            <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
                            <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
+                           <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
                            title="Must be between enrolment date and notification date">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">To (date)</label>
                     <input type="date" name="tribunal_to[]" class="form-control" disabled
+                           data-period="to"
                            <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
                            <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
-                           title="Must be between enrolment date and notification date (leave blank if ongoing)">
+                           <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
+                           title="Must be on or after From date and on or before the notification date (leave blank if ongoing)">
                 </div>
                 <div class="col-md-1">
                     <label class="form-label d-none d-md-block">&nbsp;</label>

@@ -20,8 +20,30 @@ window.addEventListener('pageshow', function (event) {
 
 document.addEventListener('DOMContentLoaded', function () {
   // Block double-submit on application forms; disable controls after first submit
+  function clearStaleDateRequired(form) {
+    if (!form) return;
+    form.querySelectorAll('.flatpickr-input').forEach(function (inp) {
+      inp.required = false;
+      inp.removeAttribute('required');
+      if (typeof syncFlatpickrRequired === 'function') {
+        syncFlatpickrRequired(inp, inp._flatpickr);
+        return;
+      }
+      if (inp._flatpickr && inp._flatpickr.altInput) {
+        var filled = String(inp.value || inp._flatpickr.altInput.value || '').trim();
+        inp._flatpickr.altInput.setCustomValidity(inp._flatpickr.altInput.required && !filled ? 'Please select a date.' : '');
+      }
+    });
+  }
+
   document.querySelectorAll('form.application-step-form').forEach(function (form) {
+    form.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[type="submit"], input[type="submit"]') : null;
+      if (!btn) return;
+      clearStaleDateRequired(form);
+    }, true);
     form.addEventListener('submit', function () {
+      clearStaleDateRequired(form);
       window.setTimeout(function () {
         form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
           btn.disabled = true;
@@ -214,6 +236,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       }
     });
+    if (typeof window.ssaSyncPracticeCourtNames === 'function') {
+      window.ssaSyncPracticeCourtNames(root);
+    }
   }
 
   function renumberEntryLabels(container) {
@@ -226,6 +251,89 @@ document.addEventListener('DOMContentLoaded', function () {
       label.textContent = text + ' #' + (idx + 1);
     });
   }
+
+  // L-1 / L-2: Madras High Court copies into Court Name; other levels stay empty for typing
+  function syncJudgmentCourtName(select) {
+    if (!select) return;
+    var row = select.closest('.dynamic-row, .entry-card, tr') || select.parentElement;
+    if (!row) return;
+    var nameInput = row.querySelector('[data-judgment-court-name]');
+    if (!nameInput) return;
+
+    var isMadras = select.value === 'madras_hc';
+    if (isMadras) {
+      var opt = select.options[select.selectedIndex];
+      nameInput.value = opt ? String(opt.text || '').trim() : 'Madras High Court';
+      nameInput.readOnly = true;
+      nameInput.setAttribute('readonly', 'readonly');
+      nameInput.setAttribute('tabindex', '-1');
+      nameInput.classList.add('bg-light');
+      nameInput.setAttribute('title', 'Copied from Court: Madras High Court');
+      nameInput.removeAttribute('placeholder');
+    } else {
+      if (nameInput.readOnly || nameInput.getAttribute('data-auto-court') === '1') {
+        nameInput.value = '';
+      }
+      nameInput.readOnly = false;
+      nameInput.removeAttribute('readonly');
+      nameInput.removeAttribute('tabindex');
+      nameInput.classList.remove('bg-light');
+      nameInput.setAttribute('title', '');
+      nameInput.setAttribute('placeholder', 'Enter court name');
+    }
+    nameInput.setAttribute('data-auto-court', isMadras ? '1' : '0');
+  }
+
+  function syncJudgmentCourtNames(root) {
+    root = root || document;
+    root.querySelectorAll('[data-judgment-court-level]').forEach(function (select) {
+      syncJudgmentCourtName(select);
+    });
+  }
+
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || !el.getAttribute || !el.hasAttribute('data-judgment-court-level')) return;
+    syncJudgmentCourtName(el);
+  });
+
+  window.ssaSyncJudgmentCourtNames = syncJudgmentCourtNames;
+  syncJudgmentCourtNames(document);
+
+  function syncPracticeCourtName(select) {
+    if (!select) return;
+    var row = select.closest('.dynamic-row');
+    if (!row) return;
+    var wrap = row.querySelector('[data-practice-court-name]');
+    var input = wrap ? wrap.querySelector('input[name="court_name[]"]') : null;
+    var show = select.value === 'hc_district_trial';
+    if (wrap) {
+      if (show) {
+        wrap.removeAttribute('hidden');
+      } else {
+        wrap.setAttribute('hidden', 'hidden');
+      }
+    }
+    if (input && !row.hasAttribute('data-row-template')) {
+      input.required = show && !select.disabled;
+    }
+  }
+
+  function syncPracticeCourtNames(root) {
+    root = root || document;
+    root.querySelectorAll('[data-practice-court-type]').forEach(function (select) {
+      syncPracticeCourtName(select);
+    });
+  }
+
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || !el.hasAttribute || !el.hasAttribute('data-practice-court-type')) return;
+    syncPracticeCourtName(el);
+  });
+
+  window.ssaSyncPracticeCourtNames = syncPracticeCourtNames;
+  syncPracticeCourtNames(document);
 
   // Add dynamic rows
   document.querySelectorAll('[data-add-row]').forEach(function (btn) {
@@ -263,6 +371,12 @@ document.addEventListener('DOMContentLoaded', function () {
       if (typeof window.ssaInitFlatpickr === 'function') {
         window.ssaInitFlatpickr(clone);
       }
+      if (typeof window.ssaSyncJudgmentCourtNames === 'function') {
+        window.ssaSyncJudgmentCourtNames(clone);
+      }
+      if (typeof window.ssaSyncPracticeCourtNames === 'function') {
+        window.ssaSyncPracticeCourtNames(clone);
+      }
     });
   });
 
@@ -282,6 +396,9 @@ document.addEventListener('DOMContentLoaded', function () {
       // Keep exactly one visible data row: clear fields instead of removing
       if (visible.length <= 1) {
         clearFields(row);
+        if (typeof window.ssaSyncJudgmentCourtNames === 'function') {
+          window.ssaSyncJudgmentCourtNames(row);
+        }
         renumberEntryLabels(container);
         return;
       }
@@ -492,6 +609,83 @@ document.addEventListener('DOMContentLoaded', function () {
     return isNaN(dt.getTime()) ? null : dt;
   }
 
+  function isoDateStr(value) {
+    return normalizeDateStr(value);
+  }
+
+  function findPeriodPairTo(fromEl) {
+    if (!fromEl) return null;
+    var row = fromEl.closest('.dynamic-row, tr, .row') || document;
+    var named = fromEl.getAttribute('name') || '';
+    if (named.indexOf('_from') !== -1) {
+      var toName = named.replace('_from', '_to');
+      var byName = row.querySelector('input[name="' + toName.replace(/"/g, '') + '"]');
+      if (byName) return byName;
+    }
+    return row.querySelector('input[data-period="to"]');
+  }
+
+  function isPeriodFromInput(el) {
+    if (!el) return false;
+    if (el.getAttribute('data-period') === 'from') return true;
+    var name = el.getAttribute('name') || '';
+    return name.indexOf('_from') !== -1 && name.indexOf('_from_') === -1;
+  }
+
+  function applyPeriodToBounds(fromEl) {
+    var toEl = findPeriodPairTo(fromEl);
+    if (!toEl) return;
+
+    var rangeMin = isoDateStr(toEl.getAttribute('data-range-min') || fromEl.getAttribute('data-range-min') || '');
+    var rangeMax = isoDateStr(toEl.getAttribute('data-range-max') || fromEl.getAttribute('data-range-max') || toEl.getAttribute('max') || '');
+    var fromVal  = isoDateStr(fromEl.value);
+    var newMin   = fromVal || rangeMin || '';
+
+    if (newMin) {
+      toEl.setAttribute('min', newMin);
+    } else {
+      toEl.removeAttribute('min');
+    }
+    if (rangeMax) {
+      toEl.setAttribute('max', rangeMax);
+    }
+
+    var fp = toEl._flatpickr;
+    if (fp) {
+      fp.set('minDate', newMin || null);
+      fp.set('maxDate', rangeMax || null);
+      var current = isoDateStr(toEl.value);
+      if (current && ((newMin && current < newMin) || (rangeMax && current > rangeMax))) {
+        fp.clear();
+      }
+    } else {
+      var currentNative = isoDateStr(toEl.value);
+      if (currentNative && ((newMin && currentNative < newMin) || (rangeMax && currentNative > rangeMax))) {
+        toEl.value = '';
+      }
+    }
+  }
+
+  function dateFieldHasValue(el, instance) {
+    instance = instance || (el && el._flatpickr) || null;
+    if (el && String(el.value || '').trim()) return true;
+    if (instance && instance.altInput && String(instance.altInput.value || '').trim()) return true;
+    if (instance && instance.selectedDates && instance.selectedDates.length) return true;
+    return false;
+  }
+
+  function syncFlatpickrRequired(el, instance) {
+    instance = instance || (el && el._flatpickr) || null;
+    if (!el) return;
+    // Original (often hidden) input must never block submit
+    el.required = false;
+    el.removeAttribute('required');
+    if (!instance || !instance.altInput) return;
+    var needs = !!instance.altInput.required;
+    var filled = dateFieldHasValue(el, instance);
+    instance.altInput.setCustomValidity(needs && !filled ? 'Please select a date.' : '');
+  }
+
   function initFlatpickrIn(root) {
     if (typeof flatpickr !== 'function') return;
     root = root || document;
@@ -517,8 +711,9 @@ document.addEventListener('DOMContentLoaded', function () {
         defaultDate: parseDateValue(el.value) || undefined,
         onChange: function (selectedDates, dateStr, instance) {
           scheduleAgeUpdate(el);
-          if (instance.altInput && wasRequired) {
-            instance.altInput.setCustomValidity(dateStr ? '' : 'Please select a date.');
+          syncFlatpickrRequired(el, instance);
+          if (isPeriodFromInput(el)) {
+            applyPeriodToBounds(el);
           }
         },
         onReady: function (selectedDates, dateStr, instance) {
@@ -529,12 +724,14 @@ document.addEventListener('DOMContentLoaded', function () {
               instance.altInput.classList.add('form-control-sm');
             }
             if (wasRequired) {
-              el.required = false;
               instance.altInput.required = true;
-              instance.altInput.setCustomValidity(dateStr || el.value ? '' : 'Please select a date.');
             }
           }
+          syncFlatpickrRequired(el, instance);
           scheduleAgeUpdate(el);
+          if (isPeriodFromInput(el)) {
+            applyPeriodToBounds(el);
+          }
         },
       };
       if (el.getAttribute('min')) opts.minDate = el.getAttribute('min');
@@ -629,6 +826,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   initFlatpickrIn(document);
+
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || el.nodeType !== 1) return;
+    if (!isPeriodFromInput(el)) return;
+    applyPeriodToBounds(el);
+  });
 
   // Expose for dynamic row clones
   window.ssaInitFlatpickr = initFlatpickrIn;
@@ -728,15 +932,53 @@ document.addEventListener('DOMContentLoaded', function () {
     var targetSel = el.getAttribute('data-toggle-detail');
     var target = document.querySelector(targetSel);
     if (!target) return;
-    var update = function () {
+    function clearToggleDetailFields(root) {
+      root.querySelectorAll('input, textarea').forEach(function (inp) {
+        if (inp.classList.contains('flatpickr-alt-input')) return;
+        if (inp._flatpickr) {
+          inp._flatpickr.clear();
+          return;
+        }
+        if (inp.type === 'checkbox' || inp.type === 'radio') {
+          inp.checked = false;
+        } else {
+          inp.value = '';
+        }
+      });
+    }
+
+    var update = function (fromUser) {
       var show = el.value === '1' || el.value === 'yes';
       target.classList.toggle('d-none', !show);
+      if (!show && fromUser) {
+        clearToggleDetailFields(target);
+      }
+      target.querySelectorAll('label.form-label').forEach(function (lab) {
+        lab.classList.toggle('required', show);
+      });
       target.querySelectorAll('input, textarea').forEach(function (inp) {
+        if (inp.classList.contains('flatpickr-alt-input')) {
+          inp.required = show;
+          return;
+        }
+        if (inp._flatpickr) {
+          inp.required = false;
+          inp.removeAttribute('required');
+          if (inp._flatpickr.altInput) {
+            inp._flatpickr.altInput.required = show;
+          }
+          if (typeof syncFlatpickrRequired === 'function') {
+            syncFlatpickrRequired(inp, inp._flatpickr);
+          }
+          return;
+        }
         inp.required = show;
       });
     };
-    el.addEventListener('change', update);
-    update();
+    el.addEventListener('change', function () {
+      update(true);
+    });
+    update(false);
   });
 
   // Dropdown / multi-select "Others" free-text capture

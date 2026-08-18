@@ -58,6 +58,7 @@ $routes->group('applicant', ['filter' => 'auth:applicant'], static function ($ro
     $routes->post('application/step/(:num)', 'Applicant\ApplicationController::saveStep/$1');
     $routes->get('application/view/(:num)', 'Applicant\ApplicationController::view/$1');
     $routes->get('application/pdf/(:num)', 'Applicant\ApplicationController::downloadPdf/$1');
+    $routes->post('application/(:num)/upload/(:segment)/remove', 'Applicant\ApplicationController::removeUpload/$1/$2');
 });
 
 // Secure file access (any authenticated user with rights checked in controller)

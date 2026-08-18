@@ -298,6 +298,7 @@ class ApplicationController extends BaseController
             'ageAsOnLabel'      => ApplicationModel::ageAsOnLabel($app),
             'notificationDate'  => $ageAsOn,
             'enrolmentDate'     => $enrolmentDate,
+            'decidedOnMin'      => ApplicationDateRules::decidedOnMin($enrolmentDate),
             'decidedOnMax'      => ApplicationDateRules::decidedOnMax($ageAsOn),
         ];
 
@@ -678,7 +679,11 @@ class ApplicationController extends BaseController
 
         $notificationDate = ApplicationModel::ageAsOnDate($app);
         $enrolmentDate    = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
-        $decidedError     = $this->invalidStoredDecidedOn((int) $app['id'], $notificationDate);
+        if (! ApplicationDateRules::dateOfBirthIsValid($app['date_of_birth'] ?? null, $notificationDate)) {
+            $errors[] = 'Date of birth must be on or after 01-01-1900 and on or before the notification date ('
+                . $this->notificationDateLabel((string) $notificationDate) . ').';
+        }
+        $decidedError     = $this->invalidStoredDecidedOn((int) $app['id'], $notificationDate, $enrolmentDate);
         if ($decidedError !== null) {
             $errors[] = $decidedError;
         }
@@ -692,6 +697,14 @@ class ApplicationController extends BaseController
         );
         if ($practiceError !== null) {
             $errors[] = $practiceError;
+        }
+        $priorDateError = $this->validatePriorApplicationDates($app, $enrolmentDate, $notificationDate);
+        if ($priorDateError !== null) {
+            $errors[] = $priorDateError;
+        }
+        $yesDetailError = $this->validateDeclarationYesDetails($app);
+        if ($yesDetailError !== null) {
+            $errors[] = $yesDetailError;
         }
 
         if (empty($this->request->getPost('declaration_accepted'))) {
@@ -829,7 +842,9 @@ class ApplicationController extends BaseController
                     'practice_months'           => $practiceMonths,
                     'net_income_lakhs'          => $post['net_income_lakhs'] !== '' ? $post['net_income_lakhs'] : null,
                     'is_bar_association_member' => $bool($post['is_bar_association_member'] ?? null),
-                    'bar_association_name'      => trim($post['bar_association_name'] ?? ''),
+                    'bar_association_name'      => $bool($post['is_bar_association_member'] ?? null) === true
+                        ? trim($post['bar_association_name'] ?? '')
+                        : '',
                 ];
             case 3:
                 return [
@@ -865,19 +880,25 @@ class ApplicationController extends BaseController
                 };
 
                 $courts = [];
-                if (! empty($post['court_name']) && is_array($post['court_name'])) {
-                    foreach ($post['court_name'] as $i => $name) {
-                        $resolved = MasterRegistry::resolveSingle(
-                            (string) $name,
-                            isset($post['court_other'][$i]) ? (string) $post['court_other'][$i] : null
-                        );
-                        if ($resolved === '' && empty($post['court_from'][$i]) && empty($post['court_to'][$i])) {
+                if (! empty($post['court_type']) && is_array($post['court_type'])) {
+                    foreach ($post['court_type'] as $i => $type) {
+                        $type   = trim((string) $type);
+                        $detail = trim((string) ($post['court_name'][$i] ?? ''));
+                        if ($type === '' && $detail === '' && empty($post['court_from'][$i]) && empty($post['court_to'][$i])) {
                             continue;
                         }
+                        if ($type === ApplicationModel::PRACTICE_COURT_SUPREME) {
+                            $court = ApplicationModel::PRACTICE_COURT_LABELS[$type];
+                        } elseif ($type === ApplicationModel::PRACTICE_COURT_HC_DISTRICT) {
+                            $court = $detail;
+                        } else {
+                            $court = $detail;
+                        }
                         $courts[] = [
-                            'court'     => $resolved,
-                            'from_date' => $dateOrNull($post['court_from'][$i] ?? null),
-                            'to_date'   => $dateOrNull($post['court_to'][$i] ?? null),
+                            'court_type' => $type,
+                            'court'      => $court,
+                            'from_date'  => $dateOrNull($post['court_from'][$i] ?? null),
+                            'to_date'    => $dateOrNull($post['court_to'][$i] ?? null),
                         ];
                     }
                 }
@@ -905,19 +926,25 @@ class ApplicationController extends BaseController
                     // nature_of_practice / field_of_law denormalised via pivot sync
                 ];
             case 6:
+                $mhcYes  = $bool($post['applied_mhc_earlier'] ?? null) === true;
+                $othYes  = $bool($post['applied_other_court'] ?? null) === true;
+                $firYes  = $bool($post['fir_lodged'] ?? null) === true;
+                $crimYes = $bool($post['criminal_case_party'] ?? null) === true;
+                $bcYes   = $bool($post['bar_council_proceedings'] ?? null) === true;
+
                 return [
                     'applied_mhc_earlier'      => $bool($post['applied_mhc_earlier'] ?? null),
-                    'applied_mhc_date'         => $post['applied_mhc_date'] ?: null,
-                    'applied_mhc_status'       => trim($post['applied_mhc_status'] ?? ''),
+                    'applied_mhc_date'         => $mhcYes ? ($post['applied_mhc_date'] ?: null) : null,
+                    'applied_mhc_status'       => $mhcYes ? trim($post['applied_mhc_status'] ?? '') : '',
                     'applied_other_court'      => $bool($post['applied_other_court'] ?? null),
-                    'applied_other_date'       => $post['applied_other_date'] ?: null,
-                    'applied_other_details'    => trim($post['applied_other_details'] ?? ''),
+                    'applied_other_date'       => $othYes ? ($post['applied_other_date'] ?: null) : null,
+                    'applied_other_details'    => $othYes ? trim($post['applied_other_details'] ?? '') : '',
                     'fir_lodged'               => $bool($post['fir_lodged'] ?? null),
-                    'fir_details'              => trim($post['fir_details'] ?? ''),
+                    'fir_details'              => $firYes ? trim($post['fir_details'] ?? '') : '',
                     'criminal_case_party'      => $bool($post['criminal_case_party'] ?? null),
-                    'criminal_case_details'    => trim($post['criminal_case_details'] ?? ''),
+                    'criminal_case_details'    => $crimYes ? trim($post['criminal_case_details'] ?? '') : '',
                     'bar_council_proceedings'  => $bool($post['bar_council_proceedings'] ?? null),
-                    'bar_council_details'      => trim($post['bar_council_details'] ?? ''),
+                    'bar_council_details'      => $bcYes ? trim($post['bar_council_details'] ?? '') : '',
                     'general_health'           => trim($post['general_health'] ?? ''),
                     'other_information'        => trim($post['other_information'] ?? ''),
                 ];
@@ -1008,18 +1035,29 @@ class ApplicationController extends BaseController
     private function validateStepDates(int $step, array $post, array $data, array $app): ?string
     {
         $notificationDate = ApplicationModel::ageAsOnDate($app);
+        $enrolmentDate    = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+
+        if ($step === 1) {
+            $dob = $data['date_of_birth'] ?? ($post['date_of_birth'] ?? null);
+            if (! ApplicationDateRules::dateOfBirthIsValid($dob, $notificationDate)) {
+                return 'Date of birth must be on or after 01-01-1900 and on or before the notification date ('
+                    . $this->notificationDateLabel((string) $notificationDate) . ').';
+            }
+        }
 
         if ($step === 3 || $step === 4) {
-            $error = $this->validatePostedDecidedOn($post, $notificationDate);
+            $error = $this->validatePostedDecidedOn($post, $notificationDate, $enrolmentDate);
             if ($error !== null) {
                 return $error;
             }
         }
 
         if ($step === 5) {
-            $enrolmentDate = ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
-
             return $this->validatePracticePeriodDates($data, $enrolmentDate, $notificationDate);
+        }
+
+        if ($step === 6) {
+            return $this->validatePriorApplicationDates($data, $enrolmentDate, $notificationDate);
         }
 
         return null;
@@ -1042,6 +1080,16 @@ class ApplicationController extends BaseController
             if (! $this->hasFilledCourtPractice($data['courts_practiced'] ?? [])) {
                 return 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required. Add at least one court.';
             }
+            foreach ($data['courts_practiced'] ?? [] as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $type = ApplicationModel::practiceCourtTypeFromRow($row);
+                if ($type === ApplicationModel::PRACTICE_COURT_HC_DISTRICT
+                    && trim((string) ($row['court'] ?? '')) === '') {
+                    return 'Sl. No. 14: enter the court name when High Court(s)/District/Trial Court(s) is selected.';
+                }
+            }
             if (! $this->postedMultiHasValue($post, 'nature_of_practice')) {
                 return 'Sl. No. 16 (Nature of practice) is required.';
             }
@@ -1050,29 +1098,32 @@ class ApplicationController extends BaseController
             }
         }
 
+        if ($step === 6) {
+            return $this->validateDeclarationYesDetails($data);
+        }
+
         return null;
     }
 
     /**
      * @param array<string, mixed> $post
      */
-    private function validatePostedDecidedOn(array $post, string $notificationDate): ?string
+    private function validatePostedDecidedOn(array $post, string $notificationDate, ?string $enrolmentDate = null): ?string
     {
-        $label = $this->notificationDateLabel($notificationDate);
         foreach (['l1_decided_on', 'l2_decided_on', 'pb_decided_on', 'am_decided_on'] as $key) {
             $vals = $post[$key] ?? null;
             if (! is_array($vals)) {
                 continue;
             }
-            if (ApplicationDateRules::firstInvalidDecidedOn($vals, $notificationDate) !== null) {
-                return 'Decided on date must be earlier than the notification date (' . $label . ').';
+            if (ApplicationDateRules::firstInvalidDecidedOn($vals, $notificationDate, $enrolmentDate) !== null) {
+                return $this->decidedOnRangeError($notificationDate, $enrolmentDate);
             }
         }
 
         return null;
     }
 
-    private function invalidStoredDecidedOn(int $applicationId, string $notificationDate): ?string
+    private function invalidStoredDecidedOn(int $applicationId, string $notificationDate, ?string $enrolmentDate = null): ?string
     {
         $dates = [];
         foreach ([
@@ -1087,9 +1138,132 @@ class ApplicationController extends BaseController
                 }
             }
         }
-        if (ApplicationDateRules::firstInvalidDecidedOn($dates, $notificationDate) !== null) {
-            return 'Decided on date in judgment / pro bono / amicus entries must be earlier than the notification date ('
-                . $this->notificationDateLabel($notificationDate) . ').';
+        if (ApplicationDateRules::firstInvalidDecidedOn($dates, $notificationDate, $enrolmentDate) !== null) {
+            return 'Decided on date in judgment / pro bono / amicus entries must be between the '
+                . $this->decidedOnRangeBounds($notificationDate, $enrolmentDate) . '.';
+        }
+
+        return null;
+    }
+
+    private function decidedOnRangeError(string $notificationDate, ?string $enrolmentDate): string
+    {
+        return 'Decided on date must be between the ' . $this->decidedOnRangeBounds($notificationDate, $enrolmentDate) . '.';
+    }
+
+    private function decidedOnRangeBounds(string $notificationDate, ?string $enrolmentDate): string
+    {
+        $enrolLabel = $enrolmentDate !== null ? $this->notificationDateLabel($enrolmentDate) : null;
+        $notifLabel = $this->notificationDateLabel($notificationDate);
+        if ($enrolLabel !== null) {
+            return 'date of enrolment (' . $enrolLabel . ') and the notification date (' . $notifLabel . ')';
+        }
+
+        return 'notification date (' . $notifLabel . ') (on or before)';
+    }
+
+    private function isAffirmative(mixed $value): bool
+    {
+        if ($value === true || $value === 1) {
+            return true;
+        }
+        $v = strtolower(trim((string) $value));
+
+        return in_array($v, ['1', 't', 'true', 'yes', 'on', 'y'], true);
+    }
+
+    /**
+     * When Sl. 18–22 is Yes, date / details fields are required.
+     *
+     * @param array<string, mixed> $source
+     */
+    private function validateDeclarationYesDetails(array $source): ?string
+    {
+        $groups = [
+            [
+                'flag'   => 'applied_mhc_earlier',
+                'sl'     => '18',
+                'fields' => [
+                    'applied_mhc_date'   => 'Date of application',
+                    'applied_mhc_status' => 'Details',
+                ],
+            ],
+            [
+                'flag'   => 'applied_other_court',
+                'sl'     => '19',
+                'fields' => [
+                    'applied_other_date'    => 'Date of application',
+                    'applied_other_details' => 'Details thereof',
+                ],
+            ],
+            [
+                'flag'   => 'fir_lodged',
+                'sl'     => '20',
+                'fields' => [
+                    'fir_details' => 'Details thereof',
+                ],
+            ],
+            [
+                'flag'   => 'criminal_case_party',
+                'sl'     => '21',
+                'fields' => [
+                    'criminal_case_details' => 'Details thereof',
+                ],
+            ],
+            [
+                'flag'   => 'bar_council_proceedings',
+                'sl'     => '22',
+                'fields' => [
+                    'bar_council_details' => 'Details thereof',
+                ],
+            ],
+        ];
+
+        foreach ($groups as $group) {
+            if (! $this->isAffirmative($source[$group['flag']] ?? null)) {
+                continue;
+            }
+            foreach ($group['fields'] as $key => $label) {
+                $value = $source[$key] ?? null;
+                if (is_string($value)) {
+                    $value = trim($value);
+                }
+                if ($value === null || $value === '') {
+                    return 'Sl. No. ' . $group['sl'] . ': ' . $label . ' is required when Yes is selected.';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Sl. 18 / 19 prior-application dates must fall between enrolment and notification (inclusive).
+     *
+     * @param array<string, mixed> $source
+     */
+    private function validatePriorApplicationDates(array $source, ?string $enrolmentDate, ?string $notificationDate): ?string
+    {
+        $fields = [
+            'applied_mhc_date'   => 'Sl. No. 18 (date of application to the Madras High Court)',
+            'applied_other_date' => 'Sl. No. 19 (date of application to the Supreme Court or any other High Court)',
+        ];
+
+        $enrolLabel = $enrolmentDate !== null ? $this->notificationDateLabel($enrolmentDate) : null;
+        $notifLabel = $notificationDate !== null ? $this->notificationDateLabel($notificationDate) : null;
+        $bounds     = [];
+        if ($enrolLabel !== null) {
+            $bounds[] = 'date of enrolment (' . $enrolLabel . ')';
+        }
+        if ($notifLabel !== null) {
+            $bounds[] = 'notification date (' . $notifLabel . ')';
+        }
+
+        foreach ($fields as $key => $label) {
+            $date = $source[$key] ?? null;
+            if (! ApplicationDateRules::practiceDateIsValid($date, $enrolmentDate, $notificationDate)) {
+                return $label . ' must be between the ' . implode(' and the ', $bounds) . '.';
+            }
         }
 
         return null;
@@ -1170,8 +1344,9 @@ class ApplicationController extends BaseController
             if (! is_array($row)) {
                 continue;
             }
+            $type = ApplicationModel::practiceCourtTypeFromRow($row);
             $name = trim((string) ($row['court'] ?? ''));
-            if ($name !== '') {
+            if ($type === ApplicationModel::PRACTICE_COURT_SUPREME || $name !== '') {
                 return true;
             }
         }
@@ -1278,14 +1453,24 @@ class ApplicationController extends BaseController
         }
     }
 
+    private function judgmentCourtNameForLevel(string $level, mixed $postedName): string
+    {
+        if ($level === 'madras_hc') {
+            return 'Madras High Court';
+        }
+
+        return trim((string) $postedName);
+    }
+
     protected function saveFormatRows(int $appId, array $post): void
     {
         $l1Rows = [];
         if (! empty($post['l1_case_number']) && is_array($post['l1_case_number'])) {
             foreach ($post['l1_case_number'] as $i => $cn) {
+                $level = (string) ($post['l1_court_level'][$i] ?? 'madras_hc');
                 $l1Rows[] = [
-                    'court_level'        => $post['l1_court_level'][$i] ?? 'madras_hc',
-                    'court_name'         => $post['l1_court_name'][$i] ?? '',
+                    'court_level'        => $level,
+                    'court_name'         => $this->judgmentCourtNameForLevel($level, $post['l1_court_name'][$i] ?? ''),
                     'case_number'        => $cn,
                     'citation'           => $post['l1_citation'][$i] ?? '',
                     'cause_title'        => $post['l1_cause_title'][$i] ?? '',
@@ -1299,9 +1484,10 @@ class ApplicationController extends BaseController
         $l2Rows = [];
         if (! empty($post['l2_case_number']) && is_array($post['l2_case_number'])) {
             foreach ($post['l2_case_number'] as $i => $cn) {
+                $level = (string) ($post['l2_court_level'][$i] ?? 'madras_hc');
                 $l2Rows[] = [
-                    'court_level'       => $post['l2_court_level'][$i] ?? 'madras_hc',
-                    'court_name'        => $post['l2_court_name'][$i] ?? '',
+                    'court_level'       => $level,
+                    'court_name'        => $this->judgmentCourtNameForLevel($level, $post['l2_court_name'][$i] ?? ''),
                     'case_number'       => $cn,
                     'citation'          => null, // Citation not collected for unreported (L-2) judgments
                     'cause_title'       => $post['l2_cause_title'][$i] ?? '',
@@ -1416,5 +1602,51 @@ class ApplicationController extends BaseController
         }
 
         return true;
+    }
+
+    /**
+     * Remove a previously uploaded document while the application is still editable (draft / returned / edit window).
+     */
+    public function removeUpload(int $id, string $type)
+    {
+        $this->preventSensitiveCache();
+        $app = $this->requireEditableApplication($id);
+        if ($app === null) {
+            return redirect()->to('/applicant/dashboard')
+                ->with('error', 'This application cannot be edited. It may already have been submitted.');
+        }
+
+        $map = [
+            'photo'           => 'photo_path',
+            'signature'       => 'signature_path',
+            'enrolment_cert'  => 'enrolment_cert_path',
+            'age_proof'       => 'age_proof_path',
+            'education_qual'  => 'education_qual_path',
+            'format_l1'       => 'format_l1_path',
+            'format_l2'       => 'format_l2_path',
+            'format_l3i'      => 'format_l3i_path',
+            'format_l3ii'     => 'format_l3ii_path',
+            'format_l4'       => 'format_l4_path',
+        ];
+        if (! isset($map[$type])) {
+            return redirect()->to('/applicant/application/step/7')->with('error', 'Unknown document type.');
+        }
+
+        $column = $map[$type];
+        $path   = $app[$column] ?? null;
+        if (empty($path)) {
+            return redirect()->to('/applicant/application/step/7')->with('error', 'No document to remove.');
+        }
+
+        (new UploadService())->deleteIfExists((string) $path);
+        $this->apps->update((int) $app['id'], [$column => null]);
+
+        $userId = (int) session()->get('user_id');
+        model(AuditLogModel::class)->log('application_upload_removed', $userId, (int) $app['id'], ['type' => $type]);
+
+        $label = UploadService::RULES[$type]['label'] ?? $type;
+
+        return redirect()->to('/applicant/application/step/7')
+            ->with('success', $label . ' removed. You can upload a new file if needed.');
     }
 }

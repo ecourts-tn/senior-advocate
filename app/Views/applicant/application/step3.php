@@ -14,7 +14,10 @@ $courtLevels = [
     'district_tribunal' => 'District Courts / Labour Courts / Tribunals',
 ];
 $notificationDate = $notificationDate ?? ($ageAsOnDate ?? ssa_age_as_on_date($app ?? null));
+$enrolmentDate    = $enrolmentDate ?? \App\Libraries\ApplicationDateRules::parseDate($app['enrolment_date'] ?? null);
+$decidedOnMin     = $decidedOnMin ?? \App\Libraries\ApplicationDateRules::decidedOnMin($enrolmentDate);
 $decidedOnMax     = $decidedOnMax ?? \App\Libraries\ApplicationDateRules::decidedOnMax($notificationDate);
+$enrolLabel       = ! empty($enrolmentDate) ? date('d-m-Y', strtotime((string) $enrolmentDate)) : '';
 $notifLabel       = ! empty($notificationDate) ? date('d-m-Y', strtotime((string) $notificationDate)) : '';
 
 $applyOldJudgmentRows = static function (array $existing, string $prefix): array {
@@ -68,11 +71,16 @@ $renderJudgmentCard = static function (
     array $courtLevels,
     bool $isTemplate,
     string $label
-) use ($decidedOnMax): void {
+) use ($decidedOnMin, $decidedOnMax): void {
     $disabled = $isTemplate ? ' disabled' : '';
     $classes  = 'entry-card dynamic-row' . ($isTemplate ? ' d-none' : '');
     $attrs    = $isTemplate ? ' data-row-template hidden aria-hidden="true"' : '';
     $level    = (string) ($row['court_level'] ?? 'madras_hc');
+    $courtName = (string) ($row['court_name'] ?? '');
+    if ($level === 'madras_hc') {
+        $courtName = $courtLevels['madras_hc'] ?? 'Madras High Court';
+    }
+    $courtNameLocked = $level === 'madras_hc';
     $decided  = $row['decided_on'] ?? '';
     if (is_string($decided) && $decided !== '') {
         $decided = substr($decided, 0, 10);
@@ -88,7 +96,8 @@ $renderJudgmentCard = static function (
         <div class="row g-2 g-md-3">
             <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label">Court</label>
-                <select name="<?= esc($prefix) ?>_court_level[]" class="form-select form-select-sm"<?= $disabled ?>>
+                <select name="<?= esc($prefix) ?>_court_level[]" class="form-select form-select-sm"
+                        data-judgment-court-level<?= $disabled ?>>
                     <?php foreach ($courtLevels as $k => $lab): ?>
                         <option value="<?= esc($k) ?>" <?= $level === $k ? 'selected' : '' ?>><?= esc($lab) ?></option>
                     <?php endforeach; ?>
@@ -96,16 +105,20 @@ $renderJudgmentCard = static function (
             </div>
             <div class="col-12 col-sm-6 col-lg-3">
                 <label class="form-label">Court Name</label>
-                <input name="<?= esc($prefix) ?>_court_name[]" class="form-control form-control-sm"
-                       value="<?= esc($row['court_name'] ?? '') ?>"
+                <input name="<?= esc($prefix) ?>_court_name[]" class="form-control form-control-sm<?= $courtNameLocked ? ' bg-light' : '' ?>"
+                       data-judgment-court-name
+                       value="<?= esc($courtName) ?>"
+                       <?php if ($courtNameLocked): ?>readonly tabindex="-1"<?php endif; ?>
+                       <?= $courtNameLocked ? 'title="Copied from Court: Madras High Court"' : 'placeholder="Enter court name"' ?>
                        <?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-6 col-lg-2">
                 <label class="form-label">Decided on</label>
                 <input type="date" name="<?= esc($prefix) ?>_decided_on[]" class="form-control form-control-sm"
                        value="<?= esc($decided) ?>"
+                       <?php if ($decidedOnMin): ?>min="<?= esc($decidedOnMin) ?>"<?php endif; ?>
                        <?php if ($decidedOnMax): ?>max="<?= esc($decidedOnMax) ?>"<?php endif; ?>
-                       title="Must be earlier than the notification date"<?= $disabled ?>>
+                       title="Must be between the date of enrolment and the notification date"<?= $disabled ?>>
             </div>
             <div class="col-12 col-sm-4">
                 <label class="form-label">Case Number / Citation <?php if ($prefix === 'l2') echo '(If any)' ?></label>
@@ -226,7 +239,7 @@ $renderJudgmentCard = static function (
             </div>
         </div>
 
-        <p class="form-text mb-0">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB). Use <strong>Add entry</strong> for additional judgments. Removing entries always keeps one blank card so you can add again.<?php if ($notifLabel !== ''): ?> <strong>Decided on</strong> must be earlier than the notification date (<?= esc($notifLabel) ?>).<?php endif; ?></p>
+        <p class="form-text mb-0">PDF uploads for Format L-1 and L-2 are on Step 7 (each less than 5 MB). Use <strong>Add entry</strong> for additional judgments. Removing entries always keeps one blank card so you can add again. <strong>Decided on</strong> must be between the date of enrolment<?php if ($enrolLabel !== ''): ?> (<?= esc($enrolLabel) ?>)<?php endif; ?> and the notification date<?php if ($notifLabel !== ''): ?> (<?= esc($notifLabel) ?>)<?php endif; ?>.</p>
 
         <?= $this->include('applicant/application/_form_nav') ?>
         <?= form_close() ?>

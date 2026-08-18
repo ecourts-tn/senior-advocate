@@ -36,6 +36,7 @@
             <?php
             $ageAsOnDate  = $ageAsOnDate ?? ssa_age_as_on_date($app ?? null);
             $ageAsOnLabel = $ageAsOnLabel ?? ssa_age_as_on_label($app ?? null);
+            $dobMin       = \App\Libraries\ApplicationDateRules::DATE_OF_BIRTH_MIN;
             $dobValue     = old('date_of_birth', $app['date_of_birth'] ?? '');
             if (is_string($dobValue) && $dobValue !== '') {
                 $dobValue = substr($dobValue, 0, 10);
@@ -63,6 +64,7 @@
                 <label class="form-label required" for="date_of_birth">2. Date of Birth</label>
                 <input type="date" name="date_of_birth" id="date_of_birth" class="form-control" required
                        value="<?= esc($dobValue) ?>"
+                       min="<?= esc($dobMin) ?>"
                        max="<?= esc($ageAsOnDate) ?>"
                        data-age-as-on="<?= esc($ageAsOnDate) ?>"
                        data-age-years-target="age_years_display"
