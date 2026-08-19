@@ -13,6 +13,7 @@
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
         <?php
         $ageAsOnDate  = $ageAsOnDate ?? ssa_age_as_on_date($app ?? null);
@@ -20,6 +21,16 @@
         $enrolDate    = old('enrolment_date', isset($app['enrolment_date']) ? substr((string) $app['enrolment_date'], 0, 10) : '');
         $practiceYears  = old('practice_years', $app['practice_years'] ?? '');
         $practiceMonths = old('practice_months', $app['practice_months'] ?? '');
+        $barYn = static function ($field, $app) {
+            $posted = old($field);
+            if ($posted !== null && $posted !== false && $posted !== '') {
+                return (string) $posted;
+            }
+            $v = ssa_bool_label($app[$field] ?? null);
+
+            return $v === 'Yes' ? '1' : ($v === 'No' ? '0' : '');
+        };
+        $barYes = $barYn('is_bar_association_member', $app) === '1';
         ?>
         <div class="section-title">7. Enrolment Details</div>
         <div class="row g-3">
@@ -93,20 +104,23 @@
             </div>
         </div>
 
-        <div class="section-title mt-4">8. Whether the applicant is a member of any bar association attached to a specific court (eg. Madras High Court Advocates Association, Madurai High Court Advocates Association, or any district bar association)</div>
+        <div class="section-title mt-4">8. Whether the applicant is a member of any bar association attached to a specific court (eg. Madras High Court Advocates Association, Madurai High Court Advocates Association, or any district bar association) <span class="text-danger">*</span></div>
         <div class="row g-3">
-            <div class="col-md-6 mt-4 pt-4">
-                <select name="is_bar_association_member" class="form-select" data-toggle-detail="#barAssocDetail">
+            <div class="col-md-6">
+                <label class="form-label required" for="is_bar_association_member">Select Yes or No</label>
+                <select name="is_bar_association_member" id="is_bar_association_member" class="form-select" required
+                        aria-required="true" data-toggle-detail="#barAssocDetail">
                     <option value="">— Select —</option>
-                    <option value="1" <?= old('is_bar_association_member', ssa_bool_label($app['is_bar_association_member'] ?? null) === 'Yes' ? '1' : '') === '1' ? 'selected' : '' ?>>Yes</option>
-                    <option value="0" <?= old('is_bar_association_member', ssa_bool_label($app['is_bar_association_member'] ?? null) === 'No' ? '0' : '') === '0' ? 'selected' : '' ?>>No</option>
+                    <option value="1" <?= $barYes ? 'selected' : '' ?>>Yes</option>
+                    <option value="0" <?= $barYn('is_bar_association_member', $app) === '0' ? 'selected' : '' ?>>No</option>
                 </select>
             </div>
             <div class="col-md-6" id="barAssocDetail">
-                <label class="form-label">Name of Bar Association</label>
+                <label class="form-label<?= $barYes ? ' required' : '' ?>">Name of Bar Association</label>
                 <input type="text" name="bar_association_name" class="form-control"
                        value="<?= esc(old('bar_association_name', $app['bar_association_name'] ?? '')) ?>"
-                       placeholder="e.g. Madras High Court Advocates Association">
+                       placeholder="e.g. Madras High Court Advocates Association"
+                       <?= $barYes ? 'required' : '' ?>>
             </div>
         </div>
         <?= $this->include('applicant/application/_form_nav') ?>

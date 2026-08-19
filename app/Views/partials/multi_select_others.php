@@ -18,11 +18,14 @@ $selected = $selected ?? [];
 $other    = $other ?? '';
 $required = ! empty($required);
 $help     = $help ?? null;
+$requiredMessage = trim((string) ($requiredMessage ?? ''));
 $othersVal = MasterRegistry::OTHERS_VALUE;
 $hasOthers = in_array($othersVal, $selected, true)
     || in_array(MasterRegistry::OTHERS_LABEL, $selected, true);
 ?>
-<div class="lookup-multi" data-others-group>
+<div class="lookup-multi" data-others-group
+     <?= $required ? 'data-required-group="1"' : '' ?>
+     <?= $required && $requiredMessage !== '' ? 'data-required-message="' . esc($requiredMessage, 'attr') . '"' : '' ?>>
     <div class="row g-2">
         <?php foreach ($options as $opt): ?>
             <?php $id = $name . '_' . substr(md5($opt), 0, 8); ?>

@@ -7,7 +7,7 @@ use App\Libraries\CaptchaService;
 class CaptchaController extends BaseController
 {
     /**
-     * Serve a fresh captcha image (PNG).
+     * Serve a fresh captcha image (PNG when GD is available, otherwise SVG).
      * Always regenerates so each request gets a new challenge.
      *
      * Optional query: ?scope=lookup|register|default
@@ -18,12 +18,12 @@ class CaptchaController extends BaseController
         $scope   = CaptchaService::normaliseScope($this->request->getGet('scope'));
         $captcha = new CaptchaService();
         $code    = $captcha->regenerate($scope);
-        $png     = $captcha->renderImage($code);
+        $image   = $captcha->render($code);
 
         return $this->response
-            ->setHeader('Content-Type', 'image/png')
+            ->setHeader('Content-Type', $image['mime'])
             ->setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
             ->setHeader('Pragma', 'no-cache')
-            ->setBody($png);
+            ->setBody($image['body']);
     }
 }

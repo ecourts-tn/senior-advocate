@@ -79,13 +79,19 @@ if (is_array($postedTribNames)) {
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
 
         <div class="section-title">14. Courts where the applicant is practicing / has practiced <span class="text-danger">*</span> <span class="small text-muted">(Court-wise period may be indicated)</span></div>
         <div class="d-flex justify-content-end mb-2">
             <button type="button" class="btn btn-sm btn-outline-primary" data-add-row="#courtRows">+ Add court</button>
         </div>
-        <div id="courtRows" data-rows>
+        <div id="courtRows" data-rows
+             data-required-group="1"
+             data-required-kind="practice-courts"
+             data-required-message="Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required."
+             data-required-name-message="Sl. No. 14: enter the court name when High Court(s)/District/Trial Court(s) is selected."
+             data-required-from-message="Sl. No. 14: From (date) is required for each court.">
             <?php
             $courts = ! empty($app['courts_practiced']) ? $app['courts_practiced'] : [
                 ['court' => '', 'court_type' => '', 'from_date' => '', 'to_date' => ''],
@@ -125,14 +131,15 @@ if (is_array($postedTribNames)) {
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <?php if ($showLabel): ?><label class="form-label">From (date)</label><?php endif; ?>
+                    <?php if ($showLabel): ?><label class="form-label<?= $required || $type !== '' ? ' required' : '' ?>">From (date)</label><?php endif; ?>
                     <input type="date" name="court_from[]" class="form-control"
                            value="<?= esc($periodDate($c, 'from_date')) ?>"
                            data-period="from"
                            <?= $practiceMin ? 'min="' . esc($practiceMin) . '"' : '' ?>
                            <?= $practiceMax ? 'max="' . esc($practiceMax) . '"' : '' ?>
                            <?= $rangeMinAttr ?><?= $rangeMaxAttr ?>
-                           title="Must be between enrolment date and notification date"<?= $dis ?>>
+                           title="Required. Must be between enrolment date and notification date"
+                           <?= ($required || $type !== '') ? ' required' : '' ?><?= $dis ?>>
                 </div>
                 <div class="col-md-3">
                     <?php if ($showLabel): ?><label class="form-label">To (date)</label><?php endif; ?>
@@ -272,12 +279,13 @@ if (is_array($postedTribNames)) {
             $natureMulti['other']    = (string) old('nature_of_practice_other', '');
         }
         echo view('partials/multi_select_others', [
-            'name'     => 'nature_of_practice',
-            'options'  => $natureOptions,
-            'selected' => $natureMulti['selected'] ?? [],
-            'other'    => $natureMulti['other'] ?? '',
-            'required' => true,
-            'help'     => 'Select at least one option (stored as related master records).',
+            'name'            => 'nature_of_practice',
+            'options'         => $natureOptions,
+            'selected'        => $natureMulti['selected'] ?? [],
+            'other'           => $natureMulti['other'] ?? '',
+            'required'        => true,
+            'requiredMessage' => 'Sl. No. 16 (Nature of practice) is required.',
+            'help'            => 'Select at least one option (stored as related master records).',
         ]);
         ?>
 
@@ -293,12 +301,13 @@ if (is_array($postedTribNames)) {
             $fieldMulti['other']    = (string) old('field_of_law_other', '');
         }
         echo view('partials/multi_select_others', [
-            'name'     => 'field_of_law',
-            'options'  => $fieldOptions,
-            'selected' => $fieldMulti['selected'] ?? [],
-            'other'    => $fieldMulti['other'] ?? '',
-            'required' => true,
-            'help'     => 'Select at least one option (stored as related master records).',
+            'name'            => 'field_of_law',
+            'options'         => $fieldOptions,
+            'selected'        => $fieldMulti['selected'] ?? [],
+            'other'           => $fieldMulti['other'] ?? '',
+            'required'        => true,
+            'requiredMessage' => 'Sl. No. 17 (Field of Law) is required.',
+            'help'            => 'Select at least one option (stored as related master records).',
         ]);
         ?>
 

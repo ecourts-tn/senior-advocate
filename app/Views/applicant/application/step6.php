@@ -13,6 +13,7 @@
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
 
         <?php
@@ -52,10 +53,12 @@
         $otherDate = $isoDate('applied_other_date', $app);
         ?>
 
-        <div class="section-title">18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application & current status thereof:</div>
+        <div class="section-title">18. Whether the applicant has applied earlier to the Madras High Court for designation; If so, date of the application & current status thereof <span class="text-danger">*</span></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3 mt-4 pt-4">
-                <select name="applied_mhc_earlier" class="form-select" data-toggle-detail="#mhcDetail">
+            <div class="col-md-3">
+                <label class="form-label required" for="applied_mhc_earlier">Select Yes or No</label>
+                <select name="applied_mhc_earlier" id="applied_mhc_earlier" class="form-select" required
+                        aria-required="true" data-toggle-detail="#mhcDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $mhcYes ? 'selected' : '' ?>>Yes</option>
                     <option value="0" <?= $yn('applied_mhc_earlier', $app) === '0' ? 'selected' : '' ?>>No</option>
@@ -83,10 +86,12 @@
             </div>
         </div>
 
-        <div class="section-title">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof:</div>
+        <div class="section-title">19. Whether the applicant has applied earlier to the Supreme Court, or any other High Court; if so, date of the application and details thereof <span class="text-danger">*</span></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3 mt-4 pt-4">
-                <select name="applied_other_court" class="form-select" data-toggle-detail="#otherCourtDetail">
+            <div class="col-md-3">
+                <label class="form-label required" for="applied_other_court">Select Yes or No</label>
+                <select name="applied_other_court" id="applied_other_court" class="form-select" required
+                        aria-required="true" data-toggle-detail="#otherCourtDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $otherYes ? 'selected' : '' ?>>Yes</option>
                     <option value="0" <?= $yn('applied_other_court', $app) === '0' ? 'selected' : '' ?>>No</option>
@@ -114,10 +119,12 @@
             </div>
         </div>
 
-        <div class="section-title">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof:</div>
+        <div class="section-title">20. Whether any FIR has ever been lodged against the applicant; if so, details thereof <span class="text-danger">*</span></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3 pt-4 mt-4">
-                <select name="fir_lodged" class="form-select" data-toggle-detail="#firDetail">
+            <div class="col-md-3">
+                <label class="form-label required" for="fir_lodged">Select Yes or No</label>
+                <select name="fir_lodged" id="fir_lodged" class="form-select" required
+                        aria-required="true" data-toggle-detail="#firDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $firYes ? 'selected' : '' ?>>Yes</option>
                     <option value="0" <?= $yn('fir_lodged', $app) === '0' ? 'selected' : '' ?>>No</option>
@@ -129,10 +136,12 @@
             </div>
         </div>
 
-        <div class="section-title">21. Whether the applicant is a party to any criminal case; if so, details thereof:</div>
+        <div class="section-title">21. Whether the applicant is a party to any criminal case; if so, details thereof <span class="text-danger">*</span></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3 mt-4 pt-4">
-                <select name="criminal_case_party" class="form-select" data-toggle-detail="#crimDetail">
+            <div class="col-md-3">
+                <label class="form-label required" for="criminal_case_party">Select Yes or No</label>
+                <select name="criminal_case_party" id="criminal_case_party" class="form-select" required
+                        aria-required="true" data-toggle-detail="#crimDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $crimYes ? 'selected' : '' ?>>Yes</option>
                     <option value="0" <?= $yn('criminal_case_party', $app) === '0' ? 'selected' : '' ?>>No</option>
@@ -144,10 +153,12 @@
             </div>
         </div>
 
-        <div class="section-title">22. Whether any proceedings were initiated or are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof</div>
+        <div class="section-title">22. Whether any proceedings were initiated or are pending against the applicant before Bar Council of India or State Bar Council; if so, details thereof <span class="text-danger">*</span></div>
         <div class="row g-3 mb-3">
-            <div class="col-md-3 mt-4 pt-4">
-                <select name="bar_council_proceedings" class="form-select" data-toggle-detail="#bcDetail">
+            <div class="col-md-3">
+                <label class="form-label required" for="bar_council_proceedings">Select Yes or No</label>
+                <select name="bar_council_proceedings" id="bar_council_proceedings" class="form-select" required
+                        aria-required="true" data-toggle-detail="#bcDetail">
                     <option value="">— Select —</option>
                     <option value="1" <?= $bcYes ? 'selected' : '' ?>>Yes</option>
                     <option value="0" <?= $yn('bar_council_proceedings', $app) === '0' ? 'selected' : '' ?>>No</option>

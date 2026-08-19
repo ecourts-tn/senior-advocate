@@ -226,13 +226,14 @@ $site = $site ?? config(\Config\Site::class);
         </div>
     <?php endif; ?>
     <?php if ($errors = session()->getFlashdata('errors')): ?>
-        <div class="alert alert-danger" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <div class="fw-semibold mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Please correct the following:</div>
             <ul class="mb-0">
                 <?php foreach ((array) $errors as $err): ?>
                     <li><?= esc(is_array($err) ? implode(', ', $err) : $err) ?></li>
                 <?php endforeach; ?>
             </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
 

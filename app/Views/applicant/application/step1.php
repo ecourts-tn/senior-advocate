@@ -14,6 +14,7 @@
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
         <div class="section-title">Personal Particulars</div>
             <div class="row g-3">
@@ -162,12 +163,13 @@
                     $qualMulti['other']    = (string) old('qualifications_other', '');
                 }
                 echo view('partials/multi_select_others', [
-                    'name'     => 'qualifications',
-                    'options'  => $qualLabels,
-                    'selected' => $qualMulti['selected'] ?? [],
-                    'other'    => $qualMulti['other'] ?? '',
-                    'required' => true,
-                    'help'     => 'Select all that apply. Choose Others to enter a qualification not listed.',
+                    'name'             => 'qualifications',
+                    'options'          => $qualLabels,
+                    'selected'         => $qualMulti['selected'] ?? [],
+                    'other'            => $qualMulti['other'] ?? '',
+                    'required'         => true,
+                    'requiredMessage'  => 'Sl. No. 6 (Educational / Professional Qualifications) is required.',
+                    'help'             => 'Select all that apply. Choose Others to enter a qualification not listed.',
                 ]);
                 ?>
             </div>

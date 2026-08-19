@@ -25,10 +25,10 @@ use Config\Feature;
  *
  * @see \CodeIgniter\Commands\Utilities\Routes\FilterFinderTest
  */
-final readonly class FilterFinder
+final class FilterFinder
 {
-    private Router $router;
-    private Filters $filters;
+    private readonly Router $router;
+    private readonly Filters $filters;
 
     public function __construct(?Router $router = null, ?Filters $filters = null)
     {

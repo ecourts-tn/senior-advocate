@@ -71,6 +71,7 @@ $fgValue  = $fgPosted !== null && $fgPosted !== false
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
 
         <div class="section-title">11. Pro Bono / Amicus Curiae work <u>Format L-3(i) Format L-3(ii)</u></div>

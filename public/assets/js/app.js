@@ -128,14 +128,237 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function closestSectionTitle(el) {
+    var node = el;
+    while (node && node !== document.body) {
+      var prev = node.previousElementSibling;
+      while (prev) {
+        if (prev.classList && prev.classList.contains('section-title')) {
+          return prev;
+        }
+        prev = prev.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
+  function sectionTitleMessage(titleEl) {
+    if (!titleEl) return '';
+    var clone = titleEl.cloneNode(true);
+    clone.querySelectorAll('.small, .text-muted').forEach(function (n) {
+      n.remove();
+    });
+    return clone.textContent.replace(/\s+/g, ' ').replace(/\s*\*\s*/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function requiredFieldMessage(el) {
+    var title = closestSectionTitle(el);
+    var heading = sectionTitleMessage(title);
+    if (heading) {
+      return heading + ' is required.';
+    }
+    var lab = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+    if (!lab) {
+      var wrap = el.closest('.col-md-5, .col-md-3, .col-md-4, .col-md-6, .col-12, div');
+      lab = wrap ? wrap.querySelector('label.form-label') : null;
+    }
+    if (lab && !isOthersSpecifyLabel(lab)) {
+      return lab.textContent.replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim() + ' is required.';
+    }
+    return 'This field is required.';
+  }
+
+  function isOthersSpecifyLabel(lab) {
+    if (!lab) return false;
+    var text = (lab.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    return text.indexOf('please specify') !== -1;
+  }
+
+  function requiredGroupMessage(group) {
+    var attr = (group.getAttribute('data-required-message') || '').trim();
+    if (attr) return attr;
+    var heading = sectionTitleMessage(closestSectionTitle(group));
+    if (heading) {
+      return heading + ' is required.';
+    }
+    var prev = group.previousElementSibling;
+    while (prev && prev.nodeType === 1) {
+      if (prev.classList.contains('form-label') || prev.classList.contains('section-title') || prev.tagName === 'LABEL') {
+        if (!isOthersSpecifyLabel(prev)) {
+          return prev.textContent.replace(/\s+/g, ' ').replace(/\s*\*\s*/g, ' ').trim() + ' is required.';
+        }
+      }
+      var outerLab = prev.querySelector ? prev.querySelector('label.form-label, .section-title') : null;
+      if (outerLab && !isOthersSpecifyLabel(outerLab) && !group.contains(outerLab)) {
+        return outerLab.textContent.replace(/\s+/g, ' ').replace(/\s*\*\s*/g, ' ').trim() + ' is required.';
+      }
+      prev = prev.previousElementSibling;
+    }
+    return 'This field is required.';
+  }
+
+  function requiredGroupFilled(group) {
+    var boxes = group.querySelectorAll('input[type="checkbox"]');
+    if (!boxes.length) return true;
+    var othersTrigger = group.querySelector('[data-others-trigger]');
+    var hasNamed = false;
+    boxes.forEach(function (box) {
+      if (!box.checked || box === othersTrigger) return;
+      hasNamed = true;
+    });
+    if (hasNamed) return true;
+    if (othersTrigger && othersTrigger.checked) {
+      var otherInput = group.querySelector('[data-others-field] input, [data-others-field] textarea');
+      return !!(otherInput && String(otherInput.value || '').trim());
+    }
+    return false;
+  }
+
+  function livePracticeCourtRows(group) {
+    var rows = [];
+    group.querySelectorAll('.dynamic-row').forEach(function (row) {
+      if (row.hasAttribute('data-row-template') || row.classList.contains('d-none') || row.hidden) {
+        return;
+      }
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  function practiceCourtsState(group) {
+    var anyCourt = false;
+    var missingName = false;
+    var missingFrom = false;
+    livePracticeCourtRows(group).forEach(function (row) {
+      var select = row.querySelector('[data-practice-court-type]');
+      if (!select || select.disabled) return;
+      var type = String(select.value || '').trim();
+      if (!type) return;
+      var nameInput = row.querySelector('input[name="court_name[]"]');
+      var nameVal = nameInput ? String(nameInput.value || '').trim() : '';
+      if (type === 'hc_district_trial' && nameVal === '') {
+        missingName = true;
+        return;
+      }
+      anyCourt = true;
+      var fromInput = row.querySelector('input[name="court_from[]"]');
+      var fromVal = fromInput ? String(fromInput.value || '').trim() : '';
+      if (!fromVal) {
+        missingFrom = true;
+      }
+    });
+    return { anyCourt: anyCourt, missingName: missingName, missingFrom: missingFrom };
+  }
+
+  function collectMissingRequired(form) {
+    var seen = {};
+    var messages = [];
+    function addMessage(key) {
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      messages.push(key);
+    }
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.disabled || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') return;
+      if (el.closest('[data-required-group]')) return;
+      if (!el.required && !el.hasAttribute('required')) return;
+      if (el.closest('.d-none')) return;
+      var othersWrap = el.closest('[data-others-field]');
+      if (othersWrap && othersWrap.hasAttribute('hidden')) return;
+      if (el.classList.contains('flatpickr-input')) return;
+      if (typeof el.checkValidity === 'function' && el.checkValidity()) return;
+      addMessage(requiredFieldMessage(el));
+    });
+    form.querySelectorAll('[data-required-group]').forEach(function (group) {
+      if (group.closest('.d-none')) return;
+      if (group.getAttribute('data-required-kind') === 'practice-courts') {
+        var state = practiceCourtsState(group);
+        if (!state.anyCourt) {
+          addMessage(group.getAttribute('data-required-message') || requiredGroupMessage(group));
+        } else if (state.missingName) {
+          addMessage(group.getAttribute('data-required-name-message')
+            || 'Sl. No. 14: enter the court name when High Court(s)/District/Trial Court(s) is selected.');
+        } else if (state.missingFrom) {
+          addMessage(group.getAttribute('data-required-from-message')
+            || 'Sl. No. 14: From (date) is required for each court.');
+        }
+        return;
+      }
+      var othersTrigger = group.querySelector('[data-others-trigger]');
+      var othersOn = !!(othersTrigger && othersTrigger.type === 'checkbox' && othersTrigger.checked);
+      var otherInput = group.querySelector('[data-others-field] input, [data-others-field] textarea');
+      var otherFilled = !!(otherInput && String(otherInput.value || '').trim());
+      var namedChecked = false;
+      group.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
+        if (box.checked && box !== othersTrigger) namedChecked = true;
+      });
+      if (namedChecked || (othersOn && otherFilled)) {
+        return;
+      }
+      if (othersOn && !otherFilled) {
+        var heading = sectionTitleMessage(closestSectionTitle(group));
+        addMessage(heading
+          ? 'Please specify the other value for ' + heading + '.'
+          : 'Please specify the other value.');
+        return;
+      }
+      if (requiredGroupFilled(group)) return;
+      addMessage(requiredGroupMessage(group));
+    });
+    return messages;
+  }
+
+  function showDismissableRequiredErrors(messages) {
+    var existing = document.getElementById('ssa-required-errors');
+    if (existing) existing.remove();
+    var alert = document.createElement('div');
+    alert.id = 'ssa-required-errors';
+    alert.className = 'alert alert-danger alert-dismissible fade show';
+    alert.setAttribute('role', 'alert');
+    var items = messages.map(function (msg) {
+      return '<li>' + msg.replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      }) + '</li>';
+    }).join('');
+    alert.innerHTML = '<div class="fw-semibold mb-1"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>Please correct the following:</div>'
+      + '<ul class="mb-0">' + items + '</ul>'
+      + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+    var main = document.getElementById('main-content');
+    if (main) {
+      main.insertBefore(alert, main.firstChild);
+    } else {
+      document.body.insertBefore(alert, document.body.firstChild);
+    }
+    alert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   document.querySelectorAll('form.application-step-form').forEach(function (form) {
+    form.setAttribute('novalidate', 'novalidate');
+    form.addEventListener('invalid', function (e) {
+      e.preventDefault();
+    }, true);
     form.addEventListener('click', function (e) {
       var btn = e.target && e.target.closest ? e.target.closest('button[type="submit"], input[type="submit"]') : null;
       if (!btn) return;
       clearStaleDateRequired(form);
     }, true);
-    form.addEventListener('submit', function () {
+    form.addEventListener('submit', function (e) {
       clearStaleDateRequired(form);
+      var btn = e.submitter;
+      var action = (btn && btn.getAttribute('name') === 'action') ? String(btn.value || '') : '';
+      if (action === 'save' || action === 'prev') {
+        return;
+      }
+      var missing = collectMissingRequired(form);
+      if (!missing.length) {
+        return;
+      }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showDismissableRequiredErrors(missing);
+    }, true);
+    form.addEventListener('submit', function () {
       window.setTimeout(function () {
         form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
           btn.disabled = true;
@@ -409,6 +632,16 @@ document.addEventListener('DOMContentLoaded', function () {
     if (input && !row.hasAttribute('data-row-template')) {
       input.required = show && !select.disabled;
     }
+    var fromInput = row.querySelector('input[name="court_from[]"]');
+    var hasCourt = String(select.value || '').trim() !== '' && !select.disabled;
+    if (fromInput && !row.hasAttribute('data-row-template')) {
+      fromInput.required = hasCourt;
+    }
+    row.querySelectorAll('label.form-label').forEach(function (lab) {
+      if ((lab.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase().indexOf('from') === 0) {
+        lab.classList.toggle('required', hasCourt);
+      }
+    });
   }
 
   function syncPracticeCourtNames(root) {

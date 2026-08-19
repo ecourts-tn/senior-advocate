@@ -148,6 +148,7 @@ $renderJudgmentCard = static function (
             'autocomplete'         => 'off',
             'data-prevent-bfcache' => '1',
             'class'                => 'application-step-form',
+            'novalidate'           => 'novalidate',
         ]) ?>
 
         <div class="section-title">9. Number of Reported Judgments (excluding orders that do not lay down any principle of law): <u>Format L-1</u></div>

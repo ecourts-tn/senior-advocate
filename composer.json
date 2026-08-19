@@ -10,7 +10,7 @@
         "slack": "https://codeigniterchat.slack.com"
     },
     "require": {
-        "php": "^8.2",
+        "php": "^8.1.2",
         "ext-intl": "*",
         "ext-mbstring": "*",
         "dompdf/dompdf": "^3.1",
@@ -61,6 +61,7 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform-check": false,
         "preferred-install": "dist",
         "sort-packages": true
     },

@@ -114,6 +114,100 @@ class CaptchaService
     }
 
     /**
+     * Whether the GD PNG renderer is available.
+     */
+    public function supportsPng(): bool
+    {
+        return function_exists('imagecreatetruecolor')
+            && function_exists('imagepng');
+    }
+
+    /**
+     * Render captcha image bytes and the matching Content-Type.
+     *
+     * Uses GD PNG when the extension is loaded; otherwise falls back to SVG
+     * so the challenge still works on minimal PHP 8.1 installs.
+     *
+     * @return array{body: string, mime: string}
+     */
+    public function render(string $code): array
+    {
+        if ($this->supportsPng()) {
+            return [
+                'body' => $this->renderImage($code),
+                'mime' => 'image/png',
+            ];
+        }
+
+        return [
+            'body' => $this->renderSvg($code),
+            'mime' => 'image/svg+xml; charset=UTF-8',
+        ];
+    }
+
+    /**
+     * Render captcha as SVG (no GD required).
+     */
+    public function renderSvg(string $code): string
+    {
+        $width  = 180;
+        $height = 56;
+        $len    = strlen($code);
+        $slotW  = (int) (($width - 20) / max(1, $len));
+
+        $noise = '';
+        for ($i = 0; $i < 6; $i++) {
+            $noise .= sprintf(
+                '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#b4aa96" stroke-width="1"/>',
+                random_int(0, $width),
+                random_int(0, $height),
+                random_int(0, $width),
+                random_int(0, $height),
+            );
+        }
+        for ($i = 0; $i < 40; $i++) {
+            $noise .= sprintf(
+                '<circle cx="%d" cy="%d" r="1" fill="#a9792c"/>',
+                random_int(0, $width - 1),
+                random_int(0, $height - 1),
+            );
+        }
+
+        $letters = '';
+        for ($i = 0; $i < $len; $i++) {
+            $x     = 12 + ($i * $slotW) + random_int(0, 4);
+            $y     = random_int(32, 40);
+            $angle = random_int(-12, 12);
+            $char  = htmlspecialchars($code[$i], ENT_XML1 | ENT_QUOTES, 'UTF-8');
+            $letters .= sprintf(
+                '<text x="%d" y="%d" fill="#0f2340" font-family="ui-monospace, Consolas, monospace" font-size="22" font-weight="700" transform="rotate(%d %d %d)">%s</text>',
+                $x,
+                $y,
+                $angle,
+                $x,
+                $y,
+                $char,
+            );
+        }
+
+        return sprintf(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d" role="img" aria-label="CAPTCHA">'
+            . '<rect width="100%%" height="100%%" fill="#f7f4ef"/>'
+            . '%s%s'
+            . '<rect x="0.5" y="0.5" width="%d" height="%d" fill="none" stroke="#0f2340"/>'
+            . '</svg>',
+            $width,
+            $height,
+            $width,
+            $height,
+            $noise,
+            $letters,
+            $width - 1,
+            $height - 1,
+        );
+    }
+
+    /**
      * Render captcha PNG binary for the given plain code.
      */
     public function renderImage(string $code): string

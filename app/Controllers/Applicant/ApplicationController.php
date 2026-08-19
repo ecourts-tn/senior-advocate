@@ -366,11 +366,11 @@ class ApplicationController extends BaseController
             return redirect()->back()->withInput()->with('error', $dateError);
         }
 
-        // Mandatory sl. nos. 12 / 14 / 16 / 17: required to proceed or submit, not to save a draft.
+        // Mandatory sl. nos. 6 / 8 / 12 / 14 / 16 / 17 / 18–22: required to proceed or submit, not to save a draft.
         if (in_array($action, ['next', 'submit'], true)) {
-            $requiredError = $this->validateMandatoryStepFields($step, $post, $data, $app);
-            if ($requiredError !== null) {
-                return redirect()->back()->withInput()->with('error', $requiredError);
+            $requiredErrors = $this->validateMandatoryStepFields($step, $post, $data, $app);
+            if ($requiredErrors !== []) {
+                return redirect()->back()->withInput()->with('errors', $requiredErrors);
             }
         }
 
@@ -527,7 +527,7 @@ class ApplicationController extends BaseController
         $errors = $this->validateForSubmit($app);
         if ($errors) {
             return redirect()->to('/applicant/application/step/7')
-                ->with('error', implode(' ', $errors));
+                ->with('errors', $errors);
         }
 
         $cycleYear = (int) ($app['cycle_year'] ?? 0) ?: ApplicationModel::currentCycleYear();
@@ -664,11 +664,19 @@ class ApplicationController extends BaseController
             $errors[] = 'Years and months of practice are required.';
         }
 
-        if (! $this->isFirstGenerationAnswered($app['is_first_generation'] ?? null)) {
+        if (! $this->isYesNoAnswered($app['is_bar_association_member'] ?? null)) {
+            $errors[] = 'Sl. No. 8 (Whether the applicant is a member of any bar association) is required.';
+        } elseif ($this->isAffirmative($app['is_bar_association_member'] ?? null)
+            && trim((string) ($app['bar_association_name'] ?? '')) === '') {
+            $errors[] = 'Sl. No. 8: Name of Bar Association is required when Yes is selected.';
+        }
+        if (! $this->isYesNoAnswered($app['is_first_generation'] ?? null)) {
             $errors[] = 'Sl. No. 12 (Whether the applicant is first-generation lawyer) is required.';
         }
         if (! $this->hasFilledCourtPractice($app['courts_practiced'] ?? [])) {
             $errors[] = 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required.';
+        } elseif ($this->hasCourtPracticeMissingFromDate($app['courts_practiced'] ?? [])) {
+            $errors[] = 'Sl. No. 14: From (date) is required for each court.';
         }
         if (trim((string) ($app['nature_of_practice'] ?? '')) === '') {
             $errors[] = 'Sl. No. 16 (Nature of practice) is required.';
@@ -702,9 +710,8 @@ class ApplicationController extends BaseController
         if ($priorDateError !== null) {
             $errors[] = $priorDateError;
         }
-        $yesDetailError = $this->validateDeclarationYesDetails($app);
-        if ($yesDetailError !== null) {
-            $errors[] = $yesDetailError;
+        foreach ($this->validateDeclarationFields($app) as $declarationError) {
+            $errors[] = $declarationError;
         }
 
         if (empty($this->request->getPost('declaration_accepted'))) {
@@ -1064,21 +1071,38 @@ class ApplicationController extends BaseController
     }
 
     /**
-     * Mandatory sl. nos. 12 (step 4) and 14, 16, 17 (step 5).
+     * Mandatory sl. nos. 6 (step 1), 8 (step 2), 12 (step 4), 14 / 16 / 17 (step 5) and 18–22 (step 6).
      *
      * @param array<string, mixed> $post
      * @param array<string, mixed> $data
      * @param array<string, mixed> $app
+     *
+     * @return list<string>
      */
-    private function validateMandatoryStepFields(int $step, array $post, array $data, array $app): ?string
+    private function validateMandatoryStepFields(int $step, array $post, array $data, array $app): array
     {
-        if ($step === 4 && ! $this->isFirstGenerationAnswered($post['is_first_generation'] ?? null)) {
-            return 'Sl. No. 12 (Whether the applicant is first-generation lawyer) is required.';
+        $errors = [];
+
+        if ($step === 1 && ! $this->postedMultiHasValue($post, 'qualifications')) {
+            $errors[] = 'Sl. No. 6 (Educational / Professional Qualifications) is required.';
+        }
+
+        if ($step === 2) {
+            if (! $this->isYesNoAnswered($post['is_bar_association_member'] ?? ($data['is_bar_association_member'] ?? null))) {
+                $errors[] = 'Sl. No. 8 (Whether the applicant is a member of any bar association) is required.';
+            } elseif ($this->isAffirmative($data['is_bar_association_member'] ?? null)
+                && trim((string) ($data['bar_association_name'] ?? '')) === '') {
+                $errors[] = 'Sl. No. 8: Name of Bar Association is required when Yes is selected.';
+            }
+        }
+
+        if ($step === 4 && ! $this->isYesNoAnswered($post['is_first_generation'] ?? null)) {
+            $errors[] = 'Sl. No. 12 (Whether the applicant is first-generation lawyer) is required.';
         }
 
         if ($step === 5) {
             if (! $this->hasFilledCourtPractice($data['courts_practiced'] ?? [])) {
-                return 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required. Add at least one court.';
+                $errors[] = 'Sl. No. 14 (Courts where the applicant is practicing / has practiced) is required. Add at least one court.';
             }
             foreach ($data['courts_practiced'] ?? [] as $row) {
                 if (! is_array($row)) {
@@ -1087,22 +1111,26 @@ class ApplicationController extends BaseController
                 $type = ApplicationModel::practiceCourtTypeFromRow($row);
                 if ($type === ApplicationModel::PRACTICE_COURT_HC_DISTRICT
                     && trim((string) ($row['court'] ?? '')) === '') {
-                    return 'Sl. No. 14: enter the court name when High Court(s)/District/Trial Court(s) is selected.';
+                    $errors[] = 'Sl. No. 14: enter the court name when High Court(s)/District/Trial Court(s) is selected.';
+                    break;
                 }
             }
+            if ($this->hasCourtPracticeMissingFromDate($data['courts_practiced'] ?? [])) {
+                $errors[] = 'Sl. No. 14: From (date) is required for each court.';
+            }
             if (! $this->postedMultiHasValue($post, 'nature_of_practice')) {
-                return 'Sl. No. 16 (Nature of practice) is required.';
+                $errors[] = 'Sl. No. 16 (Nature of practice) is required.';
             }
             if (! $this->postedMultiHasValue($post, 'field_of_law')) {
-                return 'Sl. No. 17 (Field of Law) is required.';
+                $errors[] = 'Sl. No. 17 (Field of Law) is required.';
             }
         }
 
         if ($step === 6) {
-            return $this->validateDeclarationYesDetails($data);
+            $errors = array_merge($errors, $this->validateDeclarationFields($data));
         }
 
-        return null;
+        return $errors;
     }
 
     /**
@@ -1173,16 +1201,47 @@ class ApplicationController extends BaseController
     }
 
     /**
-     * When Sl. 18–22 is Yes, date / details fields are required.
+     * Sl. 18–22 Yes/No answers, plus date / details when Yes is selected.
      *
      * @param array<string, mixed> $source
+     *
+     * @return list<string>
      */
-    private function validateDeclarationYesDetails(array $source): ?string
+    private function validateDeclarationFields(array $source): array
     {
-        $groups = [
+        $errors = [];
+        foreach ($this->declarationFieldGroups() as $group) {
+            if (! $this->isYesNoAnswered($source[$group['flag']] ?? null)) {
+                $errors[] = 'Sl. No. ' . $group['sl'] . ' (' . $group['label'] . ') is required.';
+                continue;
+            }
+            if (! $this->isAffirmative($source[$group['flag']] ?? null)) {
+                continue;
+            }
+            foreach ($group['fields'] as $key => $fieldLabel) {
+                $value = $source[$key] ?? null;
+                if (is_string($value)) {
+                    $value = trim($value);
+                }
+                if ($value === null || $value === '') {
+                    $errors[] = 'Sl. No. ' . $group['sl'] . ': ' . $fieldLabel . ' is required when Yes is selected.';
+                }
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @return list<array{flag: string, sl: string, label: string, fields: array<string, string>}>
+     */
+    private function declarationFieldGroups(): array
+    {
+        return [
             [
                 'flag'   => 'applied_mhc_earlier',
                 'sl'     => '18',
+                'label'  => 'Whether the applicant has applied earlier to the Madras High Court for designation',
                 'fields' => [
                     'applied_mhc_date'   => 'Date of application',
                     'applied_mhc_status' => 'Details',
@@ -1191,6 +1250,7 @@ class ApplicationController extends BaseController
             [
                 'flag'   => 'applied_other_court',
                 'sl'     => '19',
+                'label'  => 'Whether the applicant has applied earlier to the Supreme Court, or any other High Court',
                 'fields' => [
                     'applied_other_date'    => 'Date of application',
                     'applied_other_details' => 'Details thereof',
@@ -1199,6 +1259,7 @@ class ApplicationController extends BaseController
             [
                 'flag'   => 'fir_lodged',
                 'sl'     => '20',
+                'label'  => 'Whether any FIR has ever been lodged against the applicant',
                 'fields' => [
                     'fir_details' => 'Details thereof',
                 ],
@@ -1206,6 +1267,7 @@ class ApplicationController extends BaseController
             [
                 'flag'   => 'criminal_case_party',
                 'sl'     => '21',
+                'label'  => 'Whether the applicant is a party to any criminal case',
                 'fields' => [
                     'criminal_case_details' => 'Details thereof',
                 ],
@@ -1213,28 +1275,12 @@ class ApplicationController extends BaseController
             [
                 'flag'   => 'bar_council_proceedings',
                 'sl'     => '22',
+                'label'  => 'Whether any proceedings were initiated or are pending against the applicant before Bar Council of India or State Bar Council',
                 'fields' => [
                     'bar_council_details' => 'Details thereof',
                 ],
             ],
         ];
-
-        foreach ($groups as $group) {
-            if (! $this->isAffirmative($source[$group['flag']] ?? null)) {
-                continue;
-            }
-            foreach ($group['fields'] as $key => $label) {
-                $value = $source[$key] ?? null;
-                if (is_string($value)) {
-                    $value = trim($value);
-                }
-                if ($value === null || $value === '') {
-                    return 'Sl. No. ' . $group['sl'] . ': ' . $label . ' is required when Yes is selected.';
-                }
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -1319,7 +1365,7 @@ class ApplicationController extends BaseController
         return null;
     }
 
-    private function isFirstGenerationAnswered(mixed $value): bool
+    private function isYesNoAnswered(mixed $value): bool
     {
         if ($value === null || $value === '') {
             return false;
@@ -1347,6 +1393,40 @@ class ApplicationController extends BaseController
             $type = ApplicationModel::practiceCourtTypeFromRow($row);
             $name = trim((string) ($row['court'] ?? ''));
             if ($type === ApplicationModel::PRACTICE_COURT_SUPREME || $name !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Each filled sl. 14 court row must have a From date.
+     *
+     * @param list<mixed>|string|null $courts
+     */
+    private function hasCourtPracticeMissingFromDate($courts): bool
+    {
+        if (is_string($courts)) {
+            $decoded = json_decode($courts, true);
+            $courts  = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($courts)) {
+            return false;
+        }
+        foreach ($courts as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $type = ApplicationModel::practiceCourtTypeFromRow($row);
+            $name = trim((string) ($row['court'] ?? ''));
+            if ($type === '' && $name === '') {
+                continue;
+            }
+            if ($type === ApplicationModel::PRACTICE_COURT_HC_DISTRICT && $name === '') {
+                continue;
+            }
+            if (ApplicationDateRules::parseDate($row['from_date'] ?? $row['from'] ?? null) === null) {
                 return true;
             }
         }
