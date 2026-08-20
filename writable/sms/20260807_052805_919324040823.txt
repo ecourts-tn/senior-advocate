@@ -1,0 +1,5 @@
+To: 919324040823
+Date: 2026-08-07T05:28:05+00:00
+Method: log
+
+MHC SAD Portal: Registration successful for 9842296111. Login at http://117.193.76.243/senior-advocate/login to start your application.

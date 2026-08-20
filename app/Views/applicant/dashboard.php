@@ -99,15 +99,7 @@ if (! empty($periodInfo['open'])):
 <?php
 ob_start();
 ?>
-<div class="col-md-3">
-    <label class="form-label" for="statusFilter">Status</label>
-    <select name="status" id="statusFilter" class="form-select">
-        <option value="">All statuses</option>
-        <?php foreach ($statuses as $k => $lab): ?>
-            <option value="<?= esc($k) ?>" <?= $status === $k ? 'selected' : '' ?>><?= esc($lab) ?></option>
-        <?php endforeach; ?>
-    </select>
-</div>
+
 <?php
 $extraFilters = ob_get_clean();
 
@@ -145,7 +137,6 @@ echo view('partials/table_toolbar', [
                     <tr>
                         <th>Application No.</th>
                         <th>Name</th>
-                        <th>Status</th>
                         <th>Step</th>
                         <th>Submitted</th>
                         <th class="text-end">Actions</th>
@@ -159,7 +150,6 @@ echo view('partials/table_toolbar', [
                         <tr>
                             <td class="fw-semibold"><?= esc($a['application_no'] ?? '—') ?></td>
                             <td><?= esc(trim(($a['title'] ?? '') . ' ' . ($a['full_name'] ?? ''))) ?></td>
-                            <td><?= ssa_status_badge($a['status']) ?></td>
                             <td>
                                 <span class="text-muted small"><?= (int) $a['current_step'] ?> / 7</span>
                             </td>

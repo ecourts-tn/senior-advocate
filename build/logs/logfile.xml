@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="9" assertions="32" errors="0" failures="0" skipped="0" time="0.056799">
+    <testsuite name="ApplicationDateRulesTest" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" tests="5" assertions="20" errors="0" failures="0" skipped="0" time="0.043382">
+      <testcase name="testParseDateAcceptsIsoAndDatetime" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" line="11" class="ApplicationDateRulesTest" classname="ApplicationDateRulesTest" assertions="5" time="0.037839"/>
+      <testcase name="testDecidedOnMustBeBeforeNotificationDate" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" line="20" class="ApplicationDateRulesTest" classname="ApplicationDateRulesTest" assertions="5" time="0.001926"/>
+      <testcase name="testDecidedOnMaxIsDayBeforeNotification" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" line="29" class="ApplicationDateRulesTest" classname="ApplicationDateRulesTest" assertions="2" time="0.001194"/>
+      <testcase name="testPracticeDatesMustBeBetweenEnrolmentAndNotification" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" line="35" class="ApplicationDateRulesTest" classname="ApplicationDateRulesTest" assertions="6" time="0.001236"/>
+      <testcase name="testFirstInvalidDecidedOn" file="/var/www/html/senior-advocate/tests/unit/ApplicationDateRulesTest.php" line="48" class="ApplicationDateRulesTest" classname="ApplicationDateRulesTest" assertions="2" time="0.001188"/>
+    </testsuite>
+    <testsuite name="EnrolmentNumberTest" file="/var/www/html/senior-advocate/tests/unit/EnrolmentNumberTest.php" tests="2" assertions="9" errors="0" failures="0" skipped="0" time="0.005876">
+      <testcase name="testParseNumberAndYearFromCommonFormats" file="/var/www/html/senior-advocate/tests/unit/EnrolmentNumberTest.php" line="11" class="EnrolmentNumberTest" classname="EnrolmentNumberTest" assertions="5" time="0.004776"/>
+      <testcase name="testSameNumberAndYearIgnoresPrefixAndPadding" file="/var/www/html/senior-advocate/tests/unit/EnrolmentNumberTest.php" line="29" class="EnrolmentNumberTest" classname="EnrolmentNumberTest" assertions="4" time="0.001100"/>
+    </testsuite>
+    <testsuite name="HealthTest" file="/var/www/html/senior-advocate/tests/unit/HealthTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.007541">
+      <testcase name="testIsDefinedAppPath" file="/var/www/html/senior-advocate/tests/unit/HealthTest.php" line="12" class="HealthTest" classname="HealthTest" assertions="1" time="0.000827"/>
+      <testcase name="testBaseUrlHasBeenSet" file="/var/www/html/senior-advocate/tests/unit/HealthTest.php" line="17" class="HealthTest" classname="HealthTest" assertions="2" time="0.006713"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

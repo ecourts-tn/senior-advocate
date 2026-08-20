@@ -1,0 +1,5 @@
+To: 7358513705
+Date: 2026-08-17T12:33:27+05:30
+Method: log
+
+MHC SSA Portal: Application MHC/SSA/2026/0003 submitted successfully. Keep your Application No. for reference.

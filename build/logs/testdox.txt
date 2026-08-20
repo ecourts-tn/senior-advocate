@@ -1,0 +1,15 @@
+Application Date Rules
+ [x] Parse date accepts iso and datetime
+ [x] Decided on must be before notification date
+ [x] Decided on max is day before notification
+ [x] Practice dates must be between enrolment and notification
+ [x] First invalid decided on
+
+Enrolment Number
+ [x] Parse number and year from common formats
+ [x] Same number and year ignores prefix and padding
+
+Health
+ [x] Is defined app path
+ [x] Base url has been set
+

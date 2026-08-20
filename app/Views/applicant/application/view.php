@@ -6,7 +6,6 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
     <div>
         <h1 class="page-title">Application <?= esc($app['application_no'] ?? '#' . $app['id']) ?></h1>
-        <div class="mt-1"><?= ssa_status_badge($app['status']) ?></div>
     </div>
     <div class="d-flex flex-wrap gap-2 w-100 w-md-auto">
         <?php if (\App\Models\ApplicationModel::isEditableByApplicant($app)): ?>
@@ -19,32 +18,6 @@
     </div>
 </div>
 
-<?php if ($app['status'] === 'returned'): ?>
-    <div class="alert alert-warning">
-        <strong>Returned for correction.</strong>
-        Please update the application as directed and resubmit from Step 7.
-        <?php if (! empty($app['review_remarks'])): ?>
-            <hr class="my-2">
-            <strong>Reviewer remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
-        <?php endif; ?>
-    </div>
-<?php elseif (! empty($app['review_remarks']) && in_array($app['status'], ['listed', 'waitlisted', 'rejected', 'approved'], true)): ?>
-    <?php
-    $remarkClass = match ($app['status']) {
-        'listed', 'approved' => 'success',
-        'waitlisted'         => 'warning',
-        'rejected'           => 'danger',
-        default              => 'light border',
-    };
-    ?>
-    <div class="alert alert-<?= $remarkClass ?>">
-        <strong>Registry remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
-    </div>
-<?php elseif (! empty($app['review_remarks'])): ?>
-    <div class="alert alert-light border">
-        <strong>Registry remarks:</strong> <?= nl2br(esc($app['review_remarks'])) ?>
-    </div>
-<?php endif; ?>
 
 <div class="card card-mhc mb-3">
     <div class="card-header">1–6. Personal Particulars</div>
@@ -336,25 +309,5 @@
     </div>
 </div>
 
-<div class="card card-mhc">
-    <div class="card-header">Status history</div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
-            <thead><tr><th>When</th><th>From</th><th>To</th><th>Remarks</th></tr></thead>
-            <tbody>
-            <?php if (empty($history)): ?>
-                <tr><td colspan="4" class="text-muted">No history yet.</td></tr>
-            <?php else: foreach ($history as $h): ?>
-                <tr>
-                    <td><?= esc(ssa_format_datetime($h['created_at'] ?? null)) ?></td>
-                    <td><?= esc($h['from_status'] ?? '—') ?></td>
-                    <td><?= esc($h['to_status']) ?></td>
-                    <td><?= esc($h['remarks'] ?? '') ?></td>
-                </tr>
-            <?php endforeach; endif; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
 
 <?= $this->endSection() ?>

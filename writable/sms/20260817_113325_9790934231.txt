@@ -1,0 +1,5 @@
+To: 9790934231
+Date: 2026-08-17T11:33:25+05:30
+Method: log
+
+MHC SSA Portal: Verify your email to activate your account. Open the verification link sent to your registered email.

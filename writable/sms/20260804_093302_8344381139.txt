@@ -1,0 +1,5 @@
+To: 8344381139
+Date: 2026-08-04T09:33:02+00:00
+Method: log
+
+MHC SAD Portal: Application MHC/DSA/2026/0001 has been ACCEPTED. Remarks: Application accepted

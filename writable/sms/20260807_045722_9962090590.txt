@@ -1,0 +1,5 @@
+To: 9962090590
+Date: 2026-08-07T04:57:22+00:00
+Method: log
+
+MHC SAD Portal: Registration successful for Dinakaran. Login at http://192.168.100.155/senior-advocate/login to start your application.
