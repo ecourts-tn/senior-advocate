@@ -48,7 +48,7 @@
                             <option value="smtp" <?= old('protocol', $settings['protocol'] ?? '') === 'smtp' ? 'selected' : '' ?>>SMTP</option>
                             <option value="file" <?= old('protocol', $settings['protocol'] ?? '') === 'file' ? 'selected' : '' ?>>File only (writable/mail)</option>
                         </select>
-                        <div class="form-text">Use “File only” for development without an SMTP server.</div>
+                        <div class="form-text">SMTP sends through the configured mail server. File mode does not deliver mail.</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label" for="smtp_host">SMTP host</label>
@@ -113,12 +113,6 @@
                 </button>
                 <?= form_close() ?>
             </div>
-        </div>
-        <div class="warning-box mb-0">
-            <strong class="d-block mb-1">Notes</strong>
-            Settings are stored in the database and used by registration, application,
-            approval/rejection and password emails. File mode writes under
-            <code>writable/mail/</code>.
         </div>
     </div>
 </div>

@@ -20,8 +20,8 @@ class MailTransport
             return $this->writeFile($toEmail, $toName, $subject, $bodyHtml, 'disabled');
         }
 
-        $fromEmail = (string) ($cfg['from_email'] ?? 'noreply@hcmadras.tn.gov.in');
-        $fromName  = (string) ($cfg['from_name'] ?? 'Madras High Court SSA Portal');
+        $fromEmail = (string) ($cfg['from_email'] ?? 'sradvsec.mhc@tn.gov.in');
+        $fromName  = (string) ($cfg['from_name'] ?? 'Madras High Court - SSA Portal');
         $protocol  = strtolower((string) ($cfg['protocol'] ?? 'file'));
         $smtpHost  = trim((string) ($cfg['smtp_host'] ?? ''));
 
@@ -31,10 +31,10 @@ class MailTransport
                 $email->initialize([
                     'protocol'   => 'smtp',
                     'SMTPHost'   => $smtpHost,
-                    'SMTPUser'   => (string) ($cfg['smtp_user'] ?? ''),
-                    'SMTPPass'   => (string) ($cfg['smtp_pass'] ?? ''),
-                    'SMTPPort'   => (int) ($cfg['smtp_port'] ?? 587),
-                    'SMTPCrypto' => (string) ($cfg['smtp_crypto'] ?? 'tls'),
+                    'SMTPUser'   => (string) ($cfg['smtp_user'] ?? 'sradvsec.mhc'),
+                    'SMTPPass'   => (string) ($cfg['smtp_pass'] ?? 'MufasaSimba@*2026'),
+                    'SMTPPort'   => (int) ($cfg['smtp_port'] ?? 465),
+                    'SMTPCrypto' => (string) ($cfg['smtp_crypto'] ?? 'ssl'),
                     'mailType'   => 'html',
                     'charset'    => 'UTF-8',
                     'wordWrap'   => true,

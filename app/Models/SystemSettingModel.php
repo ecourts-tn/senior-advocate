@@ -35,15 +35,14 @@ class SystemSettingModel extends Model
         return [
             'email' => [
                 'enabled'     => ['value' => '1'],
-                'from_email'  => ['value' => (string) env('email.fromEmail', 'ibms.mhc@gmail.com')],
+                'from_email'  => ['value' => (string) env('email.fromEmail', 'sradvsec.mhc@tn.gov.in')],
                 'from_name'   => ['value' => (string) env('email.fromName', 'High Court of Madras — SSA Portal')],
-                // Prefer file delivery until real SMTP is configured in admin
-                'protocol'    => ['value' => (string) env('email.protocol', 'file')], // smtp|file
-                'smtp_host'   => ['value' => (string) env('email.SMTPHost', 'smtp.gmail.com')],
-                'smtp_user'   => ['value' => (string) env('email.SMTPUser', 'ibms.mhc@gmail.com')],
-                'smtp_pass'   => ['value' => (string) env('email.SMTPPass', 'bpzcrxxhrzbtktdd'), 'secret' => true],
-                'smtp_port'   => ['value' => (string) env('email.SMTPPort', '587')],
-                'smtp_crypto' => ['value' => (string) env('email.SMTPCrypto', 'tls')], // tls|ssl|
+                'protocol'    => ['value' => (string) env('email.protocol', 'smtp')], // smtp|file
+                'smtp_host'   => ['value' => (string) env('email.SMTPHost', 'mail2.tn.gov.in')],
+                'smtp_user'   => ['value' => (string) env('email.SMTPUser', 'sradvsec.mhc')],
+                'smtp_pass'   => ['value' => (string) env('email.SMTPPass', 'MufasaSimba@*2026'), 'secret' => true],
+                'smtp_port'   => ['value' => (string) env('email.SMTPPort', '465')],
+                'smtp_crypto' => ['value' => (string) env('email.SMTPCrypto', 'ssl')], // tls|ssl|
             ],
             'sms' => [
                 'enabled'   => ['value' => filter_var(env('sms.enabled', true), FILTER_VALIDATE_BOOLEAN) ? '1' : '0'],

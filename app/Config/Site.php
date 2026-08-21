@@ -11,7 +11,7 @@ use CodeIgniter\Config\BaseConfig;
 class Site extends BaseConfig
 {
     /** Displayed on all pages (GIGW: Last Updated Date). */
-    public string $lastUpdated = '27 July 2026';
+    public string $lastUpdated = '24 August 2026';
 
     public string $organisation = 'High Court of Madras';
 
@@ -21,7 +21,7 @@ class Site extends BaseConfig
 
     public string $address = 'High Court Buildings, Chennai – 600 104, Tamil Nadu, India';
 
-    public string $email = 'hcmadras.tn.gov.in';
+    public string $email = 'sradvsec.mhc@tn.gov.in';
 
     public string $phone = '044-2530 1330';
 

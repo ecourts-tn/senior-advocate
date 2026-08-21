@@ -5,12 +5,13 @@ namespace App\Libraries;
 use App\Models\SystemSettingModel;
 
 /**
- * SMS sender using admin DB settings (HTTP gateway or log file).
+ * SMS sender using admin DB settings (HTTP gateway).
+ * Does not write fallback files under writable/sms.
  */
 class SmsService
 {
     /**
-     * @return array{sent: bool, method: string, path?: string, response?: string}
+     * @return array{sent: bool, method: string, response?: string}
      */
     public function send(string $mobile, string $message): array
     {
@@ -20,22 +21,21 @@ class SmsService
         $enabled = ! empty($cfg['enabled']) && $cfg['enabled'] !== '0' && $cfg['enabled'] !== false;
 
         if (! $enabled || $mobile === '') {
-            return $this->writeFile($mobile ?: 'unknown', $message, 'disabled');
+            return ['sent' => false, 'method' => 'disabled'];
         }
 
         $provider = strtolower((string) ($cfg['provider'] ?? 'log'));
 
         if ($provider === 'http') {
             $result = $this->sendHttp($mobile, $message, $cfg);
-            if ($result['sent']) {
-                return $result;
+            if (! $result['sent']) {
+                log_message('error', 'SMS HTTP failed: ' . ($result['response'] ?? 'unknown'));
             }
-            log_message('error', 'SMS HTTP failed: ' . ($result['response'] ?? 'unknown'));
 
-            return $this->writeFile($mobile, $message, 'http_fallback', $result['response'] ?? null);
+            return $result;
         }
 
-        return $this->writeFile($mobile, $message, 'log');
+        return ['sent' => false, 'method' => 'log'];
     }
 
     /**
@@ -119,28 +119,4 @@ class SmsService
         }
     }
 
-    /**
-     * @return array{sent: bool, method: string, path: string, response?: string}
-     */
-    private function writeFile(string $mobile, string $message, string $method, ?string $response = null): array
-    {
-        $dir = WRITEPATH . 'sms';
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-        $filename = date('Ymd_His') . '_' . preg_replace('/\D+/', '', $mobile) . '.txt';
-        $path     = $dir . DIRECTORY_SEPARATOR . $filename;
-        $content  = "To: {$mobile}\nDate: " . date('c') . "\nMethod: {$method}\n"
-            . ($response ? "Response: {$response}\n" : '')
-            . "\n{$message}\n";
-        file_put_contents($path, $content);
-        log_message('info', "SMS saved to {$path}");
-
-        $out = ['sent' => true, 'method' => $method, 'path' => $path];
-        if ($response) {
-            $out['response'] = $response;
-        }
-
-        return $out;
-    }
 }

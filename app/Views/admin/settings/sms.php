@@ -89,8 +89,8 @@
         </div>
         <div class="warning-box mb-0">
             <strong class="d-block mb-1">Notes</strong>
-            With provider “Log only”, messages are written under
-            <code>writable/sms/</code>. Use HTTP mode for production gateways.
+            Use HTTP mode for a production gateway. Failed or log-only sends are not
+            written to disk.
         </div>
     </div>
 </div>

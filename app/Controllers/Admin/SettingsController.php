@@ -142,14 +142,13 @@ class SettingsController extends BaseController
 
         if (! empty($result['sent'])) {
             $msg = 'Test email sent via ' . ($result['method'] ?? 'unknown') . '.';
-            if (! empty($result['path'])) {
-                $msg .= ' Saved to ' . $result['path'];
-            }
 
             return redirect()->back()->with('success', $msg);
         }
 
-        return redirect()->back()->with('error', 'Test email failed.');
+        $error = trim((string) ($result['error'] ?? ''));
+
+        return redirect()->back()->with('error', 'Test email failed.' . ($error !== '' ? ' ' . $error : ''));
     }
 
     public function testSms()
@@ -171,9 +170,6 @@ class SettingsController extends BaseController
 
         if (! empty($result['sent'])) {
             $msg = 'Test SMS processed via ' . ($result['method'] ?? 'unknown') . '.';
-            if (! empty($result['path'])) {
-                $msg .= ' Saved to ' . $result['path'];
-            }
             if (! empty($result['response'])) {
                 $msg .= ' Response: ' . $result['response'];
             }

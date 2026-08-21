@@ -6,8 +6,8 @@ use App\Models\SystemSettingModel;
 use CodeIgniter\Database\Seeder;
 
 /**
- * Seeds sample Email / SMS configuration for local development and demos.
- * Safe defaults use file/log delivery so no real SMTP/SMS gateway is required.
+ * Seeds Email / SMS configuration. Email uses the MHC SMTP server.
+ * Failed sends are not written to writable/mail or writable/sms.
  */
 class SettingsSeeder extends Seeder
 {
@@ -15,22 +15,21 @@ class SettingsSeeder extends Seeder
     {
         $model = model(SystemSettingModel::class);
 
-        // Sample profile A — local / offline (recommended for this environment)
         $samples = [
             'email' => [
                 'enabled'     => '1',
-                'from_email'  => 'ibms.mhc@gmail.com',
-                'from_name'   => 'Madras High Court — SSA Portal',
-                'protocol'    => 'smtp', 
-                'smtp_host'   => 'smtp.gmail.com',
-                'smtp_user'   => 'ibms.mhc@gmail.com',
-                'smtp_pass'   => 'bpzcrxxhrzbtktdd',
-                'smtp_port'   => '587',
-                'smtp_crypto' => 'tls',
+                'from_email'  => 'sradvsec.mhc@tn.gov.in',
+                'from_name'   => 'High Court of Madras — SSA Portal',
+                'protocol'    => 'smtp',
+                'smtp_host'   => 'mail2.tn.gov.in',
+                'smtp_user'   => 'sradvsec.mhc',
+                'smtp_pass'   => 'MufasaSimba@*2026',
+                'smtp_port'   => '465',
+                'smtp_crypto' => 'ssl',
             ],
             'sms' => [
                 'enabled'   => '0',
-                'provider'  => 'log', // writes under writable/sms/
+                'provider'  => 'log',
                 'api_url'   => '',
                 'api_key'   => 'your-api-key',
                 'sender_id' => 'MHCSSA',
@@ -58,8 +57,8 @@ class SettingsSeeder extends Seeder
                 ];
 
                 if ($row) {
-                    // Do not overwrite existing non-empty secrets with sample placeholders
-                    if (! empty($secrets[$key]) && $row['setting_value'] !== null && $row['setting_value'] !== '') {
+                    // Keep existing SMS API keys; always apply the MHC SMTP password.
+                    if ($group !== 'email' && ! empty($secrets[$key]) && $row['setting_value'] !== null && $row['setting_value'] !== '') {
                         continue;
                     }
                     $model->update($row['id'], $payload);
